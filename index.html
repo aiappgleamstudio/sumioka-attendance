@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>はっぴーらんど 勤怠管理</title>
+  <title> </title>
 
-  <!-- Tailwind CSS CDN（Play CDN：ビルド不要で使用可能） -->
+  <!-- Tailwind CSS CDNPlay CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
     /*
-     * Tailwindで対応しきれない細かいスタイルをここで定義。
-     * 高齢者・障害者にも使いやすいように文字・ボタンは大きめに設定。
+     * Tailwind
+     *
      */
     body {
       font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
     }
 
-    /* ローディングスピナー */
+    /*  */
     .spinner {
       border: 4px solid #e5e7eb;
       border-top-color: #3b82f6;
@@ -28,11 +28,11 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* 画面切替アニメーション */
+    /*  */
     .screen { display: none; }
     .screen.active { display: block; }
 
-    /* トースト通知 */
+    /*  */
     #toast {
       transition: opacity 0.4s ease;
     }
@@ -42,8 +42,8 @@
 <body class="bg-gray-50 min-h-screen">
 
   <!-- ============================================================
-    トースト通知（画面上部に一時表示）
-    成功・エラーどちらにも使用。classで色を切り替える。
+
+    class
   ============================================================ -->
   <div id="toast"
        class="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg
@@ -51,62 +51,62 @@
   </div>
 
   <!-- ============================================================
-    ① ログイン画面
+    ①
   ============================================================ -->
   <div id="screen-login" class="screen active">
     <div class="min-h-screen flex flex-col items-center justify-center px-4 py-12">
 
-      <!-- ロゴ・タイトル -->
+      <!--  -->
       <div class="mb-10 text-center">
-        <div class="text-5xl mb-3">🌈</div>
-        <h1 class="text-3xl font-bold text-gray-800">はっぴーらんど</h1>
-        <p class="text-gray-500 mt-1 text-lg">勤怠管理システム</p>
+        <div class="text-5xl mb-3"></div>
+        <h1 class="text-3xl font-bold text-gray-800"></h1>
+        <p class="text-gray-500 mt-1 text-lg"></p>
       </div>
 
-      <!-- ログインカード -->
+      <!--  -->
       <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
-        <h2 class="text-xl font-bold text-gray-700 mb-6 text-center">ログイン</h2>
+        <h2 class="text-xl font-bold text-gray-700 mb-6 text-center"></h2>
 
-        <!-- PIN入力 -->
+        <!-- PIN -->
         <div class="mb-5">
-          <label class="block text-gray-600 font-semibold mb-2 text-lg">PIN番号（4桁）</label>
+          <label class="block text-gray-600 font-semibold mb-2 text-lg">PIN4</label>
           <input id="input-pin"
                  type="password"
                  inputmode="numeric"
                  maxlength="4"
-                 placeholder="● ● ● ●"
+                 placeholder="   "
                  class="w-full border-2 border-gray-300 rounded-xl px-4 py-4 text-2xl
                         text-center tracking-widest focus:outline-none focus:border-blue-400" />
         </div>
 
-        <!-- パスワード入力 -->
+        <!--  -->
         <div class="mb-8">
-          <label class="block text-gray-600 font-semibold mb-2 text-lg">パスワード</label>
+          <label class="block text-gray-600 font-semibold mb-2 text-lg"></label>
           <input id="input-password"
                  type="password"
-                 placeholder="パスワードを入力"
+                 placeholder=""
                  class="w-full border-2 border-gray-300 rounded-xl px-4 py-4 text-xl
                         focus:outline-none focus:border-blue-400" />
         </div>
 
-        <!-- ログインボタン -->
+        <!--  -->
         <button id="btn-login"
                 onclick="doLogin()"
                 class="w-full bg-blue-500 hover:bg-blue-600 active:bg-blue-700
                        text-white font-bold text-xl py-5 rounded-xl
                        transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
-          ログイン
+
         </button>
 
-        <!-- エラーメッセージ -->
+        <!--  -->
         <p id="login-error" class="mt-4 text-red-500 text-center text-base hidden"></p>
       </div>
 
-      <!-- GAS URL設定（初回セットアップ用） -->
+      <!-- GAS URL -->
       <div class="mt-6 w-full max-w-sm">
         <details class="bg-white rounded-2xl shadow p-4">
           <summary class="cursor-pointer text-gray-500 text-sm font-semibold">
-            ⚙️ システム設定（管理者のみ）
+
           </summary>
           <div class="mt-4">
             <label class="block text-gray-600 text-sm font-semibold mb-1">GAS Web App URL</label>
@@ -115,16 +115,16 @@
                    placeholder="https://script.google.com/macros/s/..."
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
                           focus:outline-none focus:border-blue-400" />
-            <label class="block text-gray-600 text-sm font-semibold mb-1 mt-3">APIキー</label>
+            <label class="block text-gray-600 text-sm font-semibold mb-1 mt-3">API</label>
             <input id="input-api-key"
                    type="password"
-                   placeholder="APIキーを入力"
+                   placeholder="API"
                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
                           focus:outline-none focus:border-blue-400" />
             <button onclick="saveSettings()"
                     class="mt-3 w-full bg-gray-600 hover:bg-gray-700 text-white
                            text-sm font-bold py-2 rounded-lg">
-              保存する
+
             </button>
           </div>
         </details>
@@ -135,11 +135,11 @@
 
 
   <!-- ============================================================
-    ② 打刻画面（ログイン後に表示）
+    ②
   ============================================================ -->
   <div id="screen-stamp" class="screen">
 
-    <!-- ヘッダー -->
+    <!--  -->
     <header class="bg-white shadow-sm px-4 py-4 flex items-center justify-between sticky top-0 z-10">
       <div>
         <p class="text-gray-500 text-sm" id="header-date"></p>
@@ -148,45 +148,45 @@
       <button onclick="doLogout()"
               class="text-gray-400 hover:text-gray-600 text-sm border border-gray-300
                      rounded-lg px-3 py-1">
-        ログアウト
+
       </button>
     </header>
 
     <main class="max-w-md mx-auto px-4 py-8">
 
-      <!-- 現在時刻 -->
+      <!--  -->
       <div class="text-center mb-8">
         <p id="clock" class="text-6xl font-bold text-gray-800 tracking-tight"></p>
         <p class="text-gray-400 mt-1 text-base" id="stamp-date-display"></p>
       </div>
 
-      <!-- ────────────────────────────────────────────
-        出勤エリア
-      ──────────────────────────────────────────── -->
-      <div id="section-in" class="bg-white rounded-2xl shadow p-6 mb-5">
-        <h2 class="text-lg font-bold text-gray-700 mb-4">🍱 弁当の要否を選んでください</h2>
+      <!--
 
-        <!-- 弁当選択（ラジオボタン風カード）-->
+       -->
+      <div id="section-in" class="bg-white rounded-2xl shadow p-6 mb-5">
+        <h2 class="text-lg font-bold text-gray-700 mb-4"> </h2>
+
+        <!-- -->
         <div class="grid grid-cols-2 gap-3 mb-5">
           <button id="btn-lunch-yes"
-                  onclick="selectLunch('要')"
+                  onclick="selectLunch('')"
                   class="lunch-btn border-2 border-gray-200 rounded-xl py-5
                          text-2xl font-bold text-gray-600
                          hover:border-green-400 hover:bg-green-50
                          transition-all duration-150">
-            🍱 要る
+
           </button>
           <button id="btn-lunch-no"
-                  onclick="selectLunch('不要')"
+                  onclick="selectLunch('')"
                   class="lunch-btn border-2 border-gray-200 rounded-xl py-5
                          text-2xl font-bold text-gray-600
                          hover:border-gray-400 hover:bg-gray-100
                          transition-all duration-150">
-            🙅 要らない
+
           </button>
         </div>
 
-        <!-- 出勤ボタン（弁当未選択時はdisabled）-->
+        <!-- disabled-->
         <button id="btn-stamp-in"
                 onclick="doStampIn()"
                 disabled
@@ -194,24 +194,24 @@
                        text-white font-bold text-2xl py-6 rounded-xl
                        transition-colors duration-150
                        disabled:opacity-40 disabled:cursor-not-allowed">
-          出勤する
+
         </button>
       </div>
 
-      <!-- ────────────────────────────────────────────
-        退勤エリア（出勤後に有効化）
-      ──────────────────────────────────────────── -->
+      <!--
+
+       -->
       <div id="section-out" class="bg-white rounded-2xl shadow p-6 mb-5">
-        <h2 class="text-lg font-bold text-gray-700 mb-4">📝 本日の業務内容を入力してください</h2>
+        <h2 class="text-lg font-bold text-gray-700 mb-4"> </h2>
 
         <textarea id="input-report"
                   oninput="onReportInput()"
-                  placeholder="今日行った作業内容を入力してください&#10;（例：製品の袋詰め作業 30個完成）"
+                  placeholder="&#10; 30"
                   rows="4"
                   class="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-lg
                          resize-none focus:outline-none focus:border-blue-400 mb-4"></textarea>
 
-        <!-- 退勤ボタン（業務内容未入力時はdisabled）-->
+        <!-- disabled-->
         <button id="btn-stamp-out"
                 onclick="doStampOut()"
                 disabled
@@ -219,11 +219,11 @@
                        text-white font-bold text-2xl py-6 rounded-xl
                        transition-colors duration-150
                        disabled:opacity-40 disabled:cursor-not-allowed">
-          退勤する
+
         </button>
       </div>
 
-      <!-- 本日の打刻状況表示 -->
+      <!--  -->
       <div id="stamp-status" class="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-center hidden">
         <p class="text-blue-600 font-bold text-lg" id="stamp-status-text"></p>
       </div>
@@ -233,13 +233,13 @@
 
 
   <!-- ============================================================
-    ローディングオーバーレイ（API通信中に表示）
+    API
   ============================================================ -->
   <div id="loading-overlay"
        class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
     <div class="bg-white rounded-2xl px-10 py-8 flex flex-col items-center gap-4 shadow-xl">
       <div class="spinner"></div>
-      <p class="text-gray-700 font-bold text-lg" id="loading-message">通信中...</p>
+      <p class="text-gray-700 font-bold text-lg" id="loading-message">...</p>
     </div>
   </div>
 
@@ -250,19 +250,19 @@
   <script>
     /**
      * ============================================================
-     * はっぴーらんど 勤怠管理システム フロントエンドスクリプト
      *
-     * 設計方針：
-     *   - Vanilla JS（フレームワーク禁止）
-     *   - localStorageでセッション管理（キーは sumioka_ プレフィックス）
-     *   - API通信はすべて callApi() に集約
-     *   - エラーはユーザー向け日本語 + console.error で詳細を出力
-     *   - Phase2（申請・カレンダー）追加を見越した画面管理構造
+     *
+     *
+     *   - Vanilla JS
+     *   - localStorage sumioka_
+     *   - API callApi()
+     *   -  + console.error
+     *   - Phase2
      * ============================================================
      */
 
     // ============================================================
-    // 定数定義（マジックストリング排除）
+    //
     // ============================================================
     const STORAGE_KEY = {
       NAME      : "sumioka_name",
@@ -272,51 +272,51 @@
       API_KEY   : "sumioka_api_key",
     };
 
-    // API通信タイムアウト（ミリ秒）
+    // API
     const API_TIMEOUT_MS = 15000;
 
-    // 退勤前通知を出す「定時何分前」
+    //
     const NOTIFY_BEFORE_MINUTES = 5;
 
-    // 弁当選択状態（グローバル変数。選択されていればstring、未選択はnull）
+    // stringnull
     let selectedLunch = null;
 
-    // 二重送信防止フラグ
+    //
     let isSending = false;
 
 
     // ============================================================
-    // 初期化
+    //
     // ============================================================
 
     /**
-     * ページ読み込み時に実行。
-     * localStorageにログイン情報があれば打刻画面へ、なければログイン画面を表示。
+     *
+     * localStorage
      */
     window.addEventListener("DOMContentLoaded", () => {
-      // 設定値をフォームに反映
+      //
       const savedUrl    = localStorage.getItem(STORAGE_KEY.GAS_URL) || "";
       const savedApiKey = localStorage.getItem(STORAGE_KEY.API_KEY) || "";
       document.getElementById("input-gas-url").value = savedUrl;
       document.getElementById("input-api-key").value = savedApiKey;
 
-      // 自動ログイン判定
+      //
       const loggedIn = localStorage.getItem(STORAGE_KEY.LOGGED_IN) === "true";
       const name     = localStorage.getItem(STORAGE_KEY.NAME);
       const role     = localStorage.getItem(STORAGE_KEY.ROLE);
 
       if (loggedIn && name && role) {
-        console.log(`[init] 自動ログイン: ${name} (${role})`);
+        console.log(`[init] : ${name} (${role})`);
         showStampScreen(name, role);
       } else {
         showScreen("screen-login");
       }
 
-      // 時計の更新開始
+      //
       updateClock();
       setInterval(updateClock, 1000);
 
-      // Enterキーでログイン実行
+      // Enter
       document.getElementById("input-password").addEventListener("keydown", (e) => {
         if (e.key === "Enter") doLogin();
       });
@@ -324,14 +324,14 @@
 
 
     // ============================================================
-    // 画面管理
+    //
     // ============================================================
 
     /**
-     * 指定したIDの画面を表示し、他を非表示にする。
-     * 将来タブ追加（申請画面等）に対応しやすい構造。
+     * ID
      *
-     * @param {string} screenId - 表示するdivのID
+     *
+     * @param {string} screenId - divID
      */
     function showScreen(screenId) {
       document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
@@ -340,25 +340,25 @@
     }
 
     /**
-     * 打刻画面を表示し、ヘッダー情報をセットする。
      *
-     * @param {string} name - ログインユーザー氏名
-     * @param {string} role - 区分（職員 or 利用者）
+     *
+     * @param {string} name -
+     * @param {string} role -  or
      */
     function showStampScreen(name, role) {
-      document.getElementById("header-name").textContent = `${name}（${role}）`;
+      document.getElementById("header-name").textContent = `${name}${role}`;
       document.getElementById("header-date").textContent = getJstDateLabel();
       showScreen("screen-stamp");
     }
 
 
     // ============================================================
-    // ログイン処理
+    //
     // ============================================================
 
     /**
-     * ログインボタン押下時の処理。
-     * APIへPIN・パスワードを送り、成功時にlocalStorageへ保存して打刻画面へ遷移。
+     *
+     * APIPINlocalStorage
      */
     async function doLogin() {
       if (isSending) return;
@@ -367,47 +367,47 @@
       const password = document.getElementById("input-password").value.trim();
       const errorEl  = document.getElementById("login-error");
 
-      // クライアント側バリデーション
+      //
       if (!pin || !password) {
-        showLoginError("PINとパスワードを入力してください。");
+        showLoginError("PIN");
         return;
       }
 
       hideElement("login-error");
 
       try {
-        showLoading("ログイン中...");
+        showLoading("...");
         const res = await callApi({ action: "login", payload: { pin, password } });
 
         if (res.success) {
-          // ログイン情報をlocalStorageに保存（2回目以降の自動ログイン用）
+          // localStorage2
           localStorage.setItem(STORAGE_KEY.NAME,      res.name);
           localStorage.setItem(STORAGE_KEY.ROLE,      res.role);
           localStorage.setItem(STORAGE_KEY.LOGGED_IN, "true");
 
-          console.log(`[doLogin] ログイン成功: ${res.name} (${res.role})`);
+          console.log(`[doLogin] : ${res.name} (${res.role})`);
           showStampScreen(res.name, res.role);
         } else {
-          showLoginError(res.message || "ログインに失敗しました。");
+          showLoginError(res.message || "");
         }
       } catch (err) {
-        console.error("[doLogin] エラー:", err);
-        showLoginError("通信エラーが発生しました。ネットワーク接続を確認してください。");
+        console.error("[doLogin] :", err);
+        showLoginError("");
       } finally {
         hideLoading();
       }
     }
 
-    /** ログインエラーメッセージを表示 */
+    /**  */
     function showLoginError(message) {
       const el = document.getElementById("login-error");
       el.textContent = message;
       el.classList.remove("hidden");
     }
 
-    /** ログアウト処理：localStorageをクリアしてログイン画面へ */
+    /** localStorage */
     function doLogout() {
-      if (!confirm("ログアウトしますか？")) return;
+      if (!confirm("")) return;
       localStorage.removeItem(STORAGE_KEY.NAME);
       localStorage.removeItem(STORAGE_KEY.ROLE);
       localStorage.removeItem(STORAGE_KEY.LOGGED_IN);
@@ -415,32 +415,32 @@
       document.getElementById("input-pin").value = "";
       document.getElementById("input-password").value = "";
       showScreen("screen-login");
-      console.log("[doLogout] ログアウト完了");
+      console.log("[doLogout] ");
     }
 
 
     // ============================================================
-    // 打刻処理
+    //
     // ============================================================
 
     /**
-     * 弁当選択時の処理。
-     * 選択されたボタンをハイライトし、出勤ボタンを有効化する。
      *
-     * @param {string} value - "要" or "不要"
+     *
+     *
+     * @param {string} value - "" or ""
      */
     function selectLunch(value) {
       selectedLunch = value;
 
-      // ボタンのスタイルをリセット
+      //
       document.querySelectorAll(".lunch-btn").forEach(btn => {
         btn.classList.remove("border-green-500", "bg-green-50",
                              "border-gray-500",  "bg-gray-100",
                              "ring-2", "ring-green-400", "ring-gray-400");
       });
 
-      // 選択されたボタンをハイライト
-      if (value === "要") {
+      //
+      if (value === "") {
         const btn = document.getElementById("btn-lunch-yes");
         btn.classList.add("border-green-500", "bg-green-50", "ring-2", "ring-green-400");
       } else {
@@ -448,13 +448,13 @@
         btn.classList.add("border-gray-500", "bg-gray-100", "ring-2", "ring-gray-400");
       }
 
-      // 弁当選択後に出勤ボタンを有効化（フロントの必須制御）
+      //
       document.getElementById("btn-stamp-in").disabled = false;
     }
 
     /**
-     * 業務内容入力時の処理。
-     * 入力があれば退勤ボタンを有効化する。
+     *
+     *
      */
     function onReportInput() {
       const report = document.getElementById("input-report").value.trim();
@@ -462,90 +462,72 @@
     }
 
     /**
-     * 出勤打刻処理。
-     * 弁当選択必須はフロントで保証済みだが、バックエンドでも検証される。
+     *
+     *
      */
-    async function doStampIn() {
-      if (isSending) return;
-      if (!selectedLunch) {
-        showToast("弁当の要否を選択してください。", "error");
-        return;
-      }
+${formatTime(res.stampTime)}`, "success");
+          console.log(`[doStampIn] : ${res.stampTime}`);
 
-      const name = localStorage.getItem(STORAGE_KEY.NAME);
-      const role = localStorage.getItem(STORAGE_KEY.ROLE);
+          //
+          showStampStatus(`   ${formatTime(res.stampTime)}  : ${selectedLunch}`);
 
-      try {
-        showLoading("出勤打刻中...");
-        const res = await callApi({
-          action: "stamp",
-          payload: { type: "in", name, role, lunch: selectedLunch }
-        });
-
-        if (res.success) {
-          showToast(`✅ 出勤しました（${formatTime(res.stampTime)}）`, "success");
-          console.log(`[doStampIn] 出勤打刻成功: ${res.stampTime}`);
-
-          // 打刻済み状態を表示
-          showStampStatus(`出勤済み ✅  ${formatTime(res.stampTime)}  弁当: ${selectedLunch}`);
-
-          // 出勤エリアを完了表示に変更
+          //
           document.getElementById("btn-stamp-in").disabled = true;
-          document.getElementById("btn-stamp-in").textContent = "出勤済み ✅";
+          document.getElementById("btn-stamp-in").textContent = " ";
           document.querySelectorAll(".lunch-btn").forEach(btn => btn.disabled = true);
         } else {
-          showToast(res.message || "出勤打刻に失敗しました。", "error");
+          showToast(res.message || "", "error");
         }
       } catch (err) {
-        console.error("[doStampIn] エラー:", err);
-        showToast("通信エラーが発生しました。ネットワーク接続を確認してください。", "error");
+        console.error("[doStampIn] :", err);
+        showToast("", "error");
       } finally {
         hideLoading();
       }
     }
 
     /**
-     * 退勤打刻処理。
-     * 業務内容必須はフロントで保証済みだが、バックエンドでも検証される。
+     *
+     *
      */
     async function doStampOut() {
       if (isSending) return;
 
       const report = document.getElementById("input-report").value.trim();
       if (!report) {
-        showToast("業務内容を入力してください。", "error");
+        showToast("", "error");
         return;
       }
 
       const name = localStorage.getItem(STORAGE_KEY.NAME);
       const role = localStorage.getItem(STORAGE_KEY.ROLE);
 
-      if (!confirm("退勤打刻を行いますか？")) return;
+      if (!confirm("")) return;
 
       try {
-        showLoading("退勤打刻中...");
+        showLoading("...");
         const res = await callApi({
           action: "stamp",
           payload: { type: "out", name, role, report }
         });
 
         if (res.success) {
-          showToast(`✅ お疲れさまでした！（${formatTime(res.stampTime)}）`, "success");
-          console.log(`[doStampOut] 退勤打刻成功: ${res.stampTime}`);
+          showToast(` ${formatTime(res.stampTime)}`, "success");
+          console.log(`[doStampOut] : ${res.stampTime}`);
 
-          // 退勤済み状態を表示
-          showStampStatus(`退勤済み ✅  ${formatTime(res.stampTime)}`);
+          //
+          showStampStatus(`   ${formatTime(res.stampTime)}`);
 
-          // 退勤エリアを完了表示に変更
+          //
           document.getElementById("btn-stamp-out").disabled = true;
-          document.getElementById("btn-stamp-out").textContent = "退勤済み ✅";
+          document.getElementById("btn-stamp-out").textContent = " ";
           document.getElementById("input-report").disabled = true;
         } else {
-          showToast(res.message || "退勤打刻に失敗しました。", "error");
+          showToast(res.message || "", "error");
         }
       } catch (err) {
-        console.error("[doStampOut] エラー:", err);
-        showToast("通信エラーが発生しました。ネットワーク接続を確認してください。", "error");
+        console.error("[doStampOut] :", err);
+        showToast("", "error");
       } finally {
         hideLoading();
       }
@@ -553,28 +535,28 @@
 
 
     // ============================================================
-    // API通信
+    // API
     // ============================================================
 
     /**
-     * GAS Web App へPOSTリクエストを送る共通関数。
-     * タイムアウト・二重送信防止・エラーハンドリングをここで一元管理する。
+     * GAS Web App POST
      *
-     * @param {Object} body - { action, payload } ※apiKeyはここで付与
-     * @returns {Promise<Object>} レスポンスJSON
+     *
+     * @param {Object} body - { action, payload } ※apiKey
+     * @returns {Promise<Object>} JSON
      */
     async function callApi(body) {
       const gasUrl = localStorage.getItem(STORAGE_KEY.GAS_URL);
       const apiKey = localStorage.getItem(STORAGE_KEY.API_KEY);
 
       if (!gasUrl) {
-        throw new Error("GAS URLが設定されていません。システム設定を確認してください。");
+        throw new Error("GAS URL");
       }
 
-      // APIキーをリクエストに付与（GAS側で検証される）
+      // APIGAS
       const requestBody = Object.assign({ apiKey }, body);
 
-      // タイムアウト制御（AbortController）
+      // AbortController
       const controller = new AbortController();
       const timeoutId  = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
@@ -583,12 +565,12 @@
       try {
         const response = await fetch(gasUrl, {
           method  : "POST",
-          // GASのCORS制約でno-corsが必要な場合もあるが、
-          // GASのdoPost()がJSONを返す構成ではcorsで動作する
+          // GASCORSno-cors
+          // GASdoPost()JSONcors
           mode    : "cors",
           headers : { "Content-Type": "text/plain" },
-          // GASはContent-Type: application/jsonを受け付けないことがあるため
-          // text/plainでボディはJSON文字列として送信する
+          // GASContent-Type: application/json
+          // text/plainJSON
           body    : JSON.stringify(requestBody),
           signal  : controller.signal,
         });
@@ -596,7 +578,7 @@
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          throw new Error(`HTTPエラー: ${response.status}`);
+          throw new Error(`HTTP: ${response.status}`);
         }
 
         return await response.json();
@@ -605,7 +587,7 @@
         clearTimeout(timeoutId);
 
         if (err.name === "AbortError") {
-          throw new Error("通信がタイムアウトしました。しばらく待ってから再試行してください。");
+          throw new Error("");
         }
         throw err;
 
@@ -616,31 +598,31 @@
 
 
     // ============================================================
-    // 設定保存
+    //
     // ============================================================
 
-    /** GAS URL・APIキーをlocalStorageに保存 */
+    /** GAS URLAPIlocalStorage */
     function saveSettings() {
       const url    = document.getElementById("input-gas-url").value.trim();
       const apiKey = document.getElementById("input-api-key").value.trim();
 
       if (!url) {
-        alert("GAS URLを入力してください。");
+        alert("GAS URL");
         return;
       }
 
       localStorage.setItem(STORAGE_KEY.GAS_URL,  url);
       localStorage.setItem(STORAGE_KEY.API_KEY,  apiKey);
-      showToast("設定を保存しました。", "success");
-      console.log("[saveSettings] 設定保存完了");
+      showToast("", "success");
+      console.log("[saveSettings] ");
     }
 
 
     // ============================================================
-    // UI ユーティリティ
+    // UI
     // ============================================================
 
-    /** 時計表示を更新（1秒ごとに呼ばれる） */
+    /** 1 */
     function updateClock() {
       const now  = new Date();
       const hhmm = now.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
@@ -652,9 +634,9 @@
     }
 
     /**
-     * 本日の打刻状況を表示するエリアを更新する。
      *
-     * @param {string} message - 表示するメッセージ
+     *
+     * @param {string} message -
      */
     function showStampStatus(message) {
       const el = document.getElementById("stamp-status");
@@ -663,11 +645,11 @@
     }
 
     /**
-     * トースト通知を表示する。
-     * 3秒後に自動的にフェードアウトする。
      *
-     * @param {string} message - 表示するメッセージ
-     * @param {"success"|"error"} type - 成功か失敗か（色が変わる）
+     * 3
+     *
+     * @param {string} message -
+     * @param {"success"|"error"} type -
      */
     function showToast(message, type) {
       const toast = document.getElementById("toast");
@@ -682,43 +664,43 @@
       setTimeout(() => { toast.style.opacity = "0"; }, 3000);
     }
 
-    /** ローディングオーバーレイを表示 */
-    function showLoading(message = "通信中...") {
+    /**  */
+    function showLoading(message = "...") {
       document.getElementById("loading-message").textContent = message;
       document.getElementById("loading-overlay").classList.remove("hidden");
     }
 
-    /** ローディングオーバーレイを非表示 */
+    /**  */
     function hideLoading() {
       document.getElementById("loading-overlay").classList.add("hidden");
     }
 
-    /** 要素を非表示にする */
+    /**  */
     function hideElement(id) {
       document.getElementById(id).classList.add("hidden");
     }
 
     /**
-     * 日本語表示用の日付ラベルを生成する。
-     * （例: 2026年4月7日（火））
+     *
+     * : 202647
      *
      * @returns {string}
      */
     function getJstDateLabel() {
-      const days = ["日", "月", "火", "水", "木", "金", "土"];
+      const days = ["", "", "", "", "", "", ""];
       const now  = new Date();
-      return `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日（${days[now.getDay()]}）`;
+      return `${now.getFullYear()}${now.getMonth() + 1}${now.getDate()}${days[now.getDay()]}`;
     }
 
     /**
-     * "YYYY-MM-DD HH:mm:ss" 形式の文字列からHH:mm部分を返す。
+     * "YYYY-MM-DD HH:mm:ss" HH:mm
      *
      * @param {string} datetimeStr
      * @returns {string} HH:mm
      */
     function formatTime(datetimeStr) {
       if (!datetimeStr) return "";
-      // "YYYY-MM-DD HH:mm:ss" → スペースで分割してHH:mm:ssを取得
+      // "YYYY-MM-DD HH:mm:ss" → HH:mm:ss
       const timePart = String(datetimeStr).split(" ")[1] || datetimeStr;
       return timePart.slice(0, 5); // HH:mm
     }
