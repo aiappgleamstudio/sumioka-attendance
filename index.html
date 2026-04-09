@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>はっぴーらんど 勤怠管理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; }
+
+    .screen  { display: none; }
+    .screen.active { display: flex; flex-direction: column; min-height: 100vh; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .tab-btn { border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; }
+    .tab-btn.active { border-color: #3b82f6; color: #3b82f6; font-weight: 700; }
+
+    .spinner {
+      border: 4px solid #e5e7eb;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      width: 32px; height: 32px;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #toast { transition: opacity 0.4s ease; }
+
+    /* カレンダー */
+    .cal-day { min-height: 60px; }
+    .cal-day.other-month { opacity: 0.35; }
+
+    /* 申請バッジ */
+    .badge-pending  { background: #fef3c7; color: #92400e; }
+    .badge-approved { background: #d1fae5; color: #065f46; }
+    .badge-rejected { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+
+<body class="bg-gray-50">
+
+  <!-- トースト通知 -->
+  <div id="toast"
+       class="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-xl shadow-lg
+              text-white font-bold opacity-0 pointer-events-none max-w-sm text-center text-base">
+  </div>
+
+  <!-- ローディングオーバーレイ -->
+  <div id="loading-overlay"
+       class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl px-10 py-8 flex flex-col items-center gap-4 shadow-xl">
+      <div class="spinner"></div>
+      <p class="text-gray-700 font-bold text-lg" id="loading-message">通信中...</p>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+    ログイン画面
+  ============================================================ -->
+  <div id="screen-login" class="screen active items-center justify-center px-4 py-12 bg-gray-50">
+    <div class="mb-10 text-center">
+      <h1 class="text-3xl font-bold text-gray-800">はっぴーらんど</h1>
+      <p class="text-gray-500 mt-1 text-lg">勤怠管理システム</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
+      <h2 class="text-xl font-bold text-gray-700 mb-6 text-center">ログイン</h2>
+
+      <div class="mb-5">
+        <label class="block text-gray-600 font-semibold mb-2 text-lg">PIN番号（4桁）</label>
+        <input id="input-pin" type="password" inputmode="numeric" maxlength="4"
+               placeholder="4桁の番号"
+               class="w-full border-2 border-gray-300 rounded-xl px-4 py-4 text-2xl
+                      text-center tracking-widest focus:outline-none focus:border-blue-400" />
+      </div>
+
+      <div class="mb-8">
+        <label class="block text-gray-600 font-semibold mb-2 text-lg">パスワード</label>
+        <input id="input-password" type="password" placeholder="パスワードを入力"
+               class="w-full border-2 border-gray-300 rounded-xl px-4 py-4 text-xl
+                      focus:outline-none focus:border-blue-400" />
+      </div>
+
+      <button id="btn-login" onclick="doLogin()"
+              class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold text-xl
+                     py-5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+        ログイン
+      </button>
+
+      <p id="login-error" class="mt-4 text-red-500 text-center text-base hidden"></p>
+    </div>
+
+    <!-- システム設定 -->
+    <div class="mt-6 w-full max-w-sm">
+      <details class="bg-white rounded-2xl shadow p-4">
+        <summary class="cursor-pointer text-gray-500 text-sm font-semibold">
+          システム設定（管理者のみ）
+        </summary>
+        <div class="mt-4">
+          <label class="block text-gray-600 text-sm font-semibold mb-1">GAS Web App URL</label>
+          <input id="input-gas-url" type="url" placeholder="https://script.google.com/macros/s/..."
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          <label class="block text-gray-600 text-sm font-semibold mb-1 mt-3">APIキー</label>
+          <input id="input-api-key" type="password" placeholder="APIキーを入力"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400" />
+          <button onclick="saveSettings()"
+                  class="mt-3 w-full bg-gray-600 hover:bg-gray-700 text-white text-sm font-bold py-2 rounded-lg">
+            保存する
+          </button>
+        </div>
+      </details>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+    メイン画面（ログイン後）
+  ============================================================ -->
+  <div id="screen-main" class="screen">
+
+    <!-- ヘッダー -->
+    <header class="bg-white shadow-sm px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+      <div>
+        <p class="text-gray-500 text-xs" id="header-date"></p>
+        <p class="text-gray-800 font-bold text-lg" id="header-name"></p>
+      </div>
+      <button onclick="doLogout()"
+              class="text-gray-400 hover:text-gray-600 text-sm border border-gray-300 rounded-lg px-3 py-1">
+        ログアウト
+      </button>
+    </header>
+
+    <!-- タブナビゲーション -->
+    <nav class="bg-white border-b border-gray-200 px-2 overflow-x-auto">
+      <div class="flex gap-1 min-w-max">
+        <button class="tab-btn active px-3 py-3 text-sm text-gray-600" onclick="switchTab('stamp', this)">打刻</button>
+        <button class="tab-btn px-3 py-3 text-sm text-gray-600" onclick="switchTab('calendar', this)">カレンダー・申請</button>
+        <button class="tab-btn px-3 py-3 text-sm text-gray-600" onclick="switchTab('todo', this)">ToDo</button>
+        <button class="tab-btn px-3 py-3 text-sm text-gray-600" onclick="switchTab('status', this)">自分の状況</button>
+        <button id="tab-btn-admin" class="tab-btn px-3 py-3 text-sm text-gray-600 hidden" onclick="switchTab('admin', this)">管理</button>
+      </div>
+    </nav>
+
+    <!-- タブコンテンツ -->
+    <div class="flex-1 overflow-y-auto">
+
+      <!-- ======================================================
+        打刻タブ
+      ====================================================== -->
+      <div id="tab-stamp" class="tab-content active">
+        <div class="max-w-md mx-auto px-4 py-6">
+
+          <!-- 時計 -->
+          <div class="text-center mb-6">
+            <p id="clock" class="text-6xl font-bold text-gray-800 tracking-tight"></p>
+            <p id="stamp-date-display" class="text-gray-400 mt-1 text-base"></p>
+          </div>
+
+          <!-- 出勤エリア -->
+          <div id="section-in" class="bg-white rounded-2xl shadow p-6 mb-4">
+            <h2 class="text-lg font-bold text-gray-700 mb-4">弁当の要否を選んでください</h2>
+            <div class="grid grid-cols-2 gap-3 mb-5">
+              <button id="btn-lunch-yes" onclick="selectLunch('要')"
+                      class="lunch-btn border-2 border-gray-200 rounded-xl py-5 text-xl font-bold
+                             text-gray-600 hover:border-green-400 hover:bg-green-50 transition-all">
+                要る
+              </button>
+              <button id="btn-lunch-no" onclick="selectLunch('不要')"
+                      class="lunch-btn border-2 border-gray-200 rounded-xl py-5 text-xl font-bold
+                             text-gray-600 hover:border-gray-400 hover:bg-gray-100 transition-all">
+                要らない
+              </button>
+            </div>
+            <button id="btn-stamp-in" onclick="doStampIn()" disabled
+                    class="w-full bg-green-500 hover:bg-green-600 text-white font-bold text-2xl
+                           py-6 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              出勤する
+            </button>
+          </div>
+
+          <!-- 退勤エリア -->
+          <div id="section-out" class="bg-white rounded-2xl shadow p-6 mb-4">
+            <h2 class="text-lg font-bold text-gray-700 mb-4">本日の業務内容を入力してください</h2>
+            <textarea id="input-report" oninput="onReportInput()"
+                      placeholder="今日行った作業内容を入力してください" rows="4"
+                      class="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-lg
+                             resize-none focus:outline-none focus:border-blue-400 mb-4"></textarea>
+            <button id="btn-stamp-out" onclick="doStampOut()" disabled
+                    class="w-full bg-red-500 hover:bg-red-600 text-white font-bold text-2xl
+                           py-6 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              退勤する
+            </button>
+          </div>
+
+          <!-- 打刻状況 -->
+          <div id="stamp-status" class="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-center hidden">
+            <p class="text-blue-600 font-bold text-lg" id="stamp-status-text"></p>
+          </div>
+
+        </div>
+      </div><!-- /tab-stamp -->
+
+
+      <!-- ======================================================
+        カレンダー・申請タブ
+      ====================================================== -->
+      <div id="tab-calendar" class="tab-content">
+        <div class="max-w-lg mx-auto px-4 py-6">
+
+          <!-- カレンダーヘッダー -->
+          <div class="flex items-center justify-between mb-4">
+            <button onclick="changeMonth(-1)"
+                    class="bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-600
+                           hover:bg-gray-50 font-bold text-lg">
+              &lt;
+            </button>
+            <h2 id="calendar-title" class="text-xl font-bold text-gray-700"></h2>
+            <button onclick="changeMonth(1)"
+                    class="bg-white border border-gray-300 rounded-lg px-4 py-2 text-gray-600
+                           hover:bg-gray-50 font-bold text-lg">
+              &gt;
+            </button>
+          </div>
+
+          <!-- カレンダーグリッド -->
+          <div class="bg-white rounded-2xl shadow overflow-hidden mb-6">
+            <div class="grid grid-cols-7 border-b border-gray-200">
+              <div class="text-center py-2 text-sm font-bold text-red-500">日</div>
+              <div class="text-center py-2 text-sm font-bold text-gray-600">月</div>
+              <div class="text-center py-2 text-sm font-bold text-gray-600">火</div>
+              <div class="text-center py-2 text-sm font-bold text-gray-600">水</div>
+              <div class="text-center py-2 text-sm font-bold text-gray-600">木</div>
+              <div class="text-center py-2 text-sm font-bold text-gray-600">金</div>
+              <div class="text-center py-2 text-sm font-bold text-blue-500">土</div>
+            </div>
+            <div id="calendar-grid" class="grid grid-cols-7"></div>
+          </div>
+
+          <!-- 凡例 -->
+          <div class="flex gap-4 mb-6 flex-wrap text-sm">
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-red-400 inline-block"></span>休み</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-yellow-400 inline-block"></span>遅刻・早退</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 rounded-full bg-green-400 inline-block"></span>補填</span>
+          </div>
+
+          <!-- 申請フォーム -->
+          <div class="bg-white rounded-2xl shadow p-6 mb-6">
+            <h3 class="font-bold text-gray-700 text-lg mb-4">申請する</h3>
+
+            <div class="mb-4">
+              <label class="text-sm font-semibold text-gray-600 block mb-1">種別</label>
+              <select id="apply-type" onchange="onApplyTypeChange()"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-blue-400">
+                <option value="">-- 選択してください --</option>
+                <option value="休み">休み</option>
+                <option value="遅刻">遅刻</option>
+                <option value="早退">早退</option>
+                <option value="補填">補填</option>
+              </select>
+            </div>
+
+            <div class="mb-4">
+              <label class="text-sm font-semibold text-gray-600 block mb-1">対象日</label>
+              <input id="apply-date" type="date"
+                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-blue-400" />
+            </div>
+
+            <div id="apply-time-wrap" class="mb-4 hidden">
+              <label class="text-sm font-semibold text-gray-600 block mb-1">時間</label>
+              <input id="apply-time" type="time"
+                     class="w-full border border-gray-300 rounded-lg px-3 py-2 text-base focus:outline-none focus:border-blue-400" />
+            </div>
+
+            <div class="mb-5">
+              <label class="text-sm font-semibold text-gray-600 block mb-1">理由</label>
+              <textarea id="apply-reason" rows="3" placeholder="理由を入力してください"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-base
+                               focus:outline-none focus:border-blue-400 resize-none"></textarea>
+            </div>
+
+            <button onclick="doApply()"
+                    class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg
+                           py-4 rounded-xl transition-colors">
+              申請する
+            </button>
+          </div>
+
+          <!-- 申請履歴 -->
+          <div class="bg-white rounded-2xl shadow p-6">
+            <h3 class="font-bold text-gray-700 text-lg mb-4">申請履歴</h3>
+            <div id="application-list">
+              <p class="text-gray-400 text-sm text-center py-4">読み込み中...</p>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /tab-calendar -->
+
+
+      <!-- ======================================================
+        ToDoタブ
+      ====================================================== -->
+      <div id="tab-todo" class="tab-content">
+        <div class="max-w-lg mx-auto px-4 py-6">
+
+          <!-- お知らせ -->
+          <div class="bg-white rounded-2xl shadow p-6 mb-5">
+            <h3 class="font-bold text-gray-700 text-lg mb-4">お知らせ</h3>
+            <div id="notice-list">
+              <p class="text-gray-400 text-sm text-center py-4">読み込み中...</p>
+            </div>
+          </div>
+
+          <!-- 個人ToDo -->
+          <div class="bg-white rounded-2xl shadow p-6 mb-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-gray-700 text-lg">個人ToDo</h3>
+              <button onclick="showTodoForm()"
+                      class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-lg">
+                + 追加
+              </button>
+            </div>
+
+            <!-- ToDo追加フォーム -->
+            <div id="todo-form" class="hidden bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200">
+              <textarea id="todo-content" rows="2" placeholder="やることを入力"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                               focus:outline-none focus:border-blue-400 resize-none mb-2"></textarea>
+              <div class="flex gap-2 items-center">
+                <input id="todo-due" type="date"
+                       class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none" />
+                <button onclick="doSaveTodo()"
+                        class="bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-lg">
+                  追加
+                </button>
+                <button onclick="hideTodoForm()"
+                        class="bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-bold px-4 py-2 rounded-lg">
+                  キャンセル
+                </button>
+              </div>
+            </div>
+
+            <div id="todo-list">
+              <p class="text-gray-400 text-sm text-center py-4">読み込み中...</p>
+            </div>
+          </div>
+
+          <!-- 管理者：お知らせ投稿 -->
+          <div id="notice-post-section" class="bg-white rounded-2xl shadow p-6 hidden">
+            <h3 class="font-bold text-gray-700 text-lg mb-4">お知らせを投稿する（管理者）</h3>
+            <textarea id="notice-content" rows="3" placeholder="お知らせ内容を入力"
+                      class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                             focus:outline-none focus:border-blue-400 resize-none mb-3"></textarea>
+            <button onclick="doPostNotice()"
+                    class="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl">
+              全員に投稿する
+            </button>
+          </div>
+
+        </div>
+      </div><!-- /tab-todo -->
+
+
+      <!-- ======================================================
+        自分の状況タブ
+      ====================================================== -->
+      <div id="tab-status" class="tab-content">
+        <div class="max-w-lg mx-auto px-4 py-6">
+
+          <!-- 過不足時間 -->
+          <div class="bg-white rounded-2xl shadow p-6 mb-5">
+            <h3 class="font-bold text-gray-700 text-lg mb-4" id="status-month-title">今月の状況</h3>
+            <div id="over-under-display">
+              <p class="text-gray-400 text-sm text-center py-4">読み込み中...</p>
+            </div>
+          </div>
+
+          <!-- 今月の打刻実績 -->
+          <div class="bg-white rounded-2xl shadow p-6 mb-5">
+            <h3 class="font-bold text-gray-700 text-lg mb-4">今月の打刻実績</h3>
+            <div id="stamp-summary-display">
+              <p class="text-gray-400 text-sm text-center py-4">読み込み中...</p>
+            </div>
+          </div>
+
+          <!-- 申請状況 -->
+          <div class="bg-white rounded-2xl shadow p-6">
+            <h3 class="font-bold text-gray-700 text-lg mb-4">最近の申請状況</h3>
+            <div id="status-application-list">
+              <p class="text-gray-400 text-sm text-center py-4">読み込み中...</p>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /tab-status -->
+
+
+      <!-- ======================================================
+        管理タブ（管理者のみ）
+      ====================================================== -->
+      <div id="tab-admin" class="tab-content">
+        <div class="max-w-lg mx-auto px-4 py-6">
+
+          <!-- 当日の打刻一覧 -->
+          <div class="bg-white rounded-2xl shadow p-6 mb-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-gray-700 text-lg">本日の打刻状況</h3>
+              <button onclick="loadAdminStamps()"
+                      class="text-sm text-blue-500 hover:text-blue-700 font-semibold">
+                更新
+              </button>
+            </div>
+            <div id="admin-stamp-list">
+              <p class="text-gray-400 text-sm text-center py-4">読み込み中...</p>
+            </div>
+          </div>
+
+          <!-- 申請承認 -->
+          <div class="bg-white rounded-2xl shadow p-6 mb-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-bold text-gray-700 text-lg">申請の承認・却下</h3>
+              <button onclick="loadAdminApplications()"
+                      class="text-sm text-blue-500 hover:text-blue-700 font-semibold">
+                更新
+              </button>
+            </div>
+            <div id="admin-application-list">
+              <p class="text-gray-400 text-sm text-center py-4">読み込み中...</p>
+            </div>
+          </div>
+
+          <!-- 弁当集計 -->
+          <div class="bg-white rounded-2xl shadow p-6">
+            <h3 class="font-bold text-gray-700 text-lg mb-4">本日の弁当集計</h3>
+            <div id="admin-lunch-summary">
+              <p class="text-gray-400 text-sm text-center py-4">上の打刻状況を更新してください</p>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /tab-admin -->
+
+    </div><!-- /flex-1 -->
+  </div><!-- /screen-main -->
+
+
+  <script>
+    /**
+     * ============================================================
+     * はっぴーらんど 勤怠管理システム フロントエンドスクリプト
+     * Phase2対応版
+     * ============================================================
+     */
+
+    // ============================================================
+    // 定数
+    // ============================================================
+    const STORAGE_KEY = {
+      NAME      : "sumioka_name",
+      ROLE      : "sumioka_role",
+      LOGGED_IN : "sumioka_loggedIn",
+      GAS_URL   : "sumioka_gas_url",
+      API_KEY   : "sumioka_api_key",
+      TODOS     : "sumioka_todos",   // ToDoはlocalStorageで管理（GAS通信なし）
+      NOTICES   : "sumioka_notices", // お知らせもlocalStorageで管理
+    };
+
+    const API_TIMEOUT_MS = 15000;
+
+    // 管理者として扱う名前（マスタに合わせて変更すること）
+    const ADMIN_NAME = "管理者";
+
+    const TYPE_COLOR = {
+      "休み": "bg-red-400",
+      "遅刻": "bg-yellow-400",
+      "早退": "bg-yellow-400",
+      "補填": "bg-green-400",
+    };
+
+    const STATUS_CLASS = {
+      "審査中": "badge-pending",
+      "承認"  : "badge-approved",
+      "却下"  : "badge-rejected",
+    };
+
+    let selectedLunch      = null;
+    let isSending          = false;
+    let calendarYear       = new Date().getFullYear();
+    let calendarMonth      = new Date().getMonth(); // 0始まり
+    let applicationCache   = []; // カレンダー描画用キャッシュ
+
+
+    // ============================================================
+    // 初期化
+    // ============================================================
+    window.addEventListener("DOMContentLoaded", () => {
+      // 設定値をフォームに反映
+      document.getElementById("input-gas-url").value = localStorage.getItem(STORAGE_KEY.GAS_URL) || "";
+      document.getElementById("input-api-key").value = localStorage.getItem(STORAGE_KEY.API_KEY) || "";
+
+      // 自動ログイン
+      const loggedIn = localStorage.getItem(STORAGE_KEY.LOGGED_IN) === "true";
+      const name     = localStorage.getItem(STORAGE_KEY.NAME);
+      const role     = localStorage.getItem(STORAGE_KEY.ROLE);
+
+      if (loggedIn && name && role) {
+        showMainScreen(name, role);
+      } else {
+        showScreen("screen-login");
+      }
+
+      updateClock();
+      setInterval(updateClock, 1000);
+
+      // Enterキーでログイン
+      document.getElementById("input-password").addEventListener("keydown", e => {
+        if (e.key === "Enter") doLogin();
+      });
+
+      // 申請対象日のデフォルトを今日に
+      document.getElementById("apply-date").value = getTodayIso();
+    });
+
+
+    // ============================================================
+    // 画面管理
+    // ============================================================
+
+    function showScreen(screenId) {
+      document.querySelectorAll(".screen").forEach(el => el.classList.remove("active"));
+      document.getElementById(screenId).classList.add("active");
+    }
+
+    function switchTab(tabName, clickedBtn) {
+      document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+      document.getElementById("tab-" + tabName).classList.add("active");
+      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+      clickedBtn.classList.add("active");
+
+      // タブ切替時にデータ読み込み
+      if (tabName === "calendar")  loadCalendarTab();
+      if (tabName === "todo")      loadTodoTab(); // localStorageのみ・async不要
+      if (tabName === "status")    loadStatusTab();
+      if (tabName === "admin")     loadAdminTab();
+    }
+
+    function showMainScreen(name, role) {
+      document.getElementById("header-name").textContent = name + "（" + role + "）";
+      document.getElementById("header-date").textContent = getDateLabel();
+
+      // 管理者タブの表示制御
+      // 管理者かどうかは役職（職員）と名前で判定する
+      // 実運用では管理者フラグをマスタに追加することを推奨
+      const isAdmin = role === "職員";
+      if (isAdmin) {
+        document.getElementById("tab-btn-admin").classList.remove("hidden");
+        document.getElementById("notice-post-section").classList.remove("hidden");
+      }
+
+      showScreen("screen-main");
+    }
+
+
+    // ============================================================
+    // ログイン処理
+    // ============================================================
+
+    async function doLogin() {
+      if (isSending) return;
+      const pin      = document.getElementById("input-pin").value.trim();
+      const password = document.getElementById("input-password").value.trim();
+
+      if (!pin || !password) {
+        showLoginError("PINとパスワードを入力してください。");
+        return;
+      }
+
+      hideElement("login-error");
+
+      try {
+        showLoading("ログイン中...");
+        const res = await callApi({ action: "login", payload: { pin, password } });
+
+        if (res.success) {
+          localStorage.setItem(STORAGE_KEY.NAME,      res.name);
+          localStorage.setItem(STORAGE_KEY.ROLE,      res.role);
+          localStorage.setItem(STORAGE_KEY.LOGGED_IN, "true");
+          showMainScreen(res.name, res.role);
+        } else {
+          showLoginError(res.message || "ログインに失敗しました。");
+        }
+      } catch (err) {
+        console.error("[doLogin] エラー:", err);
+        showLoginError("通信エラーが発生しました。ネットワーク接続を確認してください。");
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function showLoginError(message) {
+      const el = document.getElementById("login-error");
+      el.textContent = message;
+      el.classList.remove("hidden");
+    }
+
+    function doLogout() {
+      if (!confirm("ログアウトしますか？")) return;
+      [STORAGE_KEY.NAME, STORAGE_KEY.ROLE, STORAGE_KEY.LOGGED_IN].forEach(k => localStorage.removeItem(k));
+      selectedLunch = null;
+      document.getElementById("input-pin").value      = "";
+      document.getElementById("input-password").value = "";
+      showScreen("screen-login");
+    }
+
+
+    // ============================================================
+    // 打刻処理
+    // ============================================================
+
+    function selectLunch(value) {
+      selectedLunch = value;
+      document.querySelectorAll(".lunch-btn").forEach(btn => {
+        btn.classList.remove("border-green-500", "bg-green-50", "border-gray-500",
+                             "bg-gray-100", "ring-2", "ring-green-400", "ring-gray-400");
+      });
+      if (value === "要") {
+        document.getElementById("btn-lunch-yes").classList.add("border-green-500", "bg-green-50", "ring-2", "ring-green-400");
+      } else {
+        document.getElementById("btn-lunch-no").classList.add("border-gray-500", "bg-gray-100", "ring-2", "ring-gray-400");
+      }
+      document.getElementById("btn-stamp-in").disabled = false;
+    }
+
+    function onReportInput() {
+      document.getElementById("btn-stamp-out").disabled =
+        document.getElementById("input-report").value.trim() === "";
+    }
+
+    async function doStampIn() {
+      if (isSending || !selectedLunch) return;
+      const name = localStorage.getItem(STORAGE_KEY.NAME);
+      const role = localStorage.getItem(STORAGE_KEY.ROLE);
+
+      try {
+        showLoading("出勤打刻中...");
+        const res = await callApi({ action: "stamp", payload: { type: "in", name, role, lunch: selectedLunch } });
+        if (res.success) {
+          showToast("出勤しました（" + formatTime(res.stampTime) + "）", "success");
+          showStampStatus("出勤済み  " + formatTime(res.stampTime) + "  弁当: " + selectedLunch);
+          document.getElementById("btn-stamp-in").disabled = true;
+          document.getElementById("btn-stamp-in").textContent = "出勤済み";
+          document.querySelectorAll(".lunch-btn").forEach(btn => btn.disabled = true);
+        } else {
+          showToast(res.message || "出勤打刻に失敗しました。", "error");
+        }
+      } catch (err) {
+        console.error("[doStampIn] エラー:", err);
+        showToast("通信エラーが発生しました。", "error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+    async function doStampOut() {
+      if (isSending) return;
+      const report = document.getElementById("input-report").value.trim();
+      if (!report) { showToast("業務内容を入力してください。", "error"); return; }
+      if (!confirm("退勤打刻を行いますか？")) return;
+
+      const name = localStorage.getItem(STORAGE_KEY.NAME);
+      const role = localStorage.getItem(STORAGE_KEY.ROLE);
+
+      try {
+        showLoading("退勤打刻中...");
+        const res = await callApi({ action: "stamp", payload: { type: "out", name, role, report } });
+        if (res.success) {
+          showToast("お疲れさまでした！（" + formatTime(res.stampTime) + "）", "success");
+          showStampStatus("退勤済み  " + formatTime(res.stampTime));
+          document.getElementById("btn-stamp-out").disabled   = true;
+          document.getElementById("btn-stamp-out").textContent = "退勤済み";
+          document.getElementById("input-report").disabled    = true;
+        } else {
+          showToast(res.message || "退勤打刻に失敗しました。", "error");
+        }
+      } catch (err) {
+        console.error("[doStampOut] エラー:", err);
+        showToast("通信エラーが発生しました。", "error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+
+    // ============================================================
+    // カレンダー・申請タブ
+    // ============================================================
+
+    async function loadCalendarTab() {
+      const name = localStorage.getItem(STORAGE_KEY.NAME);
+      try {
+        const res = await callApi({ action: "getApplications", payload: { name } });
+        if (res.success) {
+          applicationCache = res.applications;
+          renderCalendar();
+          renderApplicationList(res.applications, "application-list");
+        }
+      } catch (err) {
+        console.error("[loadCalendarTab] エラー:", err);
+      }
+    }
+
+    function changeMonth(delta) {
+      calendarMonth += delta;
+      if (calendarMonth < 0)  { calendarMonth = 11; calendarYear--; }
+      if (calendarMonth > 11) { calendarMonth = 0;  calendarYear++; }
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const year  = calendarYear;
+      const month = calendarMonth;
+      document.getElementById("calendar-title").textContent =
+        year + "年" + (month + 1) + "月";
+
+      // 申請データをtargetDate→typeのマップに変換（カレンダー表示用）
+      const appMap = {};
+      applicationCache.forEach(app => {
+        if (!appMap[app.targetDate]) appMap[app.targetDate] = [];
+        appMap[app.targetDate].push(app.type);
+      });
+
+      const firstDay  = new Date(year, month, 1).getDay(); // 0=日
+      const lastDate  = new Date(year, month + 1, 0).getDate();
+      const todayStr  = getTodayIso();
+
+      let html = "";
+
+      // 前月の空白セル
+      for (let i = 0; i < firstDay; i++) {
+        html += '<div class="cal-day border border-gray-100 p-1 other-month"></div>';
+      }
+
+      for (let d = 1; d <= lastDate; d++) {
+        const dateStr   = year + "-" + String(month + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+        const isToday   = dateStr === todayStr;
+        const dayOfWeek = new Date(year, month, d).getDay();
+        const isSun     = dayOfWeek === 0;
+        const isSat     = dayOfWeek === 6;
+
+        const textColor = isToday ? "text-white" :
+                          isSun   ? "text-red-500" :
+                          isSat   ? "text-blue-500" : "text-gray-700";
+        const bgColor   = isToday ? "bg-blue-500" : "";
+
+        const dots = (appMap[dateStr] || []).map(type => {
+          const color = TYPE_COLOR[type] || "bg-gray-400";
+          return '<span class="w-2 h-2 rounded-full ' + color + ' inline-block mx-0.5"></span>';
+        }).join("");
+
+        html += '<div class="cal-day border border-gray-100 p-1">' +
+          '<div class="flex justify-center">' +
+            '<span class="w-7 h-7 flex items-center justify-center rounded-full text-sm font-semibold ' +
+              textColor + ' ' + bgColor + '">' + d + '</span>' +
+          '</div>' +
+          '<div class="flex justify-center gap-0.5 mt-1">' + dots + '</div>' +
+        '</div>';
+      }
+
+      document.getElementById("calendar-grid").innerHTML = html;
+    }
+
+    function onApplyTypeChange() {
+      const type = document.getElementById("apply-type").value;
+      const wrap = document.getElementById("apply-time-wrap");
+      // 遅刻・早退・補填は時間入力が必要
+      if (type === "遅刻" || type === "早退" || type === "補填") {
+        wrap.classList.remove("hidden");
+      } else {
+        wrap.classList.add("hidden");
+      }
+    }
+
+    async function doApply() {
+      if (isSending) return;
+      const type       = document.getElementById("apply-type").value;
+      const targetDate = document.getElementById("apply-date").value;
+      const time       = document.getElementById("apply-time").value;
+      const reason     = document.getElementById("apply-reason").value.trim();
+
+      if (!type)       { showToast("種別を選択してください。", "error"); return; }
+      if (!targetDate) { showToast("対象日を選択してください。", "error"); return; }
+
+      const name = localStorage.getItem(STORAGE_KEY.NAME);
+      const role = localStorage.getItem(STORAGE_KEY.ROLE);
+
+      try {
+        showLoading("申請中...");
+        const res = await callApi({ action: "apply", payload: { name, role, type, targetDate, time, reason } });
+        if (res.success) {
+          showToast("申請しました。", "success");
+          document.getElementById("apply-type").value   = "";
+          document.getElementById("apply-reason").value = "";
+          document.getElementById("apply-time-wrap").classList.add("hidden");
+          loadCalendarTab(); // 一覧を更新
+        } else {
+          showToast(res.message || "申請に失敗しました。", "error");
+        }
+      } catch (err) {
+        console.error("[doApply] エラー:", err);
+        showToast("通信エラーが発生しました。", "error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function renderApplicationList(applications, containerId) {
+      const el = document.getElementById(containerId);
+      if (!applications || applications.length === 0) {
+        el.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">申請はありません。</p>';
+        return;
+      }
+
+      el.innerHTML = applications.slice(0, 10).map(app => {
+        const badgeClass = STATUS_CLASS[app.status] || "bg-gray-100 text-gray-600";
+        return '<div class="flex items-start gap-3 border-b border-gray-100 py-3 last:border-0">' +
+          '<span class="px-2 py-1 rounded-lg text-xs font-bold ' + badgeClass + ' shrink-0">' + app.status + '</span>' +
+          '<div class="flex-1 min-w-0">' +
+            '<p class="text-sm font-semibold text-gray-700">' + app.type + '  ' + app.targetDate + '</p>' +
+            '<p class="text-xs text-gray-400">' + app.reason + '</p>' +
+          '</div>' +
+        '</div>';
+      }).join("");
+    }
+
+
+
+    // ============================================================
+    // ToDoタブ（localStorageのみで管理。GAS通信なし）
+    // ============================================================
+
+    /**
+     * ToDoタブを表示する。
+     * 個人ToDoとお知らせは別々のlocalStorageキーで管理する。
+     */
+    function loadTodoTab() {
+      const name    = localStorage.getItem(STORAGE_KEY.NAME);
+      const todos   = getTodosFromStorage(name);
+      const notices = getNoticesFromStorage();
+      renderNoticeList(notices);
+      renderTodoList(todos);
+    }
+
+    function getTodosFromStorage(name) {
+      try {
+        const all = JSON.parse(localStorage.getItem(STORAGE_KEY.TODOS) || "[]");
+        return all.filter(t => t.name === name);
+      } catch (e) { return []; }
+    }
+
+    function getNoticesFromStorage() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY.NOTICES) || "[]");
+      } catch (e) { return []; }
+    }
+
+    function renderNoticeList(notices) {
+      const el = document.getElementById("notice-list");
+      if (notices.length === 0) {
+        el.innerHTML = '<p class="text-gray-400 text-sm text-center py-2">お知らせはありません。</p>';
+        return;
+      }
+      el.innerHTML = notices.map((n, i) =>
+        '<div class="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-3 flex items-start gap-3">' +
+          '<div class="flex-1">' +
+            '<p class="text-orange-800 font-semibold text-sm">' + escapeHtml(n.content) + '</p>' +
+            '<p class="text-orange-400 text-xs mt-1">' + n.createdAt.slice(0, 10) + '  ' + n.createdBy + '</p>' +
+          '</div>' +
+          '<button onclick="doDeleteNotice(' + i + ')" class="text-orange-300 hover:text-red-400 text-lg shrink-0">x</button>' +
+        '</div>'
+      ).join("");
+    }
+
+    function renderTodoList(todos) {
+      const el = document.getElementById("todo-list");
+      const sorted = [...todos].sort((a, b) => a.done - b.done);
+      if (sorted.length === 0) {
+        el.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">ToDoはありません。</p>';
+        return;
+      }
+      el.innerHTML = sorted.map(t =>
+        '<div class="flex items-center gap-3 border-b border-gray-100 py-3 last:border-0">' +
+          '<input type="checkbox" ' + (t.done ? "checked" : "") + ' ' +
+            'onchange="doToggleTodo(\'' + t.id + '\', this.checked)" ' +
+            'class="w-5 h-5 rounded accent-blue-500 shrink-0" />' +
+          '<div class="flex-1 min-w-0">' +
+            '<p class="text-sm text-gray-700 ' + (t.done ? "line-through text-gray-400" : "") + '">' +
+              escapeHtml(t.content) + '</p>' +
+            (t.dueDate ? '<p class="text-xs text-gray-400">' + t.dueDate + ' まで</p>' : '') +
+          '</div>' +
+          '<button onclick="doDeleteTodo(\'' + t.id + '\')" class="text-gray-300 hover:text-red-400 text-lg shrink-0">x</button>' +
+        '</div>'
+      ).join("");
+    }
+
+    function showTodoForm() { document.getElementById("todo-form").classList.remove("hidden"); }
+    function hideTodoForm() {
+      document.getElementById("todo-form").classList.add("hidden");
+      document.getElementById("todo-content").value = "";
+      document.getElementById("todo-due").value = "";
+    }
+
+    /** 個人ToDoをlocalStorageに追加する */
+    function doSaveTodo() {
+      const content = document.getElementById("todo-content").value.trim();
+      const dueDate = document.getElementById("todo-due").value;
+      if (!content) { showToast("内容を入力してください。", "error"); return; }
+      const name = localStorage.getItem(STORAGE_KEY.NAME);
+      const all  = JSON.parse(localStorage.getItem(STORAGE_KEY.TODOS) || "[]");
+      all.push({ id: "TODO-" + Date.now(), name, content, dueDate, done: false, createdAt: new Date().toISOString() });
+      localStorage.setItem(STORAGE_KEY.TODOS, JSON.stringify(all));
+      hideTodoForm();
+      loadTodoTab();
+    }
+
+    /** 完了フラグをlocalStorageで更新する */
+    function doToggleTodo(id, done) {
+      const all = JSON.parse(localStorage.getItem(STORAGE_KEY.TODOS) || "[]");
+      const idx = all.findIndex(t => t.id === id);
+      if (idx !== -1) all[idx].done = done;
+      localStorage.setItem(STORAGE_KEY.TODOS, JSON.stringify(all));
+      loadTodoTab();
+    }
+
+    /** 個人ToDoをlocalStorageから削除する */
+    function doDeleteTodo(id) {
+      if (!confirm("このToDoを削除しますか？")) return;
+      const all = JSON.parse(localStorage.getItem(STORAGE_KEY.TODOS) || "[]");
+      localStorage.setItem(STORAGE_KEY.TODOS, JSON.stringify(all.filter(t => t.id !== id)));
+      loadTodoTab();
+    }
+
+    /** お知らせをlocalStorageに投稿する（管理者用） */
+    function doPostNotice() {
+      const content = document.getElementById("notice-content").value.trim();
+      if (!content) { showToast("内容を入力してください。", "error"); return; }
+      const name    = localStorage.getItem(STORAGE_KEY.NAME);
+      const notices = getNoticesFromStorage();
+      notices.unshift({ content, createdBy: name, createdAt: new Date().toISOString() });
+      localStorage.setItem(STORAGE_KEY.NOTICES, JSON.stringify(notices));
+      showToast("お知らせを投稿しました。", "success");
+      document.getElementById("notice-content").value = "";
+      loadTodoTab();
+    }
+
+    /** お知らせをlocalStorageから削除する */
+    function doDeleteNotice(index) {
+      if (!confirm("このお知らせを削除しますか？")) return;
+      const notices = getNoticesFromStorage();
+      notices.splice(index, 1);
+      localStorage.setItem(STORAGE_KEY.NOTICES, JSON.stringify(notices));
+      loadTodoTab();
+    }
+
+
+    // ============================================================
+    // 自分の状況タブ
+    // ============================================================
+
+    async function loadStatusTab() {
+      const name      = localStorage.getItem(STORAGE_KEY.NAME);
+      const yearMonth = getTodayIso().slice(0, 7);
+
+      document.getElementById("status-month-title").textContent =
+        yearMonth.replace("-", "年") + "月の状況";
+
+      // 過不足時間
+      try {
+        const res = await callApi({ action: "getOverUnder", payload: { name, yearMonth } });
+        if (res.success) renderOverUnder(res);
+      } catch (err) { console.error("[loadStatusTab] 過不足エラー:", err); }
+
+      // 打刻サマリー
+      try {
+        const res = await callApi({ action: "getStampSummary", payload: { name, yearMonth } });
+        if (res.success) renderStampSummary(res);
+      } catch (err) { console.error("[loadStatusTab] サマリーエラー:", err); }
+
+      // 申請状況
+      try {
+        const res = await callApi({ action: "getApplications", payload: { name } });
+        if (res.success) renderApplicationList(res.applications.slice(0, 5), "status-application-list");
+      } catch (err) { console.error("[loadStatusTab] 申請エラー:", err); }
+    }
+
+    function renderOverUnder(data) {
+      const el = document.getElementById("over-under-display");
+
+      const toHM = min => {
+        const h = Math.floor(Math.abs(min) / 60);
+        const m = Math.abs(min) % 60;
+        return (min < 0 ? "-" : "") + h + "時間" + m + "分";
+      };
+
+      el.innerHTML =
+        '<div class="grid grid-cols-2 gap-3">' +
+          statCard("所定労働時間", toHM(data.scheduledMin),  "text-gray-600") +
+          statCard("実労働時間",   toHM(data.actualMin),     "text-gray-600") +
+          statCard("不足時間",     toHM(data.shortageMin),   data.shortageMin > 0 ? "text-red-500" : "text-gray-600") +
+          statCard("補填済み時間", toHM(data.supplementMin), "text-green-600") +
+          statCard("残不足",       toHM(data.remainingMin),  data.remainingMin > 0 ? "text-red-500 font-bold" : "text-gray-600", true) +
+        '</div>';
+    }
+
+    function statCard(label, value, valueClass, wide) {
+      return '<div class="' + (wide ? "col-span-2" : "") + ' bg-gray-50 rounded-xl p-4 text-center">' +
+        '<p class="text-xs text-gray-500 mb-1">' + label + '</p>' +
+        '<p class="text-xl font-bold ' + valueClass + '">' + value + '</p>' +
+      '</div>';
+    }
+
+    function renderStampSummary(data) {
+      const el = document.getElementById("stamp-summary-display");
+      const toHM = min => Math.floor(min / 60) + "時間" + (min % 60) + "分";
+
+      el.innerHTML =
+        '<div class="grid grid-cols-3 gap-3 mb-4">' +
+          statCard("出勤日数",   data.workDays + "日",       "text-gray-700") +
+          statCard("実労働時間", toHM(data.totalMinutes),    "text-gray-700") +
+          statCard("弁当（要）", data.lunchCount + "回",     "text-gray-700") +
+        '</div>' +
+        '<div class="overflow-x-auto">' +
+          '<table class="w-full text-sm">' +
+            '<thead><tr class="bg-gray-100">' +
+              '<th class="px-2 py-2 text-left font-semibold text-gray-600">日付</th>' +
+              '<th class="px-2 py-2 text-left font-semibold text-gray-600">出勤</th>' +
+              '<th class="px-2 py-2 text-left font-semibold text-gray-600">退勤</th>' +
+              '<th class="px-2 py-2 text-left font-semibold text-gray-600">時間</th>' +
+            '</tr></thead>' +
+            '<tbody>' +
+            (data.records || []).map(r =>
+              '<tr class="border-b border-gray-100">' +
+                '<td class="px-2 py-2 text-gray-600">' + r.date.slice(5) + '</td>' +
+                '<td class="px-2 py-2 text-gray-600">' + (r.timeIn  ? r.timeIn.slice(11, 16)  : "-") + '</td>' +
+                '<td class="px-2 py-2 text-gray-600">' + (r.timeOut ? r.timeOut.slice(11, 16) : "-") + '</td>' +
+                '<td class="px-2 py-2 text-gray-600">' + (r.minutes ? Math.floor(r.minutes / 60) + "h" + (r.minutes % 60) + "m" : "-") + '</td>' +
+              '</tr>'
+            ).join("") +
+            '</tbody>' +
+          '</table>' +
+        '</div>';
+    }
+
+
+    // ============================================================
+    // 管理タブ
+    // ============================================================
+
+    function loadAdminTab() {
+      loadAdminStamps();
+      loadAdminApplications();
+    }
+
+    async function loadAdminStamps() {
+      try {
+        const res = await callApi({ action: "getAllStamps", payload: {} });
+        if (res.success) {
+          renderAdminStamps(res.stamps);
+          renderLunchSummary(res.stamps);
+        }
+      } catch (err) {
+        console.error("[loadAdminStamps] エラー:", err);
+      }
+    }
+
+    function renderAdminStamps(stamps) {
+      const el = document.getElementById("admin-stamp-list");
+      if (!stamps || stamps.length === 0) {
+        el.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">本日の打刻はありません。</p>';
+        return;
+      }
+      el.innerHTML = stamps.map(s =>
+        '<div class="flex items-center gap-3 border-b border-gray-100 py-3 last:border-0">' +
+          '<div class="flex-1">' +
+            '<p class="text-sm font-semibold text-gray-700">' + s.name + '<span class="text-xs text-gray-400 ml-1">' + s.role + '</span></p>' +
+            '<p class="text-xs text-gray-500">' +
+              '出勤: ' + (s.timeIn  ? s.timeIn.slice(11, 16)  : "-") + '  ' +
+              '退勤: ' + (s.timeOut ? s.timeOut.slice(11, 16) : "-") +
+            '</p>' +
+          '</div>' +
+          '<span class="text-xs px-2 py-1 rounded-full ' +
+            (s.lunch === "要" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500") + '">' +
+            s.lunch +
+          '</span>' +
+        '</div>'
+      ).join("");
+    }
+
+    function renderLunchSummary(stamps) {
+      const yes = (stamps || []).filter(s => s.lunch === "要").length;
+      const no  = (stamps || []).filter(s => s.lunch === "不要").length;
+      document.getElementById("admin-lunch-summary").innerHTML =
+        '<div class="grid grid-cols-2 gap-4 text-center">' +
+          '<div class="bg-green-50 rounded-xl p-4">' +
+            '<p class="text-xs text-gray-500 mb-1">要る</p>' +
+            '<p class="text-3xl font-bold text-green-600">' + yes + '</p>' +
+          '</div>' +
+          '<div class="bg-gray-50 rounded-xl p-4">' +
+            '<p class="text-xs text-gray-500 mb-1">要らない</p>' +
+            '<p class="text-3xl font-bold text-gray-500">' + no + '</p>' +
+          '</div>' +
+        '</div>';
+    }
+
+    async function loadAdminApplications() {
+      try {
+        const res = await callApi({ action: "getAllApplications", payload: {} });
+        if (res.success) renderAdminApplications(res.applications);
+      } catch (err) {
+        console.error("[loadAdminApplications] エラー:", err);
+      }
+    }
+
+    function renderAdminApplications(applications) {
+      const el = document.getElementById("admin-application-list");
+      if (!applications || applications.length === 0) {
+        el.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">申請はありません。</p>';
+        return;
+      }
+      el.innerHTML = applications.slice(0, 20).map(app => {
+        const isPending  = app.status === "審査中";
+        const badgeClass = STATUS_CLASS[app.status] || "bg-gray-100 text-gray-600";
+        return '<div class="border-b border-gray-100 py-4 last:border-0">' +
+          '<div class="flex items-start gap-3">' +
+            '<span class="px-2 py-1 rounded-lg text-xs font-bold ' + badgeClass + ' shrink-0">' + app.status + '</span>' +
+            '<div class="flex-1 min-w-0">' +
+              '<p class="text-sm font-semibold text-gray-700">' + app.name + '  ' + app.type + '  ' + app.targetDate + '</p>' +
+              '<p class="text-xs text-gray-400">' + (app.reason || "理由なし") + '</p>' +
+            '</div>' +
+          '</div>' +
+          (isPending ?
+            '<div class="flex gap-2 mt-3">' +
+              '<button onclick="doApprove(\'' + app.id + '\', \'承認\')" ' +
+                'class="flex-1 bg-green-500 hover:bg-green-600 text-white text-sm font-bold py-2 rounded-lg">承認</button>' +
+              '<button onclick="doApprove(\'' + app.id + '\', \'却下\')" ' +
+                'class="flex-1 bg-red-400 hover:bg-red-500 text-white text-sm font-bold py-2 rounded-lg">却下</button>' +
+            '</div>' : ""
+          ) +
+        '</div>';
+      }).join("");
+    }
+
+    async function doApprove(id, status) {
+      const approvedBy = localStorage.getItem(STORAGE_KEY.NAME);
+      if (!confirm(status + "しますか？")) return;
+
+      try {
+        showLoading(status + "処理中...");
+        const res = await callApi({ action: "approve", payload: { id, status, approvedBy } });
+        if (res.success) {
+          showToast(status + "しました。", "success");
+          loadAdminApplications();
+        } else {
+          showToast(res.message || "処理に失敗しました。", "error");
+        }
+      } catch (err) {
+        console.error("[doApprove] エラー:", err);
+        showToast("通信エラーが発生しました。", "error");
+      } finally {
+        hideLoading();
+      }
+    }
+
+
+    // ============================================================
+    // API通信
+    // ============================================================
+
+    async function callApi(body) {
+      const gasUrl = localStorage.getItem(STORAGE_KEY.GAS_URL);
+      const apiKey = localStorage.getItem(STORAGE_KEY.API_KEY);
+      if (!gasUrl) throw new Error("GAS URLが設定されていません。システム設定を確認してください。");
+
+      const controller = new AbortController();
+      const timeoutId  = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+      isSending = true;
+
+      try {
+        const response = await fetch(gasUrl, {
+          method : "POST",
+          mode   : "cors",
+          headers: { "Content-Type": "text/plain" },
+          body   : JSON.stringify(Object.assign({ apiKey }, body)),
+          signal : controller.signal,
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error("HTTPエラー: " + response.status);
+        return await response.json();
+
+      } catch (err) {
+        clearTimeout(timeoutId);
+        if (err.name === "AbortError") throw new Error("通信がタイムアウトしました。");
+        throw err;
+      } finally {
+        isSending = false;
+      }
+    }
+
+
+    // ============================================================
+    // 設定保存
+    // ============================================================
+
+    function saveSettings() {
+      const url    = document.getElementById("input-gas-url").value.trim();
+      const apiKey = document.getElementById("input-api-key").value.trim();
+      if (!url) { alert("GAS URLを入力してください。"); return; }
+      localStorage.setItem(STORAGE_KEY.GAS_URL,  url);
+      localStorage.setItem(STORAGE_KEY.API_KEY,  apiKey);
+      showToast("設定を保存しました。", "success");
+    }
+
+
+    // ============================================================
+    // UI ユーティリティ
+    // ============================================================
+
+    function updateClock() {
+      const now  = new Date();
+      const hhmm = now.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+      const el   = document.getElementById("clock");
+      if (el) el.textContent = hhmm;
+      const dateEl = document.getElementById("stamp-date-display");
+      if (dateEl) dateEl.textContent = getDateLabel();
+      const headerDate = document.getElementById("header-date");
+      if (headerDate) headerDate.textContent = getDateLabel();
+    }
+
+    function showStampStatus(message) {
+      const el = document.getElementById("stamp-status");
+      document.getElementById("stamp-status-text").textContent = message;
+      el.classList.remove("hidden");
+    }
+
+    function showToast(message, type) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.className = [
+        "fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-3",
+        "rounded-xl shadow-lg text-white font-bold max-w-sm text-center text-base",
+        type === "success" ? "bg-green-500" : "bg-red-500"
+      ].join(" ");
+      toast.style.opacity = "1";
+      setTimeout(() => { toast.style.opacity = "0"; }, 3000);
+    }
+
+    function showLoading(message) {
+      document.getElementById("loading-message").textContent = message || "通信中...";
+      document.getElementById("loading-overlay").classList.remove("hidden");
+    }
+
+    function hideLoading() {
+      document.getElementById("loading-overlay").classList.add("hidden");
+    }
+
+    function hideElement(id) {
+      document.getElementById(id).classList.add("hidden");
+    }
+
+    function getDateLabel() {
+      const days = ["日", "月", "火", "水", "木", "金", "土"];
+      const now  = new Date();
+      return now.getFullYear() + "年" + (now.getMonth() + 1) + "月" +
+             now.getDate() + "日（" + days[now.getDay()] + "）";
+    }
+
+    function getTodayIso() {
+      const now = new Date();
+      return now.getFullYear() + "-" +
+             String(now.getMonth() + 1).padStart(2, "0") + "-" +
+             String(now.getDate()).padStart(2, "0");
+    }
+
+    function formatTime(datetimeStr) {
+      if (!datetimeStr) return "";
+      const part = String(datetimeStr).split(" ")[1] || datetimeStr;
+      return part.slice(0, 5);
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+  </script>
+</body>
+</html>
