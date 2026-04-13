@@ -1,1 +1,0 @@
-# sumioka-attendance
