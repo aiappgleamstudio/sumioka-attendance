@@ -1,0 +1,564 @@
+/*
+ * styles.css - 共通スタイル
+ *
+ * 役割:
+ *   カラー変数・レイアウト・共通コンポーネントを定義する。
+ *   各アプリ固有スタイルより先に読み込む。
+ *
+ * デザイン方針:
+ *   - OS / ブラウザのライト・ダークモード設定に自動追従する
+ *   - color-scheme と prefers-color-scheme で切り替え
+ *   - アクセントカラーは accent-color: auto でブラウザ規定値を使用
+ *   - フォントはシステムフォントスタック（インストール不要）
+ *
+ * クラス命名規則:
+ *   すべてのクラスに sumioka- プレフィックスを付けて他ライブラリと衝突しない
+ *
+ * @version 1.0.0
+ * @author  田中沙亜
+ */
+
+/* ============================================================
+   リセット・ベース
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* OS のライト/ダークに自動追従 */
+:root {
+  color-scheme: light dark;
+}
+
+html {
+  /* システムフォントスタック（Windows / Mac / Linux / Android / iOS 対応） */
+  font-family:
+    'Hiragino Sans',        /* Mac / iOS */
+    'Hiragino Kaku Gothic ProN',
+    'Noto Sans JP',         /* Android / Linux */
+    'Yu Gothic UI',         /* Windows 10+ */
+    'Meiryo UI',            /* Windows 旧 */
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  /* ブラウザ規定のカラースキームに委ねる */
+  color: CanvasText;
+  background-color: Canvas;
+}
+
+body {
+  min-height: 100dvh;
+  padding: 0;
+}
+
+a {
+  color: LinkText;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  accent-color: auto; /* ブラウザ規定のアクセントカラーを使用 */
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* ============================================================
+   レイアウト
+   ============================================================ */
+
+.sumioka-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.sumioka-section {
+  margin-bottom: 1.5rem;
+}
+
+/* ============================================================
+   タイポグラフィ
+   ============================================================ */
+
+h1 { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem; }
+h2 { font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem; }
+h3 { font-size: 1.1rem;  font-weight: bold; margin-bottom: 0.25rem; }
+
+p { margin-bottom: 0.75rem; }
+p:last-child { margin-bottom: 0; }
+
+/* ============================================================
+   ボタン
+   ============================================================ */
+
+.sumioka-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid ButtonBorder;
+  border-radius: 4px;
+  background-color: ButtonFace;
+  color: ButtonText;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.sumioka-btn:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.sumioka-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* primary: ブラウザのアクセントカラーを使用 */
+.sumioka-btn-primary {
+  background-color: Highlight;
+  color: HighlightText;
+  border-color: Highlight;
+}
+
+/* secondary: 通常ボタン */
+.sumioka-btn-secondary {
+  background-color: ButtonFace;
+  color: ButtonText;
+}
+
+/* danger: 削除・警告用 */
+.sumioka-btn-danger {
+  background-color: #c0392b;
+  color: #fff;
+  border-color: #c0392b;
+}
+
+/* ブロック幅 */
+.sumioka-btn-block {
+  display: flex;
+  width: 100%;
+}
+
+/* ボタングループ */
+.sumioka-btn-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   フォーム
+   ============================================================ */
+
+.sumioka-form-group {
+  margin-bottom: 1rem;
+}
+
+.sumioka-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.sumioka-input,
+.sumioka-select,
+.sumioka-textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid GrayText;
+  border-radius: 4px;
+  background-color: Field;
+  color: FieldText;
+  font-size: 1rem;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+
+.sumioka-input:focus,
+.sumioka-select:focus,
+.sumioka-textarea:focus {
+  outline: 2px solid Highlight;
+  outline-offset: 0;
+  border-color: Highlight;
+}
+
+.sumioka-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.sumioka-input-hint {
+  font-size: 0.8rem;
+  color: GrayText;
+  margin-top: 0.2rem;
+}
+
+/* ============================================================
+   カード
+   ============================================================ */
+
+.sumioka-card {
+  border: 1px solid GrayText;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: Canvas;
+}
+
+.sumioka-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid GrayText;
+}
+
+/* ============================================================
+   テーブル
+   ============================================================ */
+
+.sumioka-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sumioka-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.sumioka-table th,
+.sumioka-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid GrayText;
+}
+
+.sumioka-table th {
+  font-weight: 600;
+  background-color: ButtonFace;
+}
+
+.sumioka-table tbody tr:hover {
+  background-color: ButtonFace;
+}
+
+/* ============================================================
+   タブナビゲーション
+   ============================================================ */
+
+.sumioka-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid GrayText;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.sumioka-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.sumioka-tab-btn {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: GrayText;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.sumioka-tab-btn:hover {
+  color: CanvasText;
+}
+
+.sumioka-tab-btn--active {
+  color: Highlight;
+  border-bottom-color: Highlight;
+  font-weight: 700;
+}
+
+.sumioka-tab-content {
+  /* hidden 属性で表示・非表示を切り替える（JS 側で hidden を操作） */
+}
+
+.sumioka-tab-content[hidden] {
+  display: none;
+}
+
+/* ============================================================
+   トースト通知
+   ============================================================ */
+
+.sumioka-toast-ov {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9000;
+  pointer-events: none;
+}
+
+.sumioka-toast-box {
+  padding: 0.65rem 1.25rem;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: auto;
+  border: 1px solid transparent;
+}
+
+.sumioka-toast-show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.sumioka-toast-hide {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* ライト/ダーク両対応のトーストカラー */
+.sumioka-toast-success {
+  background-color: #1a7f37;
+  color: #fff;
+  border-color: #1a7f37;
+}
+
+.sumioka-toast-error {
+  background-color: #c0392b;
+  color: #fff;
+  border-color: #c0392b;
+}
+
+.sumioka-toast-warning {
+  background-color: #b45309;
+  color: #fff;
+  border-color: #b45309;
+}
+
+.sumioka-toast-info {
+  background-color: ButtonFace;
+  color: CanvasText;
+  border-color: GrayText;
+}
+
+/* ============================================================
+   ローディングオーバーレイ
+   ============================================================ */
+
+.sumioka-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9100;
+}
+
+.sumioka-loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: Canvas;
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  padding: 2rem 2.5rem;
+}
+
+.sumioka-loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid GrayText;
+  border-top-color: Highlight;
+  border-radius: 50%;
+  animation: sumioka-spin 0.7s linear infinite;
+}
+
+@keyframes sumioka-spin {
+  to { transform: rotate(360deg); }
+}
+
+.sumioka-loading-text {
+  font-size: 0.95rem;
+  color: GrayText;
+}
+
+/* ============================================================
+   エラーダイアログ
+   ============================================================ */
+
+.sumioka-error-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9200;
+  padding: 1rem;
+}
+
+.sumioka-error-box {
+  background-color: Canvas;
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 480px;
+  width: 100%;
+}
+
+.sumioka-error-message {
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.sumioka-error-detail {
+  font-size: 0.8rem;
+  color: GrayText;
+  margin-bottom: 1rem;
+}
+
+.sumioka-error-detail pre {
+  margin-top: 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.sumioka-error-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* ============================================================
+   確認ダイアログ
+   ============================================================ */
+
+.sumioka-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9300;
+  padding: 1rem;
+}
+
+.sumioka-confirm-box {
+  background-color: Canvas;
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 400px;
+  width: 100%;
+}
+
+.sumioka-confirm-message {
+  margin-bottom: 1.25rem;
+  font-weight: 500;
+}
+
+.sumioka-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* ============================================================
+   バッジ・ステータス
+   ============================================================ */
+
+.sumioka-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+}
+
+.sumioka-badge-success { color: #1a7f37; }
+.sumioka-badge-error   { color: #c0392b; }
+.sumioka-badge-warning { color: #b45309; }
+.sumioka-badge-info    { color: GrayText; }
+
+/* ============================================================
+   ユーティリティ
+   ============================================================ */
+
+.sumioka-text-center { text-align: center; }
+.sumioka-text-right  { text-align: right; }
+.sumioka-text-muted  { color: GrayText; font-size: 0.9rem; }
+.sumioka-mt-1 { margin-top: 0.5rem; }
+.sumioka-mt-2 { margin-top: 1rem; }
+.sumioka-mt-3 { margin-top: 1.5rem; }
+.sumioka-mb-1 { margin-bottom: 0.5rem; }
+.sumioka-mb-2 { margin-bottom: 1rem; }
+.sumioka-mb-3 { margin-bottom: 1.5rem; }
+.sumioka-hidden { display: none !important; }
+
+/* ============================================================
+   バージョン履歴（initAppMeta 用）
+   ============================================================ */
+
+.sumioka-version-date {
+  font-size: 0.8rem;
+  color: GrayText;
+  margin-left: 0.5rem;
+}
+
+/* ============================================================
+   レスポンシブ
+   ============================================================ */
+
+@media (max-width: 480px) {
+  html {
+    font-size: 15px;
+  }
+
+  .sumioka-btn {
+    padding: 0.5rem 1rem;
+  }
+
+  .sumioka-tab-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+}
