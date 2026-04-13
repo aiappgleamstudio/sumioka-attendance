@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>打刻 | 住岡</title>
+
+  <!-- 共通基盤（読み込み順を守る） -->
+  <link rel="stylesheet" href="../../common/styles.css">
+  <script src="../../common/api.js"></script>
+  <script src="../../common/ui.js"></script>
+  <script src="../../common/storage.js"></script>
+
+  <style>
+    /* ============================================================
+       打刻画面 固有スタイル
+       ============================================================ */
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 1rem;
+    }
+
+    /* ── ログイン画面 ── */
+
+    #screen-login {
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .login-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 1.75rem;
+      color: CanvasText;
+    }
+
+    .login-card {
+      border: 1px solid GrayText;
+      border-radius: 8px;
+      padding: 1.75rem 1.5rem;
+      background-color: Canvas;
+    }
+
+    /* ── メイン打刻画面 ── */
+
+    #screen-main {
+      width: 100%;
+      max-width: 480px;
+      display: none; /* ログイン成功後に表示 */
+    }
+
+    /* ヘッダー */
+    .kintai-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid GrayText;
+    }
+
+    .kintai-header-name {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .kintai-header-date {
+      font-size: 0.85rem;
+      color: GrayText;
+    }
+
+    .kintai-header-logout {
+      font-size: 0.8rem;
+      background: none;
+      border: none;
+      color: GrayText;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+
+    /* 残不足バナー */
+    .balance-banner {
+      border: 1px solid GrayText;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.9rem;
+    }
+
+    .balance-banner-label {
+      color: GrayText;
+    }
+
+    .balance-banner-value {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .balance-banner-value.over  { color: #1a7f37; } /* 超過 */
+    .balance-banner-value.short { color: #c0392b; } /* 不足 */
+    .balance-banner-value.even  { color: GrayText;  } /* ちょうど */
+
+    /* 打刻カード */
+    .kintai-card {
+      border: 1px solid GrayText;
+      border-radius: 8px;
+      padding: 1.25rem 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+      background-color: Canvas;
+    }
+
+    .kintai-card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: GrayText;
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* 打刻済み時刻表示 */
+    .stamped-time {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stamped-label {
+      font-size: 0.8rem;
+      color: GrayText;
+    }
+
+    /* 弁当選択 */
+    .lunch-options {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .lunch-option {
+      flex: 1;
+    }
+
+    /* ラジオボタンを非表示にしてカード風UIで代替 */
+    .lunch-option input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .lunch-option label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.6rem;
+      border: 1px solid GrayText;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 500;
+      text-align: center;
+      transition: border-color 0.15s, background-color 0.15s;
+      user-select: none;
+    }
+
+    .lunch-option input[type="radio"]:checked + label {
+      border-color: Highlight;
+      background-color: Highlight;
+      color: HighlightText;
+    }
+
+    .lunch-option input[type="radio"]:focus-visible + label {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
+
+    /* 業務報告 */
+    .report-area {
+      margin-bottom: 1rem;
+    }
+
+    /* 現在時刻ライブ表示 */
+    .live-clock {
+      font-size: 2rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 1.25rem;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+    }
+
+    /* 状態テキスト */
+    .status-text {
+      font-size: 0.85rem;
+      color: GrayText;
+      text-align: center;
+      margin-top: 0.5rem;
+      min-height: 1.2em;
+    }
+
+    /* 定時通知バナー（非表示→表示） */
+    .overtime-banner {
+      display: none;
+      border: 1px solid #b45309;
+      border-radius: 6px;
+      padding: 0.65rem 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #b45309;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .overtime-banner.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       ログイン画面
+       ============================================================ -->
+  <div id="screen-login">
+    <p class="login-title">住岡 勤怠管理</p>
+
+    <div class="login-card">
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="input-pin">PIN（4桁）</label>
+        <input
+          class="sumioka-input"
+          type="tel"
+          id="input-pin"
+          maxlength="4"
+          inputmode="numeric"
+          autocomplete="off"
+          placeholder="0000"
+        >
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="input-password">パスワード</label>
+        <input
+          class="sumioka-input"
+          type="password"
+          id="input-password"
+          autocomplete="current-password"
+          placeholder="パスワードを入力"
+        >
+      </div>
+
+      <button
+        class="sumioka-btn sumioka-btn-primary sumioka-btn-block sumioka-mt-2"
+        id="btn-login"
+      >
+        ログイン
+      </button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       メイン打刻画面
+       ============================================================ -->
+  <div id="screen-main">
+
+    <!-- ヘッダー -->
+    <div class="kintai-header">
+      <div>
+        <div class="kintai-header-name" id="display-name">――</div>
+        <div class="kintai-header-date" id="display-date">――</div>
+      </div>
+      <button class="kintai-header-logout" id="btn-logout">ログアウト</button>
+    </div>
+
+    <!-- 定時通知バナー -->
+    <div class="overtime-banner" id="overtime-banner">
+      ⏰ まもなく定時です。退勤の準備をしてください。
+    </div>
+
+    <!-- 残不足バナー -->
+    <div class="balance-banner">
+      <span class="balance-banner-label">今月の残不足</span>
+      <span class="balance-banner-value" id="display-balance">読み込み中...</span>
+    </div>
+
+    <!-- 出勤カード -->
+    <div class="kintai-card" id="card-checkin">
+      <div class="kintai-card-title">出勤</div>
+
+      <!-- 打刻済みの場合はこちらを表示 -->
+      <div id="checkin-stamped" class="sumioka-hidden">
+        <div class="stamped-time" id="display-checkin-time">--:--</div>
+        <div class="stamped-label">出勤打刻済み</div>
+      </div>
+
+      <!-- 未打刻の場合はこちらを表示 -->
+      <div id="checkin-form">
+        <!-- 現在時刻 -->
+        <div class="live-clock" id="live-clock">--:--:--</div>
+
+        <!-- 弁当要否（必須） -->
+        <div class="sumioka-form-group">
+          <div class="sumioka-label">弁当</div>
+          <div class="lunch-options">
+            <div class="lunch-option">
+              <input type="radio" name="lunch" id="lunch-yes" value="yes">
+              <label for="lunch-yes">要</label>
+            </div>
+            <div class="lunch-option">
+              <input type="radio" name="lunch" id="lunch-no" value="no">
+              <label for="lunch-no">不要</label>
+            </div>
+          </div>
+        </div>
+
+        <button
+          class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
+          id="btn-checkin"
+          disabled
+        >
+          出勤打刻
+        </button>
+        <p class="status-text" id="checkin-status">弁当の要否を選択してください</p>
+      </div>
+    </div>
+
+    <!-- 退勤カード -->
+    <div class="kintai-card" id="card-checkout">
+      <div class="kintai-card-title">退勤</div>
+
+      <!-- 打刻済みの場合はこちらを表示 -->
+      <div id="checkout-stamped" class="sumioka-hidden">
+        <div class="stamped-time" id="display-checkout-time">--:--</div>
+        <div class="stamped-label">退勤打刻済み</div>
+      </div>
+
+      <!-- 未打刻の場合はこちらを表示 -->
+      <div id="checkout-form">
+        <!-- 業務報告（必須） -->
+        <div class="report-area">
+          <label class="sumioka-label" for="input-report">業務報告（必須）</label>
+          <textarea
+            class="sumioka-textarea"
+            id="input-report"
+            placeholder="本日の業務内容を入力してください"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <button
+          class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
+          id="btn-checkout"
+          disabled
+        >
+          退勤打刻
+        </button>
+        <p class="status-text" id="checkout-status">出勤打刻後に入力できます</p>
+      </div>
+    </div>
+
+  </div><!-- /#screen-main -->
+
+
+  <script>
+    'use strict';
+
+    // ============================================================
+    // 設定
+    // ============================================================
+
+    /**
+     * GAS デプロイ URL。
+     * URLは変えない運用。変更が必要な場合はこの1行だけ書き換える。
+     */
+    const GAS_URL = 'ここにGASのデプロイURLを貼り付ける';
+
+    /**
+     * 定時通知を出す分数（定時の何分前に通知するか）。
+     * 提案書仕様: 定時5分前。
+     */
+    const OVERTIME_NOTICE_MINUTES = 5;
+
+    // ============================================================
+    // 状態管理
+    // ============================================================
+
+    /**
+     * アプリの状態を1か所で管理する。
+     * 状態が変わるたびに renderState() を呼んで画面を同期する。
+     *
+     * @type {{
+     *   employeeId   : string,
+     *   name         : string,
+     *   scheduledEnd : string,   // 'HH:MM' 形式の所定終業時刻
+     *   checkedIn    : boolean,
+     *   checkedOut   : boolean,
+     *   checkinTime  : string,   // 'HH:MM' 形式
+     *   checkoutTime : string,   // 'HH:MM' 形式
+     *   lunch        : boolean|null,
+     *   report       : string,
+     * }}
+     */
+    const state = {
+      employeeId   : '',
+      name         : '',
+      scheduledEnd : '',
+      checkedIn    : false,
+      checkedOut   : false,
+      checkinTime  : '',
+      checkoutTime : '',
+      lunch        : null,
+      report       : '',
+    };
+
+    // ============================================================
+    // 初期化
+    // ============================================================
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // GAS URL をセット
+      setGasUrl(GAS_URL);
+
+      // ライブ時計を起動
+      startLiveClock();
+
+      // 定時通知チェックを1分ごとに実行
+      setInterval(checkOvertimeNotice, 60 * 1000);
+
+      // 保存済みセッションがあれば自動ログイン
+      const session = SumiokaStorage.load('kintai_session');
+      if (session && session.employeeId) {
+        applySession(session);
+        loadTodayRecord();
+      }
+
+      // イベントリスナーを設定
+      bindEvents();
+
+      // 今日の日付をヘッダーに表示
+      document.getElementById('display-date').textContent = todayString();
+    });
+
+    // ============================================================
+    // イベント設定
+    // ============================================================
+
+    function bindEvents() {
+      // ログイン
+      document.getElementById('btn-login').addEventListener('click', handleLogin);
+
+      // PIN・パスワード入力でEnterキーを押したらログイン
+      ['input-pin', 'input-password'].forEach(id => {
+        document.getElementById(id).addEventListener('keydown', e => {
+          if (e.key === 'Enter') handleLogin();
+        });
+      });
+
+      // ログアウト
+      document.getElementById('btn-logout').addEventListener('click', handleLogout);
+
+      // 弁当選択 → 出勤ボタンの有効化
+      document.querySelectorAll('input[name="lunch"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+          state.lunch = (radio.value === 'yes');
+          renderCheckinButton();
+        });
+      });
+
+      // 業務報告入力 → 退勤ボタンの有効化
+      document.getElementById('input-report').addEventListener('input', e => {
+        state.report = e.target.value.trim();
+        renderCheckoutButton();
+      });
+
+      // 出勤打刻
+      document.getElementById('btn-checkin').addEventListener('click', handleCheckin);
+
+      // 退勤打刻
+      document.getElementById('btn-checkout').addEventListener('click', handleCheckout);
+    }
+
+    // ============================================================
+    // 認証
+    // ============================================================
+
+    /**
+     * ログイン処理。
+     * PIN + パスワードを GAS に送って照合する。
+     * 成功したらセッションを localStorage に保存して打刻画面へ。
+     */
+    async function handleLogin() {
+      const pin      = document.getElementById('input-pin').value.trim();
+      const password = document.getElementById('input-password').value.trim();
+      const btn      = document.getElementById('btn-login');
+
+      if (!pin || !password) {
+        showToast('PIN とパスワードを入力してください。', 'warning');
+        return;
+      }
+
+      showLoading('認証中...');
+
+      const result = await callGAS('authenticate', { pin, password }, { button: btn });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      const { employee } = result.data;
+
+      // セッションを保存（次回起動時に自動ログイン）
+      SumiokaStorage.save('kintai_session', {
+        employeeId   : employee.id,
+        name         : employee.name,
+        scheduledEnd : employee.data?.scheduled_end || '',
+      });
+
+      applySession({
+        employeeId   : employee.id,
+        name         : employee.name,
+        scheduledEnd : employee.data?.scheduled_end || '',
+      });
+
+      await loadTodayRecord();
+    }
+
+    /**
+     * セッション情報を state に適用して打刻画面へ切り替える。
+     *
+     * @param {{ employeeId: string, name: string, scheduledEnd: string }} session
+     */
+    function applySession(session) {
+      state.employeeId   = session.employeeId;
+      state.name         = session.name;
+      state.scheduledEnd = session.scheduledEnd;
+
+      document.getElementById('display-name').textContent = session.name;
+      showScreen('main');
+    }
+
+    /**
+     * ログアウト処理。
+     * セッションを削除してログイン画面へ戻る。
+     */
+    async function handleLogout() {
+      const ok = await confirm('ログアウトしますか？');
+      if (!ok) return;
+
+      SumiokaStorage.remove('kintai_session');
+
+      // 状態をリセット
+      Object.assign(state, {
+        employeeId: '', name: '', scheduledEnd: '',
+        checkedIn: false, checkedOut: false,
+        checkinTime: '', checkoutTime: '',
+        lunch: null, report: '',
+      });
+
+      // フォームをリセット
+      document.querySelectorAll('input[name="lunch"]').forEach(r => r.checked = false);
+      document.getElementById('input-report').value = '';
+      document.getElementById('input-pin').value = '';
+      document.getElementById('input-password').value = '';
+
+      showScreen('login');
+    }
+
+    // ============================================================
+    // 今日のレコード読み込み
+    // ============================================================
+
+    /**
+     * 今日の出退勤レコードを GAS から取得して状態を復元する。
+     * 画面を開き直したときに打刻済み状態を正しく表示するために使う。
+     */
+    async function loadTodayRecord() {
+      showLoading('データを読み込み中...');
+
+      const today  = todayString();
+      const result = await callGAS('load', {
+        employee_id : state.employeeId,
+        date        : today,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        // 取得失敗はトースト通知のみ（致命的エラーではない）
+        showToast('データの読み込みに失敗しました。', 'error');
+        renderState();
+        return;
+      }
+
+      const record = result.data.record;
+
+      if (record && record.data) {
+        const d = record.data;
+
+        // 出勤済みの場合
+        if (d.time_in) {
+          state.checkedIn   = true;
+          state.checkinTime = d.time_in;
+          state.lunch       = d.lunch ?? null;
+        }
+
+        // 退勤済みの場合
+        if (d.time_out) {
+          state.checkedOut   = true;
+          state.checkoutTime = d.time_out;
+          state.report       = d.memo || '';
+        }
+      }
+
+      // 残不足時間を読み込む
+      await loadBalance();
+
+      renderState();
+    }
+
+    /**
+     * 今月の残不足時間を取得してバナーに表示する。
+     */
+    async function loadBalance() {
+      const yearMonth = todayString().slice(0, 7); // 'YYYY-MM'
+
+      const result = await callGAS('monthly_report', {
+        year_month: yearMonth,
+      });
+
+      if (!result.success) return;
+
+      // 自分のサマリーを探す
+      const summary = result.data.report?.find(r => r.employee_id === state.employeeId);
+
+      if (!summary) {
+        document.getElementById('display-balance').textContent = '―';
+        return;
+      }
+
+      // 残不足 = 合計勤務時間 - 所定労働時間合計（簡易計算）
+      // ※ 正確な計算は Phase 3（給与計算）で実装
+      const totalMin    = summary.total_work_minutes || 0;
+      const workDays    = summary.work_days || 0;
+      const scheduledMin = workDays * 8 * 60; // 暫定: 1日8時間
+      const diffMin     = totalMin - scheduledMin;
+
+      const el = document.getElementById('display-balance');
+      el.textContent = formatMinutes(diffMin, true);
+      el.className   = 'balance-banner-value ' + (diffMin >= 0 ? 'over' : 'short');
+    }
+
+    // ============================================================
+    // 出勤打刻
+    // ============================================================
+
+    /**
+     * 出勤打刻処理。
+     * 弁当要否を確認してから GAS に送信する。
+     */
+    async function handleCheckin() {
+      if (state.lunch === null) {
+        showToast('弁当の要否を選択してください。', 'warning');
+        return;
+      }
+
+      const ok = await confirm(`出勤打刻をしますか？\n弁当：${state.lunch ? '要' : '不要'}`);
+      if (!ok) return;
+
+      const now = nowTimeString();
+      const btn = document.getElementById('btn-checkin');
+
+      showLoading('出勤打刻中...');
+
+      const result = await callGAS('save', {
+        employee_id     : state.employeeId,
+        date            : todayString(),
+        attendance_data : {
+          status  : '出勤',
+          time_in : now,
+          lunch   : state.lunch,
+        },
+      }, { button: btn });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail, handleCheckin);
+        return;
+      }
+
+      state.checkedIn   = true;
+      state.checkinTime = now;
+
+      showToast('出勤打刻しました。', 'success');
+      renderState();
+    }
+
+    // ============================================================
+    // 退勤打刻
+    // ============================================================
+
+    /**
+     * 退勤打刻処理。
+     * 業務報告を確認してから GAS に送信する。
+     * 出勤時のデータを引き継いで upsert する。
+     */
+    async function handleCheckout() {
+      if (!state.report) {
+        showToast('業務報告を入力してください。', 'warning');
+        return;
+      }
+
+      const ok = await confirm('退勤打刻をしますか？');
+      if (!ok) return;
+
+      const now = nowTimeString();
+      const btn = document.getElementById('btn-checkout');
+
+      // 勤務時間を計算（分）
+      const workMin = calcWorkMinutes(state.checkinTime, now);
+
+      showLoading('退勤打刻中...');
+
+      const result = await callGAS('save', {
+        employee_id     : state.employeeId,
+        date            : todayString(),
+        attendance_data : {
+          status        : state.checkinTime ? deriveStatus() : '出勤',
+          time_in       : state.checkinTime,
+          time_out      : now,
+          break_minutes : 60,   // 暫定: 休憩60分固定（Phase 2 で設定可能にする）
+          work_minutes  : Math.max(0, workMin - 60),
+          lunch         : state.lunch ?? false,
+          memo          : state.report,
+        },
+      }, { button: btn });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail, handleCheckout);
+        return;
+      }
+
+      state.checkedOut   = true;
+      state.checkoutTime = now;
+
+      showToast('退勤打刻しました。お疲れ様でした。', 'success');
+      renderState();
+    }
+
+    /**
+     * 出勤時刻と現在時刻から status を導出する。
+     * 所定開始時刻（9:00 固定、Phase 2 で設定可能にする）と比較して遅刻判定。
+     *
+     * @returns {'出勤'|'遅刻'|'早退'}
+     */
+    function deriveStatus() {
+      // 暫定: 9:00 を所定開始時刻とする
+      const scheduledStart = '09:00';
+      if (state.checkinTime > scheduledStart) return '遅刻';
+      if (state.scheduledEnd && state.checkoutTime < state.scheduledEnd) return '早退';
+      return '出勤';
+    }
+
+    // ============================================================
+    // 画面描画
+    // ============================================================
+
+    /**
+     * state を見て画面全体を同期する。
+     * 状態が変わるたびにこの関数を呼ぶ。
+     */
+    function renderState() {
+      renderCheckinArea();
+      renderCheckoutArea();
+      renderCheckinButton();
+      renderCheckoutButton();
+      checkOvertimeNotice();
+    }
+
+    /**
+     * 出勤エリアの表示を更新する。
+     */
+    function renderCheckinArea() {
+      const stamped = document.getElementById('checkin-stamped');
+      const form    = document.getElementById('checkin-form');
+
+      if (state.checkedIn) {
+        stamped.classList.remove('sumioka-hidden');
+        form.classList.add('sumioka-hidden');
+        document.getElementById('display-checkin-time').textContent = state.checkinTime;
+      } else {
+        stamped.classList.add('sumioka-hidden');
+        form.classList.remove('sumioka-hidden');
+      }
+    }
+
+    /**
+     * 退勤エリアの表示を更新する。
+     */
+    function renderCheckoutArea() {
+      const stamped = document.getElementById('checkout-stamped');
+      const form    = document.getElementById('checkout-form');
+
+      if (state.checkedOut) {
+        stamped.classList.remove('sumioka-hidden');
+        form.classList.add('sumioka-hidden');
+        document.getElementById('display-checkout-time').textContent = state.checkoutTime;
+      } else {
+        stamped.classList.add('sumioka-hidden');
+        form.classList.remove('sumioka-hidden');
+      }
+    }
+
+    /**
+     * 出勤ボタンの有効・無効と状態テキストを更新する。
+     */
+    function renderCheckinButton() {
+      const btn    = document.getElementById('btn-checkin');
+      const status = document.getElementById('checkin-status');
+
+      if (state.checkedIn) return;
+
+      if (state.lunch === null) {
+        btn.disabled    = true;
+        status.textContent = '弁当の要否を選択してください';
+      } else {
+        btn.disabled    = false;
+        status.textContent = '';
+      }
+    }
+
+    /**
+     * 退勤ボタンの有効・無効と状態テキストを更新する。
+     */
+    function renderCheckoutButton() {
+      const btn    = document.getElementById('btn-checkout');
+      const status = document.getElementById('checkout-status');
+
+      if (state.checkedOut) return;
+
+      if (!state.checkedIn) {
+        btn.disabled       = true;
+        status.textContent = '出勤打刻後に入力できます';
+      } else if (!state.report) {
+        btn.disabled       = true;
+        status.textContent = '業務報告を入力してください';
+      } else {
+        btn.disabled       = false;
+        status.textContent = '';
+      }
+    }
+
+    /**
+     * ログイン画面 / メイン画面を切り替える。
+     *
+     * @param {'login'|'main'} screen
+     */
+    function showScreen(screen) {
+      document.getElementById('screen-login').style.display =
+        screen === 'login' ? '' : 'none';
+      document.getElementById('screen-main').style.display =
+        screen === 'main'  ? '' : 'none';
+    }
+
+    // ============================================================
+    // ライブ時計
+    // ============================================================
+
+    /**
+     * ライブ時計を1秒ごとに更新する。
+     * 出勤済みの場合は非表示のため更新不要だが、処理コストが低いためそのまま動かす。
+     */
+    function startLiveClock() {
+      function tick() {
+        const now = new Date();
+        const h   = String(now.getHours()).padStart(2, '0');
+        const m   = String(now.getMinutes()).padStart(2, '0');
+        const s   = String(now.getSeconds()).padStart(2, '0');
+        const el  = document.getElementById('live-clock');
+        if (el) el.textContent = `${h}:${m}:${s}`;
+      }
+      tick();
+      setInterval(tick, 1000);
+    }
+
+    // ============================================================
+    // 定時通知
+    // ============================================================
+
+    /**
+     * 定時5分前かどうかを確認し、該当したらバナーを表示する。
+     * 出勤済み・退勤未済・scheduledEnd が設定されている場合のみ動作する。
+     */
+    function checkOvertimeNotice() {
+      const banner = document.getElementById('overtime-banner');
+
+      if (!state.checkedIn || state.checkedOut || !state.scheduledEnd) {
+        banner.classList.remove('show');
+        return;
+      }
+
+      const now     = nowTimeString(); // 'HH:MM'
+      const noticeTime = subtractMinutes(state.scheduledEnd, OVERTIME_NOTICE_MINUTES);
+
+      // 通知時刻を過ぎていて、定時を過ぎていなければバナーを表示
+      if (now >= noticeTime && now < state.scheduledEnd) {
+        banner.classList.add('show');
+      } else {
+        banner.classList.remove('show');
+      }
+    }
+
+    // ============================================================
+    // ユーティリティ
+    // ============================================================
+
+    /**
+     * 今日の日付を 'YYYY-MM-DD' 形式で返す。
+     *
+     * @returns {string}
+     */
+    function todayString() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    /**
+     * 現在時刻を 'HH:MM' 形式で返す。
+     *
+     * @returns {string}
+     */
+    function nowTimeString() {
+      const d = new Date();
+      const h = String(d.getHours()).padStart(2, '0');
+      const m = String(d.getMinutes()).padStart(2, '0');
+      return `${h}:${m}`;
+    }
+
+    /**
+     * 出勤時刻と退勤時刻から勤務時間（分）を計算する。
+     *
+     * @param {string} timeIn  - 'HH:MM'
+     * @param {string} timeOut - 'HH:MM'
+     * @returns {number} 分
+     */
+    function calcWorkMinutes(timeIn, timeOut) {
+      const [ih, im] = timeIn.split(':').map(Number);
+      const [oh, om] = timeOut.split(':').map(Number);
+      return (oh * 60 + om) - (ih * 60 + im);
+    }
+
+    /**
+     * 'HH:MM' 形式の時刻から指定分数を引いた時刻を返す。
+     *
+     * @param {string} time - 'HH:MM'
+     * @param {number} minutes
+     * @returns {string} 'HH:MM'
+     */
+    function subtractMinutes(time, minutes) {
+      const [h, m] = time.split(':').map(Number);
+      const total  = h * 60 + m - minutes;
+      const rh     = Math.floor(total / 60);
+      const rm     = total % 60;
+      return `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`;
+    }
+
+    /**
+     * 分数を 'H時間M分' 形式にフォーマットする。
+     *
+     * @param {number}  minutes
+     * @param {boolean} [showSign=false] - 符号（+/-）を付けるか
+     * @returns {string}
+     */
+    function formatMinutes(minutes, showSign = false) {
+      const abs  = Math.abs(minutes);
+      const h    = Math.floor(abs / 60);
+      const m    = abs % 60;
+      const sign = showSign ? (minutes >= 0 ? '+' : '-') : '';
+      return `${sign}${h}時間${m}分`;
+    }
+  </script>
+</body>
+</html>
