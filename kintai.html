@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<!-- saved from url=(0055)file:///C:/Users/Happy-handa001/Downloads/kintai_3.html -->
-<html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>打刻 | 住岡</title>
 
@@ -1223,11 +1223,11 @@ p:last-child { margin-bottom: 0; }
    */
   function _escapeHtml(str) {
     return String(str)
-      .replace(/&/g,  '&amp;')
-      .replace(/</g,  '&lt;')
-      .replace(/>/g,  '&gt;')
-      .replace(/"/g,  '&quot;')
-      .replace(/'/g,  '&#039;');
+      .replace(/&/g,  '&')
+      .replace(/</g,  '<')
+      .replace(/>/g,  '>')
+      .replace(/"/g,  '"')
+      .replace(/'/g,  ''');
   }
 
   // ============================================================
@@ -1720,15 +1720,32 @@ p:last-child { margin-bottom: 0; }
     <div class="login-card">
       <div class="sumioka-form-group">
         <label class="sumioka-label" for="input-pin">PIN（4桁）</label>
-        <input class="sumioka-input" type="tel" id="input-pin" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="0000">
+        <input
+          class="sumioka-input"
+          type="tel"
+          id="input-pin"
+          maxlength="4"
+          inputmode="numeric"
+          autocomplete="off"
+          placeholder="0000"
+        >
       </div>
 
       <div class="sumioka-form-group">
         <label class="sumioka-label" for="input-password">パスワード</label>
-        <input class="sumioka-input" type="password" id="input-password" autocomplete="current-password" placeholder="パスワードを入力">
+        <input
+          class="sumioka-input"
+          type="password"
+          id="input-password"
+          autocomplete="current-password"
+          placeholder="パスワードを入力"
+        >
       </div>
 
-      <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block sumioka-mt-2" id="btn-login">
+      <button
+        class="sumioka-btn sumioka-btn-primary sumioka-btn-block sumioka-mt-2"
+        id="btn-login"
+      >
         ログイン
       </button>
     </div>
@@ -1743,7 +1760,7 @@ p:last-child { margin-bottom: 0; }
     <div class="kintai-header">
       <div>
         <div class="kintai-header-name" id="display-name">――</div>
-        <div class="kintai-header-date" id="display-date">2026-04-14</div>
+        <div class="kintai-header-date" id="display-date">――</div>
       </div>
       <button class="kintai-header-logout" id="btn-logout">ログアウト</button>
     </div>
@@ -1772,7 +1789,7 @@ p:last-child { margin-bottom: 0; }
       <!-- 未打刻の場合はこちらを表示 -->
       <div id="checkin-form">
         <!-- 現在時刻 -->
-        <div class="live-clock" id="live-clock">12:41:50</div>
+        <div class="live-clock" id="live-clock">--:--:--</div>
 
         <!-- 弁当要否（必須） -->
         <div class="sumioka-form-group">
@@ -1789,7 +1806,11 @@ p:last-child { margin-bottom: 0; }
           </div>
         </div>
 
-        <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block" id="btn-checkin" disabled="">
+        <button
+          class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
+          id="btn-checkin"
+          disabled
+        >
           出勤打刻
         </button>
         <p class="status-text" id="checkin-status">弁当の要否を選択してください</p>
@@ -1831,10 +1852,19 @@ p:last-child { margin-bottom: 0; }
         <!-- 業務報告（必須） -->
         <div class="report-area">
           <label class="sumioka-label" for="input-report">業務報告（必須）</label>
-          <textarea class="sumioka-textarea" id="input-report" placeholder="本日の業務内容を入力してください" rows="3"></textarea>
+          <textarea
+            class="sumioka-textarea"
+            id="input-report"
+            placeholder="本日の業務内容を入力してください"
+            rows="3"
+          ><\/textarea>
         </div>
 
-        <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block" id="btn-checkout" disabled="">
+        <button
+          class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
+          id="btn-checkout"
+          disabled
+        >
           退勤打刻
         </button>
         <p class="status-text" id="checkout-status">出勤打刻後に入力できます</p>
@@ -2490,6 +2520,5 @@ p:last-child { margin-bottom: 0; }
       return `${sign}${h}時間${m}分`;
     }
   </script>
-
-
-</body></html>
+</body>
+</html>
