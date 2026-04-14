@@ -2394,12 +2394,18 @@ p:last-child { margin-bottom: 0; }
      *
      * @param {'login'|'main'} screen
      */
-    function showScreen(screen) {
-      document.getElementById('screen-login').style.display =
-        screen === 'login' ? '' : 'none';
-      document.getElementById('screen-main').style.display =
-        screen === 'main'  ? '' : 'none';
-    }
+function showScreen(screen) {
+  const login = document.getElementById('screen-login');
+  const main  = document.getElementById('screen-main');
+
+  if (screen === 'login') {
+    login.style.display = 'block';
+    main.style.display  = 'none';
+  } else if (screen === 'main') {
+    login.style.display = 'none';
+    main.style.display  = 'block';
+  }
+}
 
     // ============================================================
     // ライブ時計
