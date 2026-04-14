@@ -1494,34 +1494,59 @@ p:last-child { margin-bottom: 0; }
     }
 
     /* ── ログイン画面 ── */
+<div id="screen-login">
+  <p class="login-title">住岡 勤怠管理</p>
 
-    #screen-login {
-      width: 100%;
-      max-width: 360px;
-    }
+  <div class="login-card">
+    <div class="sumioka-form-group">
+      <label>PIN（4桁）</label>
+      <input id="input-pin">
+    </div>
 
-    .login-title {
-      font-size: 1.25rem;
-      font-weight: 700;
-      text-align: center;
-      margin-bottom: 1.75rem;
-      color: CanvasText;
-    }
+    <div class="sumioka-form-group">
+      <label>パスワード</label>
+      <input id="input-password">
+    </div>
 
-    .login-card {
-      border: 1px solid GrayText;
-      border-radius: 8px;
-      padding: 1.75rem 1.5rem;
-      background-color: Canvas;
-    }
+    <button id="btn-login">ログイン</button>
+  </div>
+</div>
 
     /* ── メイン打刻画面 ── */
+<div id="screen-main" style="display:none;">
 
-    #screen-main {
-      width: 100%;
-      max-width: 480px;
-      display: none; /* ログイン成功後に表示 */
-    }
+  <p class="login-title">勤怠打刻</p>
+
+  <!-- ユーザー情報 -->
+  <div class="sumioka-card">
+    <p>氏名：<span id="user-name">-</span></p>
+    <p>本日の勤務：<span id="today-status">未打刻</span></p>
+  </div>
+
+  <!-- 打刻ボタン -->
+  <div class="sumioka-mt-2">
+    <button id="btn-clock-in" class="sumioka-btn sumioka-btn-primary sumioka-btn-block">
+      出勤
+    </button>
+
+    <button id="btn-clock-out" class="sumioka-btn sumioka-btn-block sumioka-mt-1">
+      退勤
+    </button>
+  </div>
+
+  <!-- 状態表示 -->
+  <div class="sumioka-card sumioka-mt-2">
+    <p>出勤時刻：<span id="clock-in-time">--:--</span></p>
+    <p>退勤時刻：<span id="clock-out-time">--:--</span></p>
+  </div>
+
+  <!-- ログアウト -->
+  <button id="btn-logout" class="sumioka-btn sumioka-btn-block sumioka-mt-2">
+    ログアウト
+  </button>
+
+</div>
+
 
     /* ヘッダー */
     .kintai-header {
@@ -2398,11 +2423,11 @@ function showScreen(screen) {
   const login = document.getElementById('screen-login');
   const main  = document.getElementById('screen-main');
 
-  // 一旦全部消す
+  // 一旦全部非表示
   login.style.display = 'none';
   main.style.display  = 'none';
 
-  // 指定だけ表示
+  // 指定画面だけ表示
   if (screen === 'login') {
     login.style.display = 'block';
   }
