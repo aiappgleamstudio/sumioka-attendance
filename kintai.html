@@ -71,9 +71,21 @@ html {
 
 body {
   min-height: 100dvh;
-  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 40px;
+  margin: 0; /* ←これ追加（重要） */
 }
 
+#screen-login,
+#screen-main {
+  width: 100%;
+  max-width: 480px;
+  padding: 20px;
+  box-sizing: border-box; /* ←これも安定のため追加 */
+}
+    
 a {
   color: LinkText;
 }
