@@ -71,19 +71,17 @@ html {
 
 body {
   min-height: 100dvh;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 40px;
-  margin: 0; /* ←これ追加（重要） */
+  margin: 0;
+  background: #f5f5f5;
 }
 
 #screen-login,
 #screen-main {
   width: 100%;
   max-width: 480px;
+  margin: 40px auto; /* ←中央寄せはこれでOK */
   padding: 20px;
-  box-sizing: border-box; /* ←これも安定のため追加 */
+  box-sizing: border-box;
 }
     
 a {
