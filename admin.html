@@ -1,0 +1,1907 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理者ダッシュボード | 住岡</title>
+
+  <!--
+    ============================================================
+    共通基盤（kintai.html と同じ読み込み順を維持）
+    管理者ツール固有の処理はこのファイル内に完結させる
+    ============================================================
+  -->
+  <link rel="stylesheet" href="../../common/styles.css">
+  <script src="../../common/api.js"></script>
+  <script src="../../common/ui.js"></script>
+  <script src="../../common/storage.js"></script>
+
+  <style>
+    /* ============================================================
+       管理者ダッシュボード 固有スタイル
+       kintai.html のデザイン言語（sumioka- 系）を継承しつつ
+       管理者向けの情報密度に対応したレイアウトを追加する
+       ============================================================ */
+
+    /* ── レイアウト基盤 ── */
+
+    body {
+      min-height: 100dvh;
+      padding: 0;
+    }
+
+    /* ── ログイン画面 ── */
+
+    #screen-login {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100dvh;
+      padding: 1rem;
+    }
+
+    .login-wrap {
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .login-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 0.5rem;
+      color: CanvasText;
+    }
+
+    .login-subtitle {
+      font-size: 0.82rem;
+      text-align: center;
+      color: GrayText;
+      margin-bottom: 1.75rem;
+    }
+
+    .login-card {
+      border: 1px solid GrayText;
+      border-radius: 8px;
+      padding: 1.75rem 1.5rem;
+      background-color: Canvas;
+    }
+
+    /* ── 管理者画面 全体シェル ── */
+
+    #screen-admin {
+      display: none; /* 認証成功後に表示 */
+    }
+
+    /* ── グローバルヘッダー ── */
+
+    .admin-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.85rem 1.5rem;
+      border-bottom: 1px solid GrayText;
+      background-color: Canvas;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .admin-header-left {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+    }
+
+    .admin-header-title {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .admin-header-name {
+      font-size: 0.82rem;
+      color: GrayText;
+    }
+
+    .admin-header-date {
+      font-size: 0.82rem;
+      color: GrayText;
+    }
+
+    .admin-header-logout {
+      font-size: 0.8rem;
+      background: none;
+      border: none;
+      color: GrayText;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+
+    /* ── タブナビゲーション ── */
+
+    .admin-tabs {
+      display: flex;
+      border-bottom: 1px solid GrayText;
+      background-color: Canvas;
+      overflow-x: auto;
+      /* スクロールバーを非表示にしつつスクロール可能にする */
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    .admin-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .admin-tab {
+      flex-shrink: 0;
+      padding: 0.7rem 1.25rem;
+      font-size: 0.88rem;
+      font-weight: 500;
+      border: none;
+      border-bottom: 2px solid transparent;
+      background: none;
+      color: GrayText;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+
+    .admin-tab:hover {
+      color: CanvasText;
+    }
+
+    .admin-tab.active {
+      color: CanvasText;
+      border-bottom-color: Highlight;
+      font-weight: 700;
+    }
+
+    /* ── タブコンテンツ共通 ── */
+
+    .admin-content {
+      padding: 1.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* 各タブパネルは非表示がデフォルト */
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    /* ── セクションタイトル ── */
+
+    .section-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: GrayText;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.85rem;
+      margin-top: 1.5rem;
+    }
+
+    .section-title:first-child {
+      margin-top: 0;
+    }
+
+    /* ── サマリーカードグリッド（ダッシュボード用） ── */
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.85rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .summary-card {
+      border: 1px solid GrayText;
+      border-radius: 8px;
+      padding: 1rem 1.1rem;
+      background-color: Canvas;
+    }
+
+    .summary-card-label {
+      font-size: 0.78rem;
+      color: GrayText;
+      margin-bottom: 0.35rem;
+    }
+
+    .summary-card-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      line-height: 1.1;
+    }
+
+    .summary-card-unit {
+      font-size: 0.85rem;
+      font-weight: 400;
+      color: GrayText;
+      margin-left: 0.2em;
+    }
+
+    /* 色バリエーション */
+    .value-green  { color: #1a7f37; }
+    .value-red    { color: #c0392b; }
+    .value-orange { color: #b45309; }
+    .value-gray   { color: GrayText; }
+
+    /* ── テーブル共通 ── */
+
+    .admin-table-wrap {
+      border: 1px solid GrayText;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 1.25rem;
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    .admin-table th {
+      background-color: Canvas;
+      font-weight: 600;
+      font-size: 0.78rem;
+      color: GrayText;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 0.6rem 0.85rem;
+      text-align: left;
+      border-bottom: 1px solid GrayText;
+    }
+
+    .admin-table td {
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid GrayText;
+      vertical-align: middle;
+    }
+
+    .admin-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* 偶数行に薄い背景 */
+    .admin-table tbody tr:nth-child(even) {
+      background-color: Canvas;
+    }
+
+    /* ── バッジ（ステータス表示） ── */
+
+    .badge {
+      display: inline-block;
+      padding: 0.2em 0.6em;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.4;
+      white-space: nowrap;
+    }
+
+    .badge-green  { background: #d1fae5; color: #065f46; }
+    .badge-red    { background: #fee2e2; color: #991b1b; }
+    .badge-yellow { background: #fef9c3; color: #92400e; }
+    .badge-gray   { background: #f3f4f6; color: #6b7280; }
+    .badge-blue   { background: #dbeafe; color: #1e40af; }
+
+    /* ── フィルター行 ── */
+
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-bottom: 1rem;
+      align-items: flex-end;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .filter-label {
+      font-size: 0.75rem;
+      color: GrayText;
+      font-weight: 500;
+    }
+
+    /* ── 打刻修正モーダル ── */
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: 1rem;
+    }
+
+    .modal-overlay.hidden {
+      display: none;
+    }
+
+    .modal {
+      background: Canvas;
+      border: 1px solid GrayText;
+      border-radius: 10px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 420px;
+      max-height: 90dvh;
+      overflow-y: auto;
+    }
+
+    .modal-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 0.65rem;
+      margin-top: 1.25rem;
+      justify-content: flex-end;
+    }
+
+    /* ── 承認・却下ボタン（申請管理用） ── */
+
+    .action-btn-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-approve {
+      font-size: 0.8rem;
+      padding: 0.3em 0.8em;
+      border-radius: 4px;
+      border: 1px solid #1a7f37;
+      background: none;
+      color: #1a7f37;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .btn-approve:hover {
+      background: #1a7f37;
+      color: #fff;
+    }
+
+    .btn-reject {
+      font-size: 0.8rem;
+      padding: 0.3em 0.8em;
+      border-radius: 4px;
+      border: 1px solid #c0392b;
+      background: none;
+      color: #c0392b;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .btn-reject:hover {
+      background: #c0392b;
+      color: #fff;
+    }
+
+    /* ── 空状態表示 ── */
+
+    .empty-state {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: GrayText;
+      font-size: 0.88rem;
+    }
+
+    /* ── 月次レポート バランスバー ── */
+
+    .balance-bar-wrap {
+      background: #f3f4f6;
+      border-radius: 4px;
+      height: 6px;
+      width: 80px;
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 0.5rem;
+    }
+
+    .balance-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: #1a7f37;
+      transition: width 0.3s;
+    }
+
+    .balance-bar-fill.short {
+      background: #c0392b;
+    }
+
+    /* ── スタッフ管理 インライン編集 ── */
+
+    .edit-inline-input {
+      width: 100%;
+      padding: 0.3em 0.5em;
+      border: 1px solid GrayText;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      background: Canvas;
+      color: CanvasText;
+    }
+
+    /* ── ローディング・オーバーレイ（タブ内） ── */
+
+    .tab-loading {
+      display: none;
+      text-align: center;
+      padding: 2rem;
+      color: GrayText;
+      font-size: 0.88rem;
+    }
+
+    .tab-loading.show {
+      display: block;
+    }
+
+    /* ── レスポンシブ：小画面でテーブルを横スクロール ── */
+
+    @media (max-width: 600px) {
+      .admin-content {
+        padding: 1rem 0.75rem;
+      }
+
+      .admin-table-wrap {
+        overflow-x: auto;
+      }
+
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       ログイン画面
+       管理者フラグ (is_admin: true) が返ってきた場合のみ通過
+       ============================================================ -->
+  <div id="screen-login">
+    <div class="login-wrap">
+      <p class="login-title">住岡 勤怠管理</p>
+      <p class="login-subtitle">管理者ダッシュボード</p>
+
+      <div class="login-card">
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="input-pin">PIN（4桁）</label>
+          <input
+            class="sumioka-input"
+            type="tel"
+            id="input-pin"
+            maxlength="4"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="0000"
+          >
+        </div>
+
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="input-password">パスワード</label>
+          <input
+            class="sumioka-input"
+            type="password"
+            id="input-password"
+            autocomplete="current-password"
+            placeholder="パスワードを入力"
+          >
+        </div>
+
+        <button
+          class="sumioka-btn sumioka-btn-primary sumioka-btn-block sumioka-mt-2"
+          id="btn-login"
+        >
+          ログイン
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       管理者画面
+       ============================================================ -->
+  <div id="screen-admin">
+
+    <!-- グローバルヘッダー -->
+    <header class="admin-header">
+      <div class="admin-header-left">
+        <span class="admin-header-title">住岡 管理者</span>
+        <span class="admin-header-name" id="admin-display-name">――</span>
+        <span class="admin-header-date" id="admin-display-date">――</span>
+      </div>
+      <button class="admin-header-logout" id="btn-logout">ログアウト</button>
+    </header>
+
+    <!-- タブナビゲーション -->
+    <nav class="admin-tabs" id="admin-tabs" role="tablist">
+      <button class="admin-tab active" data-tab="dashboard"   role="tab">① ダッシュボード</button>
+      <button class="admin-tab"        data-tab="attendance"  role="tab">② 勤怠一覧</button>
+      <button class="admin-tab"        data-tab="requests"    role="tab">③ 申請管理</button>
+      <button class="admin-tab"        data-tab="staff"       role="tab">④ スタッフ管理</button>
+      <button class="admin-tab"        data-tab="monthly"     role="tab">⑤ 月次レポート</button>
+    </nav>
+
+    <!-- ============================================================
+         タブコンテンツ
+         ============================================================ -->
+    <main class="admin-content">
+
+      <!-- ①ダッシュボード -->
+      <section class="tab-panel active" id="panel-dashboard">
+        <div class="tab-loading" id="loading-dashboard">読み込み中...</div>
+
+        <p class="section-title">本日のサマリー</p>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <div class="summary-card-label">出勤済み</div>
+            <div class="summary-card-value value-green">
+              <span id="dash-checkedin">―</span>
+              <span class="summary-card-unit">名</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">退勤済み</div>
+            <div class="summary-card-value value-gray">
+              <span id="dash-checkedout">―</span>
+              <span class="summary-card-unit">名</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">弁当（要）</div>
+            <div class="summary-card-value">
+              <span id="dash-lunch-yes">―</span>
+              <span class="summary-card-unit">個</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">弁当（不要）</div>
+            <div class="summary-card-value value-gray">
+              <span id="dash-lunch-no">―</span>
+              <span class="summary-card-unit">名</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">未打刻</div>
+            <div class="summary-card-value value-red">
+              <span id="dash-absent">―</span>
+              <span class="summary-card-unit">名</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">承認待ち申請</div>
+            <div class="summary-card-value value-orange">
+              <span id="dash-pending">―</span>
+              <span class="summary-card-unit">件</span>
+            </div>
+          </div>
+        </div>
+
+        <p class="section-title">本日の打刻状況</p>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>氏名</th>
+                <th>区分</th>
+                <th>出勤</th>
+                <th>退勤</th>
+                <th>弁当</th>
+                <th>ステータス</th>
+              </tr>
+            </thead>
+            <tbody id="dash-attendance-body">
+              <tr><td colspan="6" class="empty-state">読み込み中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="section-title">未打刻スタッフ</p>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>氏名</th>
+                <th>区分</th>
+                <th>所定終業</th>
+              </tr>
+            </thead>
+            <tbody id="dash-absent-body">
+              <tr><td colspan="3" class="empty-state">読み込み中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ②勤怠一覧 -->
+      <section class="tab-panel" id="panel-attendance">
+        <div class="tab-loading" id="loading-attendance">読み込み中...</div>
+
+        <!-- フィルター -->
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label">日付</span>
+            <input class="sumioka-input" type="date" id="att-filter-date" style="width:160px">
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">スタッフ</span>
+            <select class="sumioka-input" id="att-filter-staff" style="width:140px">
+              <option value="">全員</option>
+              <!-- JS で動的に挿入 -->
+            </select>
+          </div>
+          <button class="sumioka-btn sumioka-btn-primary" id="btn-att-search"
+            style="align-self:flex-end">検索</button>
+        </div>
+
+        <!-- 一覧テーブル -->
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>日付</th>
+                <th>氏名</th>
+                <th>区分</th>
+                <th>出勤</th>
+                <th>退勤</th>
+                <th>実働</th>
+                <th>弁当</th>
+                <th>業務報告</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="att-body">
+              <tr><td colspan="9" class="empty-state">条件を指定して検索してください</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ③申請管理 -->
+      <section class="tab-panel" id="panel-requests">
+        <div class="tab-loading" id="loading-requests">読み込み中...</div>
+
+        <!-- フィルター -->
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label">ステータス</span>
+            <select class="sumioka-input" id="req-filter-status" style="width:130px">
+              <option value="pending">承認待ち</option>
+              <option value="all">全件</option>
+              <option value="approved">承認済み</option>
+              <option value="rejected">却下済み</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">種別</span>
+            <select class="sumioka-input" id="req-filter-type" style="width:120px">
+              <option value="">すべて</option>
+              <option value="休み">休み</option>
+              <option value="遅刻">遅刻</option>
+              <option value="早退">早退</option>
+              <option value="補填">補填予定</option>
+            </select>
+          </div>
+          <button class="sumioka-btn sumioka-btn-primary" id="btn-req-search"
+            style="align-self:flex-end">絞り込み</button>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>申請日</th>
+                <th>氏名</th>
+                <th>種別</th>
+                <th>対象日</th>
+                <th>時間</th>
+                <th>理由</th>
+                <th>ステータス</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="req-body">
+              <tr><td colspan="8" class="empty-state">読み込み中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ④スタッフ管理 -->
+      <section class="tab-panel" id="panel-staff">
+        <div class="tab-loading" id="loading-staff">読み込み中...</div>
+
+        <!-- 区分切り替え -->
+        <div class="filter-row" style="margin-bottom:1rem">
+          <div class="filter-group">
+            <span class="filter-label">区分</span>
+            <select class="sumioka-input" id="staff-filter-type" style="width:120px">
+              <option value="all">全員</option>
+              <option value="user">利用者</option>
+              <option value="staff">職員</option>
+            </select>
+          </div>
+          <button class="sumioka-btn sumioka-btn-primary" id="btn-staff-search"
+            style="align-self:flex-end">絞り込み</button>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>氏名</th>
+                <th>区分</th>
+                <th>PIN</th>
+                <th>雇用形態</th>
+                <th>所定終業</th>
+                <th>時給/月給</th>
+                <th>管理者</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="staff-body">
+              <tr><td colspan="8" class="empty-state">読み込み中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ⑤月次レポート -->
+      <section class="tab-panel" id="panel-monthly">
+        <div class="tab-loading" id="loading-monthly">読み込み中...</div>
+
+        <!-- 月選択 -->
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label">対象月</span>
+            <input class="sumioka-input" type="month" id="monthly-filter-month" style="width:160px">
+          </div>
+          <button class="sumioka-btn sumioka-btn-primary" id="btn-monthly-search"
+            style="align-self:flex-end">集計</button>
+        </div>
+
+        <!-- サマリー -->
+        <div class="summary-grid" id="monthly-summary-grid" style="display:none">
+          <div class="summary-card">
+            <div class="summary-card-label">対象人数</div>
+            <div class="summary-card-value">
+              <span id="monthly-total-members">―</span>
+              <span class="summary-card-unit">名</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">出勤超過</div>
+            <div class="summary-card-value value-green">
+              <span id="monthly-over-count">―</span>
+              <span class="summary-card-unit">名</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">時間不足</div>
+            <div class="summary-card-value value-red">
+              <span id="monthly-short-count">―</span>
+              <span class="summary-card-unit">名</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>氏名</th>
+                <th>区分</th>
+                <th>出勤日数</th>
+                <th>実働時間</th>
+                <th>所定時間</th>
+                <th>残不足</th>
+                <th>出勤率</th>
+              </tr>
+            </thead>
+            <tbody id="monthly-body">
+              <tr><td colspan="7" class="empty-state">月を選択して集計してください</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main><!-- /.admin-content -->
+
+  </div><!-- /#screen-admin -->
+
+  <!-- ============================================================
+       打刻修正モーダル（②勤怠一覧から呼び出す）
+       管理者のみが操作可能。修正は操作ログに記録される（GAS側）
+       ============================================================ -->
+  <div class="modal-overlay hidden" id="modal-edit-attendance">
+    <div class="modal">
+      <p class="modal-title">打刻修正</p>
+
+      <!-- 対象情報（読み取り専用で表示） -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label">対象</label>
+        <div id="modal-edit-target" style="font-size:0.9rem;padding:0.3rem 0">―</div>
+      </div>
+
+      <input type="hidden" id="modal-edit-employee-id">
+      <input type="hidden" id="modal-edit-date">
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-edit-timein">出勤時刻</label>
+        <input class="sumioka-input" type="time" id="modal-edit-timein">
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-edit-timeout">退勤時刻</label>
+        <input class="sumioka-input" type="time" id="modal-edit-timeout">
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-edit-lunch">弁当</label>
+        <select class="sumioka-input" id="modal-edit-lunch">
+          <option value="true">要</option>
+          <option value="false">不要</option>
+        </select>
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-edit-memo">業務報告</label>
+        <textarea class="sumioka-textarea" id="modal-edit-memo" rows="3"></textarea>
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-edit-reason">修正理由（監査ログ用・必須）</label>
+        <input class="sumioka-input" type="text" id="modal-edit-reason"
+          placeholder="例：打刻忘れのため管理者が修正">
+      </div>
+
+      <div class="modal-footer">
+        <button class="sumioka-btn" id="modal-edit-cancel">キャンセル</button>
+        <button class="sumioka-btn sumioka-btn-primary" id="modal-edit-save">修正を保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       スタッフ編集モーダル（④スタッフ管理から呼び出す）
+       ============================================================ -->
+  <div class="modal-overlay hidden" id="modal-edit-staff">
+    <div class="modal">
+      <p class="modal-title">スタッフ情報を編集</p>
+
+      <input type="hidden" id="modal-staff-id">
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-staff-name">氏名</label>
+        <input class="sumioka-input" type="text" id="modal-staff-name">
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-staff-pin">PIN（4桁）</label>
+        <input class="sumioka-input" type="tel" id="modal-staff-pin"
+          maxlength="4" inputmode="numeric">
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-staff-password">パスワード（空欄＝変更なし）</label>
+        <input class="sumioka-input" type="text" id="modal-staff-password"
+          placeholder="変更する場合のみ入力">
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-staff-scheduled-end">所定終業時刻</label>
+        <input class="sumioka-input" type="time" id="modal-staff-scheduled-end">
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-staff-employment">雇用形態</label>
+        <select class="sumioka-input" id="modal-staff-employment">
+          <option value="">未設定</option>
+          <option value="常勤">常勤</option>
+          <option value="非常勤">非常勤</option>
+          <option value="パート">パート</option>
+          <option value="利用者">利用者</option>
+        </select>
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-staff-wage">時給 / 月給（円）</label>
+        <input class="sumioka-input" type="number" id="modal-staff-wage"
+          placeholder="例：1000">
+      </div>
+
+      <div class="modal-footer">
+        <button class="sumioka-btn" id="modal-staff-cancel">キャンセル</button>
+        <button class="sumioka-btn sumioka-btn-primary" id="modal-staff-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============================================================
+       JavaScript
+       ============================================================ -->
+  <script>
+    'use strict';
+
+    // ============================================================
+    // 設定
+    // ============================================================
+
+    /**
+     * 管理者専用 GAS デプロイ URL。
+     * kintai.html とは別の GAS デプロイを使う方針（管理者アクションを分離）。
+     * URL は変えない運用。変更が必要な場合はこの1行だけ書き換える。
+     */
+    const GAS_URL_ADMIN = 'https://script.google.com/macros/s/__ADMIN_DEPLOY_URL__/exec';
+
+    /**
+     * 管理者セッション保存キー（kintai.html のセッションと名前空間を分ける）。
+     */
+    const SESSION_KEY = 'admin_session';
+
+    // ============================================================
+    // 状態管理
+    // ============================================================
+
+    /**
+     * 管理者画面のグローバルステート。
+     * 認証情報と、各タブで使い回すデータを1か所で管理する。
+     *
+     * @type {{
+     *   employeeId : string,
+     *   name       : string,
+     *   staffList  : Array,   // スタッフマスタ（フィルタ用プルダウン等で使う）
+     * }}
+     */
+    const adminState = {
+      employeeId : '',
+      name       : '',
+      staffList  : [],
+    };
+
+    // ============================================================
+    // 初期化
+    // ============================================================
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // GAS URL を共通 api.js にセット
+      setGasUrl(GAS_URL_ADMIN);
+
+      // 月次フィルタの初期値を今月にする
+      const today = new Date();
+      const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+      document.getElementById('monthly-filter-month').value = ym;
+
+      // 勤怠一覧フィルタの初期値を今日にする
+      document.getElementById('att-filter-date').value = todayString();
+
+      // 保存済みセッションがあれば自動ログイン
+      const session = SumiokaStorage.load(SESSION_KEY);
+      if (session && session.employeeId) {
+        applySession(session);
+        loadInitialData();
+      }
+
+      bindEvents();
+
+      // 今日の日付をヘッダーに表示
+      document.getElementById('admin-display-date').textContent = todayString();
+    });
+
+    // ============================================================
+    // イベント設定
+    // ============================================================
+
+    function bindEvents() {
+      // ── 認証 ──
+      document.getElementById('btn-login').addEventListener('click', handleLogin);
+      ['input-pin', 'input-password'].forEach(id => {
+        document.getElementById(id).addEventListener('keydown', e => {
+          if (e.key === 'Enter') handleLogin();
+        });
+      });
+      document.getElementById('btn-logout').addEventListener('click', handleLogout);
+
+      // ── タブ切り替え ──
+      document.querySelectorAll('.admin-tab').forEach(tab => {
+        tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+      });
+
+      // ── ①ダッシュボード ──
+      // 自動ロードのため個別ボタンなし
+
+      // ── ②勤怠一覧 ──
+      document.getElementById('btn-att-search').addEventListener('click', loadAttendance);
+
+      // ── ③申請管理 ──
+      document.getElementById('btn-req-search').addEventListener('click', loadRequests);
+      document.getElementById('req-filter-status').addEventListener('change', loadRequests);
+
+      // ── ④スタッフ管理 ──
+      document.getElementById('btn-staff-search').addEventListener('click', loadStaff);
+
+      // ── ⑤月次レポート ──
+      document.getElementById('btn-monthly-search').addEventListener('click', loadMonthly);
+
+      // ── 打刻修正モーダル ──
+      document.getElementById('modal-edit-cancel').addEventListener('click', closeEditModal);
+      document.getElementById('modal-edit-save').addEventListener('click', saveAttendanceEdit);
+
+      // モーダル外クリックで閉じる（UX向上）
+      document.getElementById('modal-edit-attendance').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeEditModal();
+      });
+
+      // ── スタッフ編集モーダル ──
+      document.getElementById('modal-staff-cancel').addEventListener('click', closeStaffModal);
+      document.getElementById('modal-staff-save').addEventListener('click', saveStaffEdit);
+      document.getElementById('modal-edit-staff').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeStaffModal();
+      });
+    }
+
+    // ============================================================
+    // 認証
+    // ============================================================
+
+    /**
+     * ログイン処理。
+     * PIN + パスワードを GAS に送り、is_admin: true が返った場合のみ通過する。
+     * 一般スタッフが誤ってこのページを開いてもログインできないようにする。
+     */
+    async function handleLogin() {
+      const pin      = document.getElementById('input-pin').value.trim();
+      const password = document.getElementById('input-password').value.trim();
+      const btn      = document.getElementById('btn-login');
+
+      if (!pin || !password) {
+        showToast('PIN とパスワードを入力してください。', 'warning');
+        return;
+      }
+
+      showLoading('認証中...');
+
+      const result = await callGAS('authenticate', { pin, password }, { button: btn });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      const { employee } = result.data;
+
+      // 管理者フラグを確認する。一般スタッフはアクセス拒否
+      if (!employee.data?.is_admin) {
+        showToast('管理者権限がありません。', 'error');
+        return;
+      }
+
+      // セッション保存
+      SumiokaStorage.save(SESSION_KEY, {
+        employeeId : employee.id,
+        name       : employee.name,
+      });
+
+      applySession({ employeeId: employee.id, name: employee.name });
+      await loadInitialData();
+    }
+
+    /**
+     * セッション情報を adminState に適用して管理者画面へ切り替える。
+     *
+     * @param {{ employeeId: string, name: string }} session
+     */
+    function applySession(session) {
+      adminState.employeeId = session.employeeId;
+      adminState.name       = session.name;
+
+      document.getElementById('admin-display-name').textContent = session.name;
+      showScreen('admin');
+    }
+
+    /**
+     * ログアウト処理。セッションを削除してログイン画面に戻る。
+     */
+    async function handleLogout() {
+      const ok = await confirm('ログアウトしますか？');
+      if (!ok) return;
+
+      SumiokaStorage.remove(SESSION_KEY);
+      Object.assign(adminState, { employeeId: '', name: '', staffList: [] });
+
+      document.getElementById('input-pin').value      = '';
+      document.getElementById('input-password').value = '';
+
+      showScreen('login');
+    }
+
+    // ============================================================
+    // 画面切り替え
+    // ============================================================
+
+    /**
+     * ログイン画面 / 管理者画面を切り替える。
+     *
+     * @param {'login'|'admin'} screen
+     */
+    function showScreen(screen) {
+      document.getElementById('screen-login').style.display =
+        screen === 'login' ? '' : 'none';
+      document.getElementById('screen-admin').style.display =
+        screen === 'admin' ? '' : 'none';
+    }
+
+    /**
+     * タブを切り替える。
+     * 対応するパネルを表示し、未ロードのタブは初回ロードを実行する。
+     *
+     * @param {string} tabKey
+     */
+    function switchTab(tabKey) {
+      // ナビゲーションの active を付け替える
+      document.querySelectorAll('.admin-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === tabKey);
+      });
+
+      // パネルの active を付け替える
+      document.querySelectorAll('.tab-panel').forEach(p => {
+        p.classList.toggle('active', p.id === `panel-${tabKey}`);
+      });
+
+      // タブ初回表示時にデータを自動ロードする
+      switch (tabKey) {
+        case 'requests': loadRequests();   break;
+        case 'staff':    loadStaff();      break;
+        case 'monthly':  /* 明示的に検索ボタンを押す運用 */ break;
+      }
+    }
+
+    // ============================================================
+    // 初期データロード（ログイン後に一括取得）
+    // ============================================================
+
+    /**
+     * 認証成功後に最初に呼ぶ。
+     * ダッシュボードのデータとスタッフ一覧（フィルタ用）を取得する。
+     */
+    async function loadInitialData() {
+      await Promise.all([
+        loadDashboard(),
+        loadStaffListForFilter(),
+      ]);
+    }
+
+    // ============================================================
+    // ①ダッシュボード
+    // ============================================================
+
+    /**
+     * 本日の打刻状況と承認待ち申請数をダッシュボードに表示する。
+     */
+    async function loadDashboard() {
+      setTabLoading('dashboard', true);
+
+      const today  = todayString();
+      const result = await callGAS('admin_dashboard', { date: today });
+
+      setTabLoading('dashboard', false);
+
+      if (!result.success) {
+        showToast('ダッシュボードの読み込みに失敗しました。', 'error');
+        return;
+      }
+
+      const data = result.data;
+
+      // サマリーカードを更新
+      setText('dash-checkedin',  data.checked_in_count  ?? '―');
+      setText('dash-checkedout', data.checked_out_count ?? '―');
+      setText('dash-lunch-yes',  data.lunch_yes_count   ?? '―');
+      setText('dash-lunch-no',   data.lunch_no_count    ?? '―');
+      setText('dash-absent',     data.absent_count      ?? '―');
+      setText('dash-pending',    data.pending_count     ?? '―');
+
+      // 打刻一覧テーブルを描画
+      renderDashAttendance(data.attendances || []);
+
+      // 未打刻スタッフを描画
+      renderDashAbsent(data.absent_staff || []);
+    }
+
+    /**
+     * 本日の打刻一覧をテーブルに描画する。
+     *
+     * @param {Array} records
+     */
+    function renderDashAttendance(records) {
+      const tbody = document.getElementById('dash-attendance-body');
+
+      if (records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">本日の打刻データがありません</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = records.map(r => {
+        const status = r.time_out ? '退勤済' : r.time_in ? '出勤中' : '未打刻';
+        const badgeClass = r.time_out ? 'badge-gray' : r.time_in ? 'badge-green' : 'badge-red';
+
+        return `
+          <tr>
+            <td>${escHtml(r.name)}</td>
+            <td>${escHtml(r.type || '―')}</td>
+            <td>${escHtml(r.time_in  || '―')}</td>
+            <td>${escHtml(r.time_out || '―')}</td>
+            <td>${r.lunch === true ? '要' : r.lunch === false ? '不要' : '―'}</td>
+            <td><span class="badge ${badgeClass}">${status}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    /**
+     * 未打刻スタッフ一覧を描画する。
+     *
+     * @param {Array} staff
+     */
+    function renderDashAbsent(staff) {
+      const tbody = document.getElementById('dash-absent-body');
+
+      if (staff.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">全員出勤済みです ✓</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = staff.map(s => `
+        <tr>
+          <td>${escHtml(s.name)}</td>
+          <td>${escHtml(s.type || '―')}</td>
+          <td>${escHtml(s.scheduled_end || '―')}</td>
+        </tr>
+      `).join('');
+    }
+
+    // ============================================================
+    // ②勤怠一覧
+    // ============================================================
+
+    /**
+     * フィルター条件で勤怠レコードを取得してテーブルに描画する。
+     * 管理者はここから打刻修正モーダルを呼び出せる。
+     */
+    async function loadAttendance() {
+      setTabLoading('attendance', true);
+
+      const date  = document.getElementById('att-filter-date').value;
+      const empId = document.getElementById('att-filter-staff').value;
+
+      // date か empId のどちらかは必須（全件取得を防ぐ）
+      if (!date && !empId) {
+        showToast('日付またはスタッフを指定してください。', 'warning');
+        setTabLoading('attendance', false);
+        return;
+      }
+
+      const result = await callGAS('admin_attendance_list', { date, employee_id: empId });
+
+      setTabLoading('attendance', false);
+
+      if (!result.success) {
+        showToast('勤怠データの取得に失敗しました。', 'error');
+        return;
+      }
+
+      renderAttendanceTable(result.data.records || []);
+    }
+
+    /**
+     * 勤怠一覧テーブルを描画する。
+     * 各行に「修正」ボタンを設置し、クリックで打刻修正モーダルを開く。
+     *
+     * @param {Array} records
+     */
+    function renderAttendanceTable(records) {
+      const tbody = document.getElementById('att-body');
+
+      if (records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">該当するデータがありません</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = records.map(r => {
+        const workMin = calcWorkMinutes(r.time_in, r.time_out);
+        const workStr = workMin > 0 ? formatMinutes(workMin) : '―';
+
+        return `
+          <tr>
+            <td>${escHtml(r.date || '―')}</td>
+            <td>${escHtml(r.name || '―')}</td>
+            <td>${escHtml(r.type || '―')}</td>
+            <td>${escHtml(r.time_in  || '―')}</td>
+            <td>${escHtml(r.time_out || '―')}</td>
+            <td>${workStr}</td>
+            <td>${r.lunch === true ? '要' : r.lunch === false ? '不要' : '―'}</td>
+            <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              title="${escHtml(r.memo || '')}">
+              ${escHtml(r.memo || '―')}
+            </td>
+            <td>
+              <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
+                onclick="openEditModal(${escJson(r)})">
+                修正
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ── 打刻修正モーダル ──
+
+    /**
+     * 打刻修正モーダルを開き、選択行のデータをフォームに流し込む。
+     *
+     * @param {Object} record - 勤怠レコード
+     */
+    function openEditModal(record) {
+      document.getElementById('modal-edit-target').textContent =
+        `${record.name} ／ ${record.date}`;
+      document.getElementById('modal-edit-employee-id').value = record.employee_id || '';
+      document.getElementById('modal-edit-date').value        = record.date        || '';
+      document.getElementById('modal-edit-timein').value      = record.time_in     || '';
+      document.getElementById('modal-edit-timeout').value     = record.time_out    || '';
+      document.getElementById('modal-edit-lunch').value       = String(record.lunch ?? 'false');
+      document.getElementById('modal-edit-memo').value        = record.memo        || '';
+      document.getElementById('modal-edit-reason').value      = '';
+
+      document.getElementById('modal-edit-attendance').classList.remove('hidden');
+    }
+
+    /**
+     * 打刻修正モーダルを閉じる。
+     */
+    function closeEditModal() {
+      document.getElementById('modal-edit-attendance').classList.add('hidden');
+    }
+
+    /**
+     * 打刻修正を GAS に送信する。
+     * 修正理由は必須（監査ログに記録するため）。
+     * 成功後にテーブルを再取得して最新状態を表示する。
+     */
+    async function saveAttendanceEdit() {
+      const employeeId = document.getElementById('modal-edit-employee-id').value;
+      const date       = document.getElementById('modal-edit-date').value;
+      const timeIn     = document.getElementById('modal-edit-timein').value;
+      const timeOut    = document.getElementById('modal-edit-timeout').value;
+      const lunch      = document.getElementById('modal-edit-lunch').value === 'true';
+      const memo       = document.getElementById('modal-edit-memo').value.trim();
+      const reason     = document.getElementById('modal-edit-reason').value.trim();
+
+      // 修正理由は監査ログのために必須
+      if (!reason) {
+        showToast('修正理由を入力してください。', 'warning');
+        return;
+      }
+
+      const ok = await confirm('打刻を修正しますか？\nこの操作は操作ログに記録されます。');
+      if (!ok) return;
+
+      const btn = document.getElementById('modal-edit-save');
+
+      showLoading('修正を保存中...');
+
+      const result = await callGAS('admin_edit_attendance', {
+        employee_id     : employeeId,
+        date            : date,
+        attendance_data : { time_in: timeIn, time_out: timeOut, lunch, memo },
+        admin_id        : adminState.employeeId,
+        reason          : reason,
+      }, { button: btn });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail, saveAttendanceEdit);
+        return;
+      }
+
+      showToast('打刻を修正しました。', 'success');
+      closeEditModal();
+      loadAttendance(); // テーブルを再取得
+    }
+
+    // ============================================================
+    // ③申請管理
+    // ============================================================
+
+    /**
+     * 申請一覧を取得してテーブルに描画する。
+     * ステータス・種別でフィルタリングできる。
+     */
+    async function loadRequests() {
+      setTabLoading('requests', true);
+
+      const status = document.getElementById('req-filter-status').value;
+      const type   = document.getElementById('req-filter-type').value;
+
+      const result = await callGAS('admin_requests', { status, type });
+
+      setTabLoading('requests', false);
+
+      if (!result.success) {
+        showToast('申請データの取得に失敗しました。', 'error');
+        return;
+      }
+
+      renderRequestsTable(result.data.requests || []);
+    }
+
+    /**
+     * 申請一覧テーブルを描画する。
+     * 承認待ちの申請には「承認」「却下」ボタンを表示する。
+     *
+     * @param {Array} requests
+     */
+    function renderRequestsTable(requests) {
+      const tbody = document.getElementById('req-body');
+
+      if (requests.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">該当する申請がありません</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = requests.map(req => {
+        const badgeMap = {
+          pending  : 'badge-yellow',
+          approved : 'badge-green',
+          rejected : 'badge-red',
+        };
+        const labelMap = {
+          pending  : '承認待ち',
+          approved : '承認済み',
+          rejected : '却下済み',
+        };
+        const statusClass = badgeMap[req.status] || 'badge-gray';
+        const statusLabel = labelMap[req.status] || req.status || '―';
+
+        // 承認待ちのみ操作ボタンを表示
+        const actionHtml = req.status === 'pending'
+          ? `<div class="action-btn-group">
+               <button class="btn-approve" onclick="handleRequestAction('${escHtml(req.id)}', 'approve')">承認</button>
+               <button class="btn-reject"  onclick="handleRequestAction('${escHtml(req.id)}', 'reject')">却下</button>
+             </div>`
+          : '―';
+
+        return `
+          <tr>
+            <td>${escHtml(req.created_at || '―')}</td>
+            <td>${escHtml(req.name || '―')}</td>
+            <td>${escHtml(req.type || '―')}</td>
+            <td>${escHtml(req.target_date || '―')}</td>
+            <td>${escHtml(req.time || '―')}</td>
+            <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              title="${escHtml(req.reason || '')}">
+              ${escHtml(req.reason || '―')}
+            </td>
+            <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+            <td>${actionHtml}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    /**
+     * 申請の承認 / 却下処理。
+     * 成功後に申請一覧と申請数バッジを更新する。
+     *
+     * @param {string} requestId
+     * @param {'approve'|'reject'} action
+     */
+    async function handleRequestAction(requestId, action) {
+      const label = action === 'approve' ? '承認' : '却下';
+      const ok    = await confirm(`この申請を${label}しますか？`);
+      if (!ok) return;
+
+      showLoading(`${label}中...`);
+
+      const result = await callGAS('admin_update_request', {
+        request_id : requestId,
+        action     : action,
+        admin_id   : adminState.employeeId,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast(`申請を${label}しました。`, 'success');
+
+      // 一覧と承認待ち件数を更新
+      loadRequests();
+      setText('dash-pending', result.data?.pending_count ?? '―');
+    }
+
+    // ============================================================
+    // ④スタッフ管理
+    // ============================================================
+
+    /**
+     * スタッフ一覧を取得してテーブルに描画する。
+     * フィルタ用プルダウンにも同じデータを使う。
+     */
+    async function loadStaff() {
+      setTabLoading('staff', true);
+
+      const type = document.getElementById('staff-filter-type').value;
+
+      const result = await callGAS('admin_staff_list', { type });
+
+      setTabLoading('staff', false);
+
+      if (!result.success) {
+        showToast('スタッフデータの取得に失敗しました。', 'error');
+        return;
+      }
+
+      adminState.staffList = result.data.staff || [];
+      renderStaffTable(adminState.staffList);
+    }
+
+    /**
+     * フィルタ用プルダウン（勤怠一覧タブ）を最新のスタッフ一覧で更新する。
+     * ログイン直後に1回だけ呼ぶ。
+     */
+    async function loadStaffListForFilter() {
+      const result = await callGAS('admin_staff_list', { type: 'all' });
+      if (!result.success) return;
+
+      adminState.staffList = result.data.staff || [];
+
+      const select = document.getElementById('att-filter-staff');
+      // 先頭の「全員」オプションを残して追加する
+      adminState.staffList.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value       = s.id;
+        opt.textContent = `${s.name}（${s.type || '―'}）`;
+        select.appendChild(opt);
+      });
+    }
+
+    /**
+     * スタッフ一覧テーブルを描画する。
+     * 各行に「編集」ボタンを設置し、クリックでスタッフ編集モーダルを開く。
+     *
+     * @param {Array} staff
+     */
+    function renderStaffTable(staff) {
+      const tbody = document.getElementById('staff-body');
+
+      if (staff.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">スタッフデータがありません</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = staff.map(s => `
+        <tr>
+          <td>${escHtml(s.name || '―')}</td>
+          <td>${escHtml(s.type || '―')}</td>
+          <td>${escHtml(s.pin  || '―')}</td>
+          <td>${escHtml(s.employment || '―')}</td>
+          <td>${escHtml(s.scheduled_end || '―')}</td>
+          <td>${s.wage ? `${Number(s.wage).toLocaleString()}円` : '―'}</td>
+          <td>${s.is_admin ? '<span class="badge badge-blue">管理者</span>' : '―'}</td>
+          <td>
+            <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
+              onclick="openStaffModal(${escJson(s)})">
+              編集
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ── スタッフ編集モーダル ──
+
+    /**
+     * スタッフ編集モーダルを開く。
+     *
+     * @param {Object} staff
+     */
+    function openStaffModal(staff) {
+      document.getElementById('modal-staff-id').value             = staff.id            || '';
+      document.getElementById('modal-staff-name').value           = staff.name          || '';
+      document.getElementById('modal-staff-pin').value            = staff.pin           || '';
+      document.getElementById('modal-staff-password').value       = ''; // 変更時のみ入力
+      document.getElementById('modal-staff-scheduled-end').value  = staff.scheduled_end || '';
+      document.getElementById('modal-staff-employment').value     = staff.employment    || '';
+      document.getElementById('modal-staff-wage').value           = staff.wage          || '';
+
+      document.getElementById('modal-edit-staff').classList.remove('hidden');
+    }
+
+    /**
+     * スタッフ編集モーダルを閉じる。
+     */
+    function closeStaffModal() {
+      document.getElementById('modal-edit-staff').classList.add('hidden');
+    }
+
+    /**
+     * スタッフ情報を GAS に送信して保存する。
+     * パスワードは空欄の場合は送信しない（変更なしとして扱う）。
+     */
+    async function saveStaffEdit() {
+      const id           = document.getElementById('modal-staff-id').value;
+      const name         = document.getElementById('modal-staff-name').value.trim();
+      const pin          = document.getElementById('modal-staff-pin').value.trim();
+      const password     = document.getElementById('modal-staff-password').value.trim();
+      const scheduledEnd = document.getElementById('modal-staff-scheduled-end').value;
+      const employment   = document.getElementById('modal-staff-employment').value;
+      const wage         = document.getElementById('modal-staff-wage').value;
+
+      if (!name || !pin) {
+        showToast('氏名と PIN は必須です。', 'warning');
+        return;
+      }
+
+      if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+        showToast('PIN は4桁の数字で入力してください。', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('modal-staff-save');
+
+      showLoading('保存中...');
+
+      // パスワードが未入力の場合はフィールドごと省略（変更なし扱い）
+      const payload = {
+        employee_id   : id,
+        admin_id      : adminState.employeeId,
+        staff_data    : {
+          name,
+          pin,
+          scheduled_end : scheduledEnd,
+          employment,
+          wage          : wage ? Number(wage) : null,
+          ...(password ? { password } : {}), // 空欄なら含めない
+        },
+      };
+
+      const result = await callGAS('admin_update_staff', payload, { button: btn });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail, saveStaffEdit);
+        return;
+      }
+
+      showToast('スタッフ情報を更新しました。', 'success');
+      closeStaffModal();
+      loadStaff(); // テーブルを再取得
+    }
+
+    // ============================================================
+    // ⑤月次レポート
+    // ============================================================
+
+    /**
+     * 指定月の全スタッフ月次サマリーを取得してテーブルに描画する。
+     */
+    async function loadMonthly() {
+      const yearMonth = document.getElementById('monthly-filter-month').value;
+
+      if (!yearMonth) {
+        showToast('対象月を選択してください。', 'warning');
+        return;
+      }
+
+      setTabLoading('monthly', true);
+
+      const result = await callGAS('monthly_report', { year_month: yearMonth });
+
+      setTabLoading('monthly', false);
+
+      if (!result.success) {
+        showToast('月次レポートの取得に失敗しました。', 'error');
+        return;
+      }
+
+      renderMonthlyTable(result.data.report || []);
+    }
+
+    /**
+     * 月次レポートテーブルを描画する。
+     * 残不足時間に応じてバーとテキスト色で視覚的に差をつける。
+     *
+     * @param {Array} report
+     */
+    function renderMonthlyTable(report) {
+      const tbody = document.getElementById('monthly-body');
+
+      if (report.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">該当するデータがありません</td></tr>';
+        return;
+      }
+
+      // サマリーカードを更新
+      const overCount  = report.filter(r => (r.balance_minutes ?? 0) >= 0).length;
+      const shortCount = report.filter(r => (r.balance_minutes ?? 0) <  0).length;
+
+      setText('monthly-total-members', report.length);
+      setText('monthly-over-count',    overCount);
+      setText('monthly-short-count',   shortCount);
+      document.getElementById('monthly-summary-grid').style.display = '';
+
+      tbody.innerHTML = report.map(r => {
+        const balMin  = r.balance_minutes ?? 0;
+        const isOver  = balMin >= 0;
+        const balStr  = formatMinutes(balMin, true);
+        const balClass = isOver ? 'value-green' : 'value-red';
+
+        // 残不足バーの幅（最大 ±120分 を 100% として正規化）
+        const barWidth = Math.min(100, Math.abs(balMin) / 120 * 100);
+        const barClass = isOver ? '' : 'short';
+
+        const workStr  = r.total_work_minutes != null
+          ? formatMinutes(r.total_work_minutes)
+          : '―';
+        const schedStr = r.scheduled_minutes != null
+          ? formatMinutes(r.scheduled_minutes)
+          : '―';
+
+        // 出勤率（小数点1桁）
+        const rateStr = r.attendance_rate != null
+          ? `${Number(r.attendance_rate).toFixed(1)}%`
+          : '―';
+
+        return `
+          <tr>
+            <td>${escHtml(r.name || '―')}</td>
+            <td>${escHtml(r.type || '―')}</td>
+            <td>${r.work_days ?? '―'}</td>
+            <td>${workStr}</td>
+            <td>${schedStr}</td>
+            <td>
+              <span class="${balClass}" style="font-weight:700">${escHtml(balStr)}</span>
+              <span class="balance-bar-wrap">
+                <span class="balance-bar-fill ${barClass}" style="width:${barWidth}%"></span>
+              </span>
+            </td>
+            <td>${rateStr}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ============================================================
+    // UI ヘルパー
+    // ============================================================
+
+    /**
+     * タブのローディング表示を切り替える。
+     *
+     * @param {string}  tabKey
+     * @param {boolean} show
+     */
+    function setTabLoading(tabKey, show) {
+      const el = document.getElementById(`loading-${tabKey}`);
+      if (el) el.classList.toggle('show', show);
+    }
+
+    /**
+     * 指定 ID の要素のテキストを更新する。
+     *
+     * @param {string} id
+     * @param {string|number} text
+     */
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    // ============================================================
+    // ユーティリティ
+    // ============================================================
+
+    /**
+     * 今日の日付を 'YYYY-MM-DD' 形式で返す。
+     *
+     * @returns {string}
+     */
+    function todayString() {
+      const d   = new Date();
+      const y   = d.getFullYear();
+      const m   = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    /**
+     * 出勤・退勤時刻（HH:MM）から勤務時間（分）を計算する。
+     * どちらかが未入力の場合は 0 を返す。
+     *
+     * @param {string} timeIn
+     * @param {string} timeOut
+     * @returns {number}
+     */
+    function calcWorkMinutes(timeIn, timeOut) {
+      if (!timeIn || !timeOut) return 0;
+      const [ih, im] = timeIn.split(':').map(Number);
+      const [oh, om] = timeOut.split(':').map(Number);
+      return Math.max(0, (oh * 60 + om) - (ih * 60 + im));
+    }
+
+    /**
+     * 分数を 'H時間M分' 形式にフォーマットする。
+     *
+     * @param {number}  minutes
+     * @param {boolean} [showSign=false]
+     * @returns {string}
+     */
+    function formatMinutes(minutes, showSign = false) {
+      const abs  = Math.abs(minutes);
+      const h    = Math.floor(abs / 60);
+      const m    = abs % 60;
+      const sign = showSign ? (minutes >= 0 ? '+' : '-') : '';
+      return `${sign}${h}時間${m}分`;
+    }
+
+    /**
+     * XSS 対策のため HTML 特殊文字をエスケープする。
+     * テーブルの innerHTML に動的データを埋め込む際に必ず使う。
+     *
+     * @param {*} str
+     * @returns {string}
+     */
+    function escHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * オブジェクトを onclick 属性に埋め込める JSON 文字列に変換する。
+     * escHtml と組み合わせて使う。
+     *
+     * @param {Object} obj
+     * @returns {string}
+     */
+    function escJson(obj) {
+      // JSON.stringify 後に属性値として安全なようにシングルクォートをエスケープ
+      return escHtml(JSON.stringify(obj));
+    }
+  </script>
+</body>
+</html>
