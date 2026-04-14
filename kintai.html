@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
+<!-- saved from url=(0055)file:///C:/Users/Happy-handa001/Downloads/kintai_1.html -->
+<html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>打刻 v1.0.0 | 住岡</title>
+  <title>打刻 | 住岡</title>
 
   <!-- 共通基盤（読み込み順を守る） -->
-  <link rel="stylesheet" href="/sumioka-attendance/common/styles.css">
-  <script src="/sumioka-attendance/common/api.js"></script>
-  <script src="/sumioka-attendance/common/ui.js"></script>
-  <script src="/sumioka-attendance/common/storage.js"></script>
+  <link rel="stylesheet" href="file:///C:/Users/common/styles.css">
+  <script src="file:///C:/Users/common/api.js"></script>
+  <script src="file:///C:/Users/common/ui.js"></script>
+  <script src="file:///C:/Users/common/storage.js"></script>
 
   <style>
     /* ============================================================
@@ -51,6 +51,7 @@
     #screen-main {
       width: 100%;
       max-width: 480px;
+      display: none; /* ログイン成功後に表示 */
     }
 
     /* ヘッダー */
@@ -231,41 +232,21 @@
   <!-- ============================================================
        ログイン画面
        ============================================================ -->
-  <!-- ============================================================
-       ログイン画面
-       ============================================================ -->
   <div id="screen-login">
-    <p class="login-title">住岡 勤怠管理 <span style="font-size:0.7em; color:GrayText; font-weight:400;">v1.0.0</span></p>
+    <p class="login-title">住岡 勤怠管理</p>
 
     <div class="login-card">
       <div class="sumioka-form-group">
         <label class="sumioka-label" for="input-pin">PIN（4桁）</label>
-        <input
-          class="sumioka-input"
-          type="tel"
-          id="input-pin"
-          maxlength="4"
-          inputmode="numeric"
-          autocomplete="off"
-          placeholder="0000"
-        >
+        <input class="sumioka-input" type="tel" id="input-pin" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="0000">
       </div>
 
       <div class="sumioka-form-group">
         <label class="sumioka-label" for="input-password">パスワード</label>
-        <input
-          class="sumioka-input"
-          type="password"
-          id="input-password"
-          autocomplete="current-password"
-          placeholder="パスワードを入力"
-        >
+        <input class="sumioka-input" type="password" id="input-password" autocomplete="current-password" placeholder="パスワードを入力">
       </div>
 
-      <button
-        class="sumioka-btn sumioka-btn-primary sumioka-btn-block sumioka-mt-2"
-        id="btn-login"
-      >
+      <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block sumioka-mt-2" id="btn-login">
         ログイン
       </button>
     </div>
@@ -274,7 +255,7 @@
   <!-- ============================================================
        メイン打刻画面
        ============================================================ -->
-  <div id="screen-main" style="display:none;">
+  <div id="screen-main">
 
     <!-- ヘッダー -->
     <div class="kintai-header">
@@ -326,11 +307,7 @@
           </div>
         </div>
 
-        <button
-          class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
-          id="btn-checkin"
-          disabled
-        >
+        <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block" id="btn-checkin" disabled="">
           出勤打刻
         </button>
         <p class="status-text" id="checkin-status">弁当の要否を選択してください</p>
@@ -349,22 +326,33 @@
 
       <!-- 未打刻の場合はこちらを表示 -->
       <div id="checkout-form">
+
+        <!-- 休憩時間（必須）
+             15分単位の選択式。未選択では退勤ボタンが押せない。
+             Phase 2 で「法定休憩の自動チェック」を追加予定。 -->
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="select-break">休憩時間（必須）</label>
+          <select class="sumioka-input" id="select-break">
+            <option value="">-- 選択してください --</option>
+            <option value="0">0分</option>
+            <option value="15">15分</option>
+            <option value="30">30分</option>
+            <option value="45">45分</option>
+            <option value="60">60分</option>
+            <option value="75">75分</option>
+            <option value="90">90分</option>
+            <option value="105">105分</option>
+            <option value="120">120分</option>
+          </select>
+        </div>
+
         <!-- 業務報告（必須） -->
         <div class="report-area">
           <label class="sumioka-label" for="input-report">業務報告（必須）</label>
-          <textarea
-            class="sumioka-textarea"
-            id="input-report"
-            placeholder="本日の業務内容を入力してください"
-            rows="3"
-          ></textarea>
+          <textarea class="sumioka-textarea" id="input-report" placeholder="本日の業務内容を入力してください" rows="3"></textarea>
         </div>
 
-        <button
-          class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
-          id="btn-checkout"
-          disabled
-        >
+        <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block" id="btn-checkout" disabled="">
           退勤打刻
         </button>
         <p class="status-text" id="checkout-status">出勤打刻後に入力できます</p>
@@ -383,8 +371,7 @@
 
     /**
      * GAS デプロイ URL。
-     * localStorage の 'gas_url' キーから読み込む。
-     * 未設定の場合は初回設定画面を表示する。
+     * URLは変えない運用。変更が必要な場合はこの1行だけ書き換える。
      */
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec';
 
@@ -424,6 +411,7 @@
       checkoutTime : '',
       lunch        : null,
       report       : '',
+      breakMinutes : null,   // 休憩時間（分）。null = 未選択。退勤時に必須
     };
 
     // ============================================================
@@ -483,6 +471,14 @@
       // 業務報告入力 → 退勤ボタンの有効化
       document.getElementById('input-report').addEventListener('input', e => {
         state.report = e.target.value.trim();
+        renderCheckoutButton();
+      });
+
+      // 休憩時間選択 → 退勤ボタンの有効化
+      // 値は文字列で来るので Number に変換して保持する
+      document.getElementById('select-break').addEventListener('change', e => {
+        const val = e.target.value;
+        state.breakMinutes = val === '' ? null : Number(val);
         renderCheckoutButton();
       });
 
@@ -570,12 +566,13 @@
         employeeId: '', name: '', scheduledEnd: '',
         checkedIn: false, checkedOut: false,
         checkinTime: '', checkoutTime: '',
-        lunch: null, report: '',
+        lunch: null, report: '', breakMinutes: null,
       });
 
       // フォームをリセット
       document.querySelectorAll('input[name="lunch"]').forEach(r => r.checked = false);
       document.getElementById('input-report').value = '';
+      document.getElementById('select-break').value = '';  // 休憩時間セレクトをリセット
       document.getElementById('input-pin').value = '';
       document.getElementById('input-password').value = '';
 
@@ -625,6 +622,8 @@
           state.checkedOut   = true;
           state.checkoutTime = d.time_out;
           state.report       = d.memo || '';
+          // 保存済みの休憩時間を復元する（画面を開き直したときに正しく表示するため）
+          state.breakMinutes = typeof d.break_minutes === 'number' ? d.break_minutes : null;
         }
       }
 
@@ -745,8 +744,8 @@
           status        : state.checkinTime ? deriveStatus() : '出勤',
           time_in       : state.checkinTime,
           time_out      : now,
-          break_minutes : 60,   // 暫定: 休憩60分固定（Phase 2 で設定可能にする）
-          work_minutes  : Math.max(0, workMin - 60),
+          break_minutes : state.breakMinutes,   // ユーザーが選択した休憩時間（分）
+          work_minutes  : Math.max(0, workMin - state.breakMinutes),
           lunch         : state.lunch ?? false,
           memo          : state.report,
         },
@@ -860,6 +859,10 @@
       if (!state.checkedIn) {
         btn.disabled       = true;
         status.textContent = '出勤打刻後に入力できます';
+      } else if (state.breakMinutes === null) {
+        // 休憩時間が未選択の場合は退勤不可（業務報告より先にチェック）
+        btn.disabled       = true;
+        status.textContent = '休憩時間を選択してください';
       } else if (!state.report) {
         btn.disabled       = true;
         status.textContent = '業務報告を入力してください';
@@ -1001,5 +1004,6 @@
       return `${sign}${h}時間${m}分`;
     }
   </script>
-</body>
-</html>
+
+
+</body></html>
