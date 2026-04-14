@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- saved from url=(0055)file:///C:/Users/Happy-handa001/Downloads/kintai_2.html -->
+<!-- saved from url=(0055)file:///C:/Users/Happy-handa001/Downloads/kintai_3.html -->
 <html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1678,6 +1678,19 @@ p:last-child { margin-bottom: 0; }
       min-height: 1.2em;
     }
 
+    /* バージョン表示（左下固定）
+       画面の邪魔にならないよう小さく・薄く表示する */
+    .version-badge {
+      position: fixed;
+      bottom: 0.6rem;
+      left: 0.75rem;
+      font-size: 0.72rem;
+      color: GrayText;
+      pointer-events: none; /* クリックを素通りさせる */
+      user-select: none;
+      z-index: 10;
+    }
+
     /* 定時通知バナー（非表示→表示） */
     .overtime-banner {
       display: none;
@@ -1759,7 +1772,7 @@ p:last-child { margin-bottom: 0; }
       <!-- 未打刻の場合はこちらを表示 -->
       <div id="checkin-form">
         <!-- 現在時刻 -->
-        <div class="live-clock" id="live-clock">12:01:05</div>
+        <div class="live-clock" id="live-clock">12:41:50</div>
 
         <!-- 弁当要否（必須） -->
         <div class="sumioka-form-group">
@@ -1829,6 +1842,10 @@ p:last-child { margin-bottom: 0; }
     </div>
 
   </div><!-- /#screen-main -->
+
+  <!-- バージョン表示（左下固定）
+       v1.2.0 はアップロード時に Uploader が実際のバージョン番号に置換する -->
+  <div class="version-badge" id="app-version">v1.2.0</div>
 
 
   <script>
