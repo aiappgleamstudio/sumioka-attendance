@@ -1,15 +1,1484 @@
 <!DOCTYPE html>
-<!-- saved from url=(0055)file:///C:/Users/Happy-handa001/Downloads/kintai_1.html -->
+<!-- saved from url=(0055)file:///C:/Users/Happy-handa001/Downloads/kintai_2.html -->
 <html lang="ja"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>打刻 | 住岡</title>
 
-  <!-- 共通基盤（読み込み順を守る） -->
-  <link rel="stylesheet" href="file:///C:/Users/common/styles.css">
-  <script src="file:///C:/Users/common/api.js"></script>
-  <script src="file:///C:/Users/common/ui.js"></script>
-  <script src="file:///C:/Users/common/storage.js"></script>
+  <!--
+    共通基盤（インライン展開版）
+    社内フォルダ構成で使う場合はこのブロックを以下に戻す:
+      <link rel="stylesheet" href="../../common/styles.css">
+      <script src="../../common/api.js"></script>
+      <script src="../../common/ui.js"></script>
+      <script src="../../common/storage.js"></script>
+  -->
+
+  <!-- styles.css -->
+  <style>
+/*
+ * styles.css - 共通スタイル
+ *
+ * 役割:
+ *   カラー変数・レイアウト・共通コンポーネントを定義する。
+ *   各アプリ固有スタイルより先に読み込む。
+ *
+ * デザイン方針:
+ *   - OS / ブラウザのライト・ダークモード設定に自動追従する
+ *   - color-scheme と prefers-color-scheme で切り替え
+ *   - アクセントカラーは accent-color: auto でブラウザ規定値を使用
+ *   - フォントはシステムフォントスタック（インストール不要）
+ *
+ * クラス命名規則:
+ *   すべてのクラスに sumioka- プレフィックスを付けて他ライブラリと衝突しない
+ *
+ * @version 1.0.0
+ * @author  田中沙亜
+ */
+
+/* ============================================================
+   リセット・ベース
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* OS のライト/ダークに自動追従 */
+:root {
+  color-scheme: light dark;
+}
+
+html {
+  /* システムフォントスタック（Windows / Mac / Linux / Android / iOS 対応） */
+  font-family:
+    'Hiragino Sans',        /* Mac / iOS */
+    'Hiragino Kaku Gothic ProN',
+    'Noto Sans JP',         /* Android / Linux */
+    'Yu Gothic UI',         /* Windows 10+ */
+    'Meiryo UI',            /* Windows 旧 */
+    sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  /* ブラウザ規定のカラースキームに委ねる */
+  color: CanvasText;
+  background-color: Canvas;
+}
+
+body {
+  min-height: 100dvh;
+  padding: 0;
+}
+
+a {
+  color: LinkText;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+  accent-color: auto; /* ブラウザ規定のアクセントカラーを使用 */
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* ============================================================
+   レイアウト
+   ============================================================ */
+
+.sumioka-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.sumioka-section {
+  margin-bottom: 1.5rem;
+}
+
+/* ============================================================
+   タイポグラフィ
+   ============================================================ */
+
+h1 { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem; }
+h2 { font-size: 1.25rem; font-weight: bold; margin-bottom: 0.5rem; }
+h3 { font-size: 1.1rem;  font-weight: bold; margin-bottom: 0.25rem; }
+
+p { margin-bottom: 0.75rem; }
+p:last-child { margin-bottom: 0; }
+
+/* ============================================================
+   ボタン
+   ============================================================ */
+
+.sumioka-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid ButtonBorder;
+  border-radius: 4px;
+  background-color: ButtonFace;
+  color: ButtonText;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: opacity 0.15s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.sumioka-btn:hover:not(:disabled) {
+  opacity: 0.8;
+}
+
+.sumioka-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* primary: ブラウザのアクセントカラーを使用 */
+.sumioka-btn-primary {
+  background-color: Highlight;
+  color: HighlightText;
+  border-color: Highlight;
+}
+
+/* secondary: 通常ボタン */
+.sumioka-btn-secondary {
+  background-color: ButtonFace;
+  color: ButtonText;
+}
+
+/* danger: 削除・警告用 */
+.sumioka-btn-danger {
+  background-color: #c0392b;
+  color: #fff;
+  border-color: #c0392b;
+}
+
+/* ブロック幅 */
+.sumioka-btn-block {
+  display: flex;
+  width: 100%;
+}
+
+/* ボタングループ */
+.sumioka-btn-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   フォーム
+   ============================================================ */
+
+.sumioka-form-group {
+  margin-bottom: 1rem;
+}
+
+.sumioka-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.sumioka-input,
+.sumioka-select,
+.sumioka-textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid GrayText;
+  border-radius: 4px;
+  background-color: Field;
+  color: FieldText;
+  font-size: 1rem;
+  line-height: 1.5;
+  transition: border-color 0.15s;
+}
+
+.sumioka-input:focus,
+.sumioka-select:focus,
+.sumioka-textarea:focus {
+  outline: 2px solid Highlight;
+  outline-offset: 0;
+  border-color: Highlight;
+}
+
+.sumioka-textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.sumioka-input-hint {
+  font-size: 0.8rem;
+  color: GrayText;
+  margin-top: 0.2rem;
+}
+
+/* ============================================================
+   カード
+   ============================================================ */
+
+.sumioka-card {
+  border: 1px solid GrayText;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background-color: Canvas;
+}
+
+.sumioka-card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid GrayText;
+}
+
+/* ============================================================
+   テーブル
+   ============================================================ */
+
+.sumioka-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sumioka-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.sumioka-table th,
+.sumioka-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid GrayText;
+}
+
+.sumioka-table th {
+  font-weight: 600;
+  background-color: ButtonFace;
+}
+
+.sumioka-table tbody tr:hover {
+  background-color: ButtonFace;
+}
+
+/* ============================================================
+   タブナビゲーション
+   ============================================================ */
+
+.sumioka-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid GrayText;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.sumioka-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.sumioka-tab-btn {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: GrayText;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: -2px;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.sumioka-tab-btn:hover {
+  color: CanvasText;
+}
+
+.sumioka-tab-btn--active {
+  color: Highlight;
+  border-bottom-color: Highlight;
+  font-weight: 700;
+}
+
+.sumioka-tab-content {
+  /* hidden 属性で表示・非表示を切り替える（JS 側で hidden を操作） */
+}
+
+.sumioka-tab-content[hidden] {
+  display: none;
+}
+
+/* ============================================================
+   トースト通知
+   ============================================================ */
+
+.sumioka-toast-ov {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9000;
+  pointer-events: none;
+}
+
+.sumioka-toast-box {
+  padding: 0.65rem 1.25rem;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: auto;
+  border: 1px solid transparent;
+}
+
+.sumioka-toast-show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.sumioka-toast-hide {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* ライト/ダーク両対応のトーストカラー */
+.sumioka-toast-success {
+  background-color: #1a7f37;
+  color: #fff;
+  border-color: #1a7f37;
+}
+
+.sumioka-toast-error {
+  background-color: #c0392b;
+  color: #fff;
+  border-color: #c0392b;
+}
+
+.sumioka-toast-warning {
+  background-color: #b45309;
+  color: #fff;
+  border-color: #b45309;
+}
+
+.sumioka-toast-info {
+  background-color: ButtonFace;
+  color: CanvasText;
+  border-color: GrayText;
+}
+
+/* ============================================================
+   ローディングオーバーレイ
+   ============================================================ */
+
+.sumioka-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9100;
+}
+
+.sumioka-loading-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: Canvas;
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  padding: 2rem 2.5rem;
+}
+
+.sumioka-loading-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid GrayText;
+  border-top-color: Highlight;
+  border-radius: 50%;
+  animation: sumioka-spin 0.7s linear infinite;
+}
+
+@keyframes sumioka-spin {
+  to { transform: rotate(360deg); }
+}
+
+.sumioka-loading-text {
+  font-size: 0.95rem;
+  color: GrayText;
+}
+
+/* ============================================================
+   エラーダイアログ
+   ============================================================ */
+
+.sumioka-error-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9200;
+  padding: 1rem;
+}
+
+.sumioka-error-box {
+  background-color: Canvas;
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 480px;
+  width: 100%;
+}
+
+.sumioka-error-message {
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.sumioka-error-detail {
+  font-size: 0.8rem;
+  color: GrayText;
+  margin-bottom: 1rem;
+}
+
+.sumioka-error-detail pre {
+  margin-top: 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.sumioka-error-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* ============================================================
+   確認ダイアログ
+   ============================================================ */
+
+.sumioka-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9300;
+  padding: 1rem;
+}
+
+.sumioka-confirm-box {
+  background-color: Canvas;
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 400px;
+  width: 100%;
+}
+
+.sumioka-confirm-message {
+  margin-bottom: 1.25rem;
+  font-weight: 500;
+}
+
+.sumioka-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* ============================================================
+   バッジ・ステータス
+   ============================================================ */
+
+.sumioka-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+}
+
+.sumioka-badge-success { color: #1a7f37; }
+.sumioka-badge-error   { color: #c0392b; }
+.sumioka-badge-warning { color: #b45309; }
+.sumioka-badge-info    { color: GrayText; }
+
+/* ============================================================
+   ユーティリティ
+   ============================================================ */
+
+.sumioka-text-center { text-align: center; }
+.sumioka-text-right  { text-align: right; }
+.sumioka-text-muted  { color: GrayText; font-size: 0.9rem; }
+.sumioka-mt-1 { margin-top: 0.5rem; }
+.sumioka-mt-2 { margin-top: 1rem; }
+.sumioka-mt-3 { margin-top: 1.5rem; }
+.sumioka-mb-1 { margin-bottom: 0.5rem; }
+.sumioka-mb-2 { margin-bottom: 1rem; }
+.sumioka-mb-3 { margin-bottom: 1.5rem; }
+.sumioka-hidden { display: none !important; }
+
+/* ============================================================
+   バージョン履歴（initAppMeta 用）
+   ============================================================ */
+
+.sumioka-version-date {
+  font-size: 0.8rem;
+  color: GrayText;
+  margin-left: 0.5rem;
+}
+
+/* ============================================================
+   レスポンシブ
+   ============================================================ */
+
+@media (max-width: 480px) {
+  html {
+    font-size: 15px;
+  }
+
+  .sumioka-btn {
+    padding: 0.5rem 1rem;
+  }
+
+  .sumioka-tab-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+  }
+}
+
+  </style>
+
+  <!-- api.js -->
+  <script>
+/**
+ * api.js - GAS通信モジュール
+ *
+ * 役割:
+ *   フロントエンドと GAS（Google Apps Script）の通信を担う。
+ *   タイムアウト・エラー処理・ボタン無効化を自動で行う。
+ *
+ * 使い方:
+ *   1. アプリ起動時に setGasUrl(url) を1回呼ぶ
+ *   2. 以降は callGAS(action, data, options) だけ使えばOK
+ *
+ * グローバル公開:
+ *   window.SumiokaAPI.callGAS / gasPost / setGasUrl
+ *   window.callGAS / gasPost / setGasUrl（省略形）
+ *
+ * @version 1.0.0
+ * @author  田中沙亜
+ */
+
+(function (global) {
+  'use strict';
+
+  // ============================================================
+  // 定数
+  // ============================================================
+
+  /** デフォルトのタイムアウト秒数 */
+  const DEFAULT_TIMEOUT_SEC = 10;
+
+  /** GAS の app 識別子（全リクエストで固定） */
+  const APP_ID = 'attendance';
+
+  // ============================================================
+  // 内部状態
+  // ============================================================
+
+  /** GAS デプロイ URL（setGasUrl で設定する） */
+  let _gasUrl = '';
+
+  // ============================================================
+  // 公開関数
+  // ============================================================
+
+  /**
+   * GAS デプロイ URL をセットする。
+   * アプリ起動時に1回だけ呼ぶ。
+   * window.SUMIOKA_GAS_URL にも同時に書き込む。
+   *
+   * @param {string} url - GAS ウェブアプリのデプロイ URL
+   */
+  function setGasUrl(url) {
+    _gasUrl = url;
+    global.SUMIOKA_GAS_URL = url;
+  }
+
+  /**
+   * GAS にリクエストを送る主要関数。
+   * 全アプリからこれだけ使えばOK。
+   *
+   * @param {string} action           - 操作名（例: 'save', 'load'）
+   * @param {Object} [data={}]        - 送信データ
+   * @param {Object} [options={}]     - オプション
+   * @param {HTMLElement} [options.button]  - 通信中に無効化するボタン要素
+   * @param {number}  [options.timeout]     - タイムアウト秒（省略時は10秒）
+   * @param {number}  [options.retry=0]     - リトライ回数
+   * @returns {Promise<{success: boolean, data?: Object, error_message?: string, error_detail?: string, error_code?: string}>}
+   */
+  async function callGAS(action, data = {}, options = {}) {
+    const payload = { app: APP_ID, action, data };
+    return gasPost(payload, options);
+  }
+
+  /**
+   * 任意ペイロードを直接 POST する低レベル API。
+   * 通常は callGAS を使う。GAS のルーティングを独自にしたい場合のみ使用。
+   *
+   * エラーコード一覧:
+   *   GAS_URL_UNSET : URL 未設定
+   *   TIMEOUT       : タイムアウト
+   *   NETWORK       : ネットワーク接続不可
+   *   HTTP_5XX      : GAS サーバーエラー
+   *   GAS_ERROR     : GAS 側でエラーが返った
+   *   UNKNOWN       : その他
+   *
+   * @param {Object} payload          - 送信ペイロード
+   * @param {Object} [options={}]
+   * @param {HTMLElement} [options.button]
+   * @param {number}  [options.timeout]
+   * @param {number}  [options.retry=0]
+   * @returns {Promise<Object>}
+   */
+  async function gasPost(payload, options = {}) {
+    // URL 未設定チェック
+    if (!_gasUrl) {
+      return _errorResult('GAS URL が設定されていません。', '', 'GAS_URL_UNSET');
+    }
+
+    const timeoutSec = options.timeout ?? DEFAULT_TIMEOUT_SEC;
+    const retryCount = options.retry   ?? 0;
+    const button     = options.button  ?? null;
+
+    // ボタンを無効化
+    if (button) _disableButton(button, true);
+
+    let lastError;
+
+    // リトライループ（retryCount=0 なら1回だけ実行）
+    for (let attempt = 0; attempt <= retryCount; attempt++) {
+      try {
+        const result = await _fetchWithTimeout(_gasUrl, payload, timeoutSec);
+        if (button) _disableButton(button, false);
+        return result;
+      } catch (err) {
+        lastError = err;
+        if (attempt < retryCount) {
+          // リトライ前に少し待つ（指数バックオフ）
+          await _sleep(500 * Math.pow(2, attempt));
+        }
+      }
+    }
+
+    // 全リトライ失敗
+    if (button) _disableButton(button, false);
+    return _parseError(lastError);
+  }
+
+  // ============================================================
+  // 内部ユーティリティ
+  // ============================================================
+
+  /**
+   * タイムアウト付きで GAS に POST する。
+   *
+   * GAS は CORS 制約があるため Content-Type を text/plain にする。
+   * （application/json にすると preflight が走り GAS 側でエラーになる）
+   *
+   * @param {string} url
+   * @param {Object} payload
+   * @param {number} timeoutSec
+   * @returns {Promise<Object>}
+   */
+  async function _fetchWithTimeout(url, payload, timeoutSec) {
+    const controller = new AbortController();
+    const timerId    = setTimeout(() => controller.abort(), timeoutSec * 1000);
+
+    try {
+      const response = await fetch(url, {
+        method  : 'POST',
+        // GAS の CORS 制約を通すため text/plain を使う
+        headers : { 'Content-Type': 'text/plain' },
+        body    : JSON.stringify(payload),
+        signal  : controller.signal,
+        // GAS はリダイレクトするため follow を指定
+        redirect: 'follow',
+      });
+
+      clearTimeout(timerId);
+
+      if (!response.ok) {
+        const err  = new Error('HTTP error');
+        err.code   = 'HTTP_5XX';
+        err.detail = `status: ${response.status}`;
+        throw err;
+      }
+
+      const json = await response.json();
+
+      // GAS 側が { success: false } を返した場合
+      if (!json.success) {
+        const err    = new Error(json.error_message || 'GAS エラー');
+        err.code     = 'GAS_ERROR';
+        err.detail   = json.error_detail || '';
+        err.gasError = json;
+        throw err;
+      }
+
+      return { success: true, data: json.data };
+
+    } catch (err) {
+      clearTimeout(timerId);
+
+      // AbortController によるタイムアウト
+      if (err.name === 'AbortError') {
+        const e  = new Error('タイムアウト');
+        e.code   = 'TIMEOUT';
+        e.detail = `${timeoutSec}秒以内に応答がありませんでした。`;
+        throw e;
+      }
+
+      // fetch 自体が失敗（ネットワーク不可）
+      if (err instanceof TypeError) {
+        const e  = new Error('ネットワークエラー');
+        e.code   = 'NETWORK';
+        e.detail = err.message;
+        throw e;
+      }
+
+      throw err;
+    }
+  }
+
+  /**
+   * エラーオブジェクトからエラーレスポンスを生成する。
+   *
+   * @param {Error} err
+   * @returns {Object}
+   */
+  function _parseError(err) {
+    return _errorResult(
+      err.message   || '通信エラーが発生しました。',
+      err.detail    || '',
+      err.code      || 'UNKNOWN'
+    );
+  }
+
+  /**
+   * エラーレスポンスオブジェクトを生成する。
+   *
+   * @param {string} message
+   * @param {string} detail
+   * @param {string} code
+   * @returns {Object}
+   */
+  function _errorResult(message, detail, code) {
+    return {
+      success       : false,
+      error_message : message,
+      error_detail  : detail,
+      error_code    : code,
+    };
+  }
+
+  /**
+   * ボタンの有効・無効を切り替える。
+   *
+   * @param {HTMLElement} button
+   * @param {boolean} disabled
+   */
+  function _disableButton(button, disabled) {
+    if (button && button instanceof HTMLElement) {
+      button.disabled = disabled;
+    }
+  }
+
+  /**
+   * 指定ミリ秒待つ。
+   *
+   * @param {number} ms
+   * @returns {Promise<void>}
+   */
+  function _sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // ============================================================
+  // グローバル公開
+  // ============================================================
+
+  const SumiokaAPI = { callGAS, gasPost, setGasUrl };
+
+  global.SumiokaAPI = SumiokaAPI;
+
+  // 省略形（直接呼べる）
+  global.callGAS  = callGAS;
+  global.gasPost  = gasPost;
+  global.setGasUrl = setGasUrl;
+
+})(window);
+
+  </script>
+
+  <!-- ui.js -->
+  <script>
+/**
+ * ui.js - 共通UI表示モジュール
+ *
+ * 役割:
+ *   トースト通知・ローディング・エラーダイアログ・確認ダイアログ・
+ *   タブ切り替え・数値入力変換を提供する。
+ *
+ * 依存:
+ *   styles.css（.toast-ov / .loading-overlay / .error-overlay / .confirm-overlay など）
+ *
+ * グローバル公開:
+ *   window.SumiokaUI.showToast / showLoading / hideLoading / showError /
+ *                   confirm / handleApiResult / initTabs / initNumericInputs /
+ *                   convertNumericInput / initAppMeta
+ *   window.XXX（省略形）
+ *
+ * @version 1.0.0
+ * @author  田中沙亜
+ */
+
+(function (global) {
+  'use strict';
+
+  // ============================================================
+  // トースト通知
+  // ============================================================
+
+  /**
+   * 画面下部にフワっとトースト通知を表示する。
+   *
+   * @param {string} message           - 表示するメッセージ
+   * @param {'success'|'error'|'info'|'warning'} [type='info'] - 種類
+   * @param {number} [duration=2000]   - 表示ミリ秒
+   */
+  function showToast(message, type = 'info', duration = 2000) {
+    // 既存のトーストがあれば削除
+    const existing = document.querySelector('.sumioka-toast-ov');
+    if (existing) existing.remove();
+
+    const ov  = document.createElement('div');
+    ov.className = 'sumioka-toast-ov';
+
+    const box = document.createElement('div');
+    box.className = `sumioka-toast-box sumioka-toast-${type}`;
+    box.textContent = message;
+
+    ov.appendChild(box);
+    document.body.appendChild(ov);
+
+    // アニメーション付きで表示
+    requestAnimationFrame(() => {
+      box.classList.add('sumioka-toast-show');
+    });
+
+    // 指定時間後にフェードアウトして削除
+    setTimeout(() => {
+      box.classList.remove('sumioka-toast-show');
+      box.classList.add('sumioka-toast-hide');
+      setTimeout(() => ov.remove(), 300);
+    }, duration);
+  }
+
+  // ============================================================
+  // ローディング
+  // ============================================================
+
+  /**
+   * 全画面ローディングオーバーレイを表示する。
+   * callGAS の前後に必ずペアで使う。
+   *
+   * @param {string} [message='処理中...'] - ローディング中のテキスト
+   */
+  function showLoading(message = '処理中...') {
+    hideLoading(); // 二重表示防止
+
+    const ov = document.createElement('div');
+    ov.className = 'sumioka-loading-overlay';
+    ov.id = 'sumioka-loading';
+
+    ov.innerHTML = `
+      <div class="sumioka-loading-box">
+        <div class="sumioka-loading-spinner"></div>
+        <div class="sumioka-loading-text">${_escapeHtml(message)}</div>
+      </div>
+    `;
+
+    document.body.appendChild(ov);
+  }
+
+  /**
+   * ローディングオーバーレイを非表示にする。
+   */
+  function hideLoading() {
+    const el = document.getElementById('sumioka-loading');
+    if (el) el.remove();
+  }
+
+  // ============================================================
+  // エラーダイアログ
+  // ============================================================
+
+  /**
+   * エラーダイアログを表示する。
+   *
+   * @param {string}   errorMessage      - ユーザー向けメッセージ（日本語）
+   * @param {string}   [errorDetail='']  - デバッグ用詳細（折りたたみで表示）
+   * @param {Function} [onRetry]         - 「再試行」ボタンのコールバック（省略時はボタン非表示）
+   */
+  function showError(errorMessage, errorDetail = '', onRetry = null) {
+    // 既存のエラーダイアログがあれば閉じる
+    const existing = document.querySelector('.sumioka-error-overlay');
+    if (existing) existing.remove();
+
+    const ov  = document.createElement('div');
+    ov.className = 'sumioka-error-overlay';
+
+    const detailHtml = errorDetail
+      ? `<details class="sumioka-error-detail">
+           <summary>詳細</summary>
+           <pre>${_escapeHtml(errorDetail)}</pre>
+         </details>`
+      : '';
+
+    const retryHtml = onRetry
+      ? `<button class="sumioka-btn sumioka-btn-primary" id="sumioka-error-retry">再試行</button>`
+      : '';
+
+    ov.innerHTML = `
+      <div class="sumioka-error-box">
+        <p class="sumioka-error-message">${_escapeHtml(errorMessage)}</p>
+        ${detailHtml}
+        <div class="sumioka-error-actions">
+          ${retryHtml}
+          <button class="sumioka-btn sumioka-btn-secondary" id="sumioka-error-close">閉じる</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(ov);
+
+    document.getElementById('sumioka-error-close').addEventListener('click', () => ov.remove());
+
+    if (onRetry) {
+      document.getElementById('sumioka-error-retry').addEventListener('click', () => {
+        ov.remove();
+        onRetry();
+      });
+    }
+  }
+
+  // ============================================================
+  // API結果ハンドラ
+  // ============================================================
+
+  /**
+   * callGAS の返り値を渡すだけで成功/失敗を自動表示する便利関数。
+   * 成功 → showToast、失敗 → showError を自動で呼ぶ。
+   *
+   * @param {Object}   result          - callGAS の返り値
+   * @param {string}   [successMessage='完了しました。'] - 成功時のトーストメッセージ
+   * @param {Function} [onRetry]       - 失敗時の再試行コールバック
+   * @returns {boolean} 成功したか
+   */
+  function handleApiResult(result, successMessage = '完了しました。', onRetry = null) {
+    if (result.success) {
+      showToast(successMessage, 'success');
+      return true;
+    } else {
+      showError(result.error_message, result.error_detail, onRetry);
+      return false;
+    }
+  }
+
+  // ============================================================
+  // 確認ダイアログ
+  // ============================================================
+
+  /**
+   * 確認ダイアログを表示する。Promise<boolean> を返す。
+   *
+   * 使い方:
+   *   const ok = await confirm('削除しますか？');
+   *   if (ok) { ... }
+   *
+   * @param {string} [message='確認してください。']
+   * @param {string} [confirmText='OK']
+   * @param {string} [cancelText='キャンセル']
+   * @returns {Promise<boolean>}
+   */
+  function confirm(message = '確認してください。', confirmText = 'OK', cancelText = 'キャンセル') {
+    return new Promise(resolve => {
+      const existing = document.querySelector('.sumioka-confirm-overlay');
+      if (existing) existing.remove();
+
+      const ov = document.createElement('div');
+      ov.className = 'sumioka-confirm-overlay';
+
+      ov.innerHTML = `
+        <div class="sumioka-confirm-box">
+          <p class="sumioka-confirm-message">${_escapeHtml(message)}</p>
+          <div class="sumioka-confirm-actions">
+            <button class="sumioka-btn sumioka-btn-primary"   id="sumioka-confirm-ok">${_escapeHtml(confirmText)}</button>
+            <button class="sumioka-btn sumioka-btn-secondary" id="sumioka-confirm-cancel">${_escapeHtml(cancelText)}</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(ov);
+
+      document.getElementById('sumioka-confirm-ok').addEventListener('click', () => {
+        ov.remove();
+        resolve(true);
+      });
+
+      document.getElementById('sumioka-confirm-cancel').addEventListener('click', () => {
+        ov.remove();
+        resolve(false);
+      });
+    });
+  }
+
+  // ============================================================
+  // タブ切り替え
+  // ============================================================
+
+  /**
+   * タブナビゲーションを初期化する。
+   *
+   * HTML 条件:
+   *   ボタンに class="sumioka-tab-btn" data-tab="タブ名"
+   *   コンテンツに id="tab-タブ名"
+   *
+   * @param {Object}   [options={}]
+   * @param {string}   [options.defaultTab]  - 初期表示タブ名（省略時は最初の .sumioka-tab-btn）
+   * @param {Function} [options.onSwitch]    - タブ切り替え時コールバック (tabName) => {}
+   */
+  function initTabs(options = {}) {
+    const buttons = Array.from(document.querySelectorAll('.sumioka-tab-btn'));
+    if (buttons.length === 0) return;
+
+    function switchTab(tabName) {
+      buttons.forEach(btn => {
+        const isActive = btn.dataset.tab === tabName;
+        btn.classList.toggle('sumioka-tab-btn--active', isActive);
+        btn.setAttribute('aria-selected', isActive);
+      });
+
+      document.querySelectorAll('.sumioka-tab-content').forEach(content => {
+        content.hidden = content.id !== `tab-${tabName}`;
+      });
+
+      if (options.onSwitch) options.onSwitch(tabName);
+    }
+
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    // 外部からタブを切り替えられるようにグローバルに公開
+    global._sumiokaSwitch = switchTab;
+
+    // 初期タブを表示
+    const defaultTab = options.defaultTab || buttons[0].dataset.tab;
+    switchTab(defaultTab);
+  }
+
+  // ============================================================
+  // 数値ショートカット入力
+  // ============================================================
+
+  /**
+   * data-convert 属性を持つ input を一括で数値ショートカット入力に設定する。
+   * DOMContentLoaded 後に1回呼ぶだけでOK。
+   *
+   * data-convert の種類:
+   *   "time"     : 830 → 8:30
+   *   "duration" : 90  → 1:30
+   *   "money"    : 9000 → 9,000
+   */
+  function initNumericInputs() {
+    document.querySelectorAll('input[data-convert]').forEach(input => {
+      convertNumericInput(input, input.dataset.convert);
+    });
+  }
+
+  /**
+   * 個別の input に数値ショートカットを設定する。
+   *
+   * @param {HTMLInputElement} inputEl
+   * @param {'time'|'duration'|'money'} type
+   */
+  function convertNumericInput(inputEl, type) {
+    inputEl.addEventListener('blur', () => {
+      const raw = inputEl.value.replace(/[^0-9]/g, '');
+      if (!raw) return;
+
+      const num = parseInt(raw, 10);
+
+      switch (type) {
+        case 'time': {
+          // 830 → 8:30 / 900 → 9:00
+          const h = Math.floor(num / 100);
+          const m = num % 100;
+          if (m >= 60) return; // 不正な分は変換しない
+          inputEl.value = `${h}:${String(m).padStart(2, '0')}`;
+          break;
+        }
+        case 'duration': {
+          // 90 → 1:30
+          const h = Math.floor(num / 60);
+          const m = num % 60;
+          inputEl.value = `${h}:${String(m).padStart(2, '0')}`;
+          break;
+        }
+        case 'money': {
+          // 9000 → 9,000
+          inputEl.value = num.toLocaleString('ja-JP');
+          break;
+        }
+      }
+    });
+  }
+
+  // ============================================================
+  // アプリメタ情報
+  // ============================================================
+
+  /**
+   * ヘッダーのバージョン表示と設定タブのバージョン履歴アコーディオンを生成する。
+   *
+   * HTML 条件:
+   *   id="sumioka-app-version" : バージョン文字列を表示する要素
+   *   id="sumioka-acc-versions": バージョン履歴アコーディオンを挿入する要素
+   *
+   * @param {Object}   options
+   * @param {string}   options.version - 現在のバージョン（例: 'v1.0.0'）
+   * @param {Array}    options.history - [{ v, date, note }] の配列（新しい順）
+   */
+  function initAppMeta({ version, history = [] }) {
+    const versionEl = document.getElementById('sumioka-app-version');
+    if (versionEl) versionEl.textContent = version;
+
+    const accEl = document.getElementById('sumioka-acc-versions');
+    if (accEl && history.length > 0) {
+      accEl.innerHTML = history.map(h => `
+        <details>
+          <summary>${_escapeHtml(h.v)} <span class="sumioka-version-date">${_escapeHtml(h.date)}</span></summary>
+          <p>${_escapeHtml(h.note)}</p>
+        </details>
+      `).join('');
+    }
+  }
+
+  // ============================================================
+  // 内部ユーティリティ
+  // ============================================================
+
+  /**
+   * HTML エスケープ。XSS を防ぐため、ユーザー入力を DOM に埋め込む前に必ず使う。
+   *
+   * @param {string} str
+   * @returns {string}
+   */
+  function _escapeHtml(str) {
+    return String(str)
+      .replace(/&/g,  '&amp;')
+      .replace(/</g,  '&lt;')
+      .replace(/>/g,  '&gt;')
+      .replace(/"/g,  '&quot;')
+      .replace(/'/g,  '&#039;');
+  }
+
+  // ============================================================
+  // グローバル公開
+  // ============================================================
+
+  const SumiokaUI = {
+    showToast,
+    showLoading,
+    hideLoading,
+    showError,
+    handleApiResult,
+    confirm,
+    initTabs,
+    initNumericInputs,
+    convertNumericInput,
+    initAppMeta,
+  };
+
+  global.SumiokaUI = SumiokaUI;
+
+  // 省略形（直接呼べる）
+  global.showToast       = showToast;
+  global.showLoading     = showLoading;
+  global.hideLoading     = hideLoading;
+  global.showError       = showError;
+  global.handleApiResult = handleApiResult;
+  global.confirm         = confirm;
+  global.initTabs        = initTabs;
+  global.initNumericInputs   = initNumericInputs;
+  global.convertNumericInput = convertNumericInput;
+  global.initAppMeta     = initAppMeta;
+
+})(window);
+
+  </script>
+
+  <!-- storage.js -->
+  <script>
+/**
+ * storage.js - localStorage 管理モジュール
+ *
+ * 役割:
+ *   localStorage への保存・読込を一元管理する。
+ *   キーに sumioka_ プレフィックスを自動付与し、他アプリとの衝突を防ぐ。
+ *   データにはバージョン情報を付与する（将来のマイグレーション対応）。
+ *
+ * キー命名規則:
+ *   保存時: sumioka_ + 引数のキー名
+ *   例: save('gas_url', ...) → localStorage の 'sumioka_gas_url' に保存
+ *   呼び出し側は sumioka_ なしで渡せばOK
+ *
+ * グローバル公開:
+ *   window.SumiokaStorage.save / load / remove / clear / exists / keys / getUsage
+ *   window.XXX（省略形）
+ *
+ * @version 1.0.0
+ * @author  田中沙亜
+ */
+
+(function (global) {
+  'use strict';
+
+  // ============================================================
+  // 定数
+  // ============================================================
+
+  /** localStorage キーのプレフィックス */
+  const PREFIX = 'sumioka_';
+
+  /** データに付与するスキーマバージョン */
+  const SCHEMA_VERSION = 1;
+
+  // ============================================================
+  // 公開関数
+  // ============================================================
+
+  /**
+   * データを保存する。
+   *
+   * @param {string}  key                      - キー名（プレフィックスなしで渡す）
+   * @param {*}       value                    - 保存する値（JSON シリアライズ可能なもの）
+   * @param {Object}  [options={}]
+   * @param {boolean} [options.withVersion=true] - バージョン情報を付与するか
+   * @returns {boolean} 成功したか
+   */
+  function save(key, value, options = {}) {
+    const withVersion = options.withVersion ?? true;
+
+    try {
+      const payload = withVersion
+        ? { _v: SCHEMA_VERSION, value }
+        : value;
+
+      localStorage.setItem(_prefixed(key), JSON.stringify(payload));
+      return true;
+
+    } catch (err) {
+      // 容量超過（QuotaExceededError）の場合もコンソールに警告を出して false を返す
+      if (err.name === 'QuotaExceededError') {
+        console.warn('[SumiokaStorage] localStorage 容量超過:', key);
+      } else {
+        console.error('[SumiokaStorage] save エラー:', key, err);
+      }
+      return false;
+    }
+  }
+
+  /**
+   * データを読み込む。
+   * キーが存在しない場合は defaultValue を返す。
+   * バージョン情報が付与されたデータは自動的に展開して value だけ返す。
+   *
+   * @param {string} key          - キー名（プレフィックスなしで渡す）
+   * @param {*}      [defaultValue=null] - キーが存在しない場合の返り値
+   * @returns {*}
+   */
+  function load(key, defaultValue = null) {
+    try {
+      const raw = localStorage.getItem(_prefixed(key));
+      if (raw === null) return defaultValue;
+
+      const parsed = JSON.parse(raw);
+
+      // バージョン情報が付与されている場合は value を取り出す
+      if (parsed && typeof parsed === 'object' && '_v' in parsed) {
+        return parsed.value;
+      }
+
+      return parsed;
+
+    } catch (err) {
+      console.error('[SumiokaStorage] load エラー:', key, err);
+      return defaultValue;
+    }
+  }
+
+  /**
+   * 指定キーのデータを削除する。
+   *
+   * @param {string} key
+   * @returns {boolean} 成功したか
+   */
+  function remove(key) {
+    try {
+      localStorage.removeItem(_prefixed(key));
+      return true;
+    } catch (err) {
+      console.error('[SumiokaStorage] remove エラー:', key, err);
+      return false;
+    }
+  }
+
+  /**
+   * sumioka_ プレフィックスのキーをすべて削除する。
+   * 他アプリのデータには触れない。
+   *
+   * @param {boolean} confirmed - true を渡さないと実行されない（誤操作防止）
+   * @returns {boolean} 実行されたか
+   */
+  function clear(confirmed) {
+    if (confirmed !== true) {
+      console.warn('[SumiokaStorage] clear() は clear(true) として呼んでください。');
+      return false;
+    }
+
+    try {
+      keys().forEach(key => localStorage.removeItem(_prefixed(key)));
+      return true;
+    } catch (err) {
+      console.error('[SumiokaStorage] clear エラー:', err);
+      return false;
+    }
+  }
+
+  /**
+   * キーが存在するか確認する。
+   *
+   * @param {string} key
+   * @returns {boolean}
+   */
+  function exists(key) {
+    return localStorage.getItem(_prefixed(key)) !== null;
+  }
+
+  /**
+   * 現在保存されている全キー一覧を返す（プレフィックスなし）。
+   *
+   * @returns {string[]}
+   */
+  function keys() {
+    const result = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(PREFIX)) {
+        result.push(k.slice(PREFIX.length));
+      }
+    }
+    return result;
+  }
+
+  /**
+   * sumioka_ プレフィックスのキーが使用している容量の概算を返す。
+   *
+   * @returns {{ used: number, usedKB: string }}
+   */
+  function getUsage() {
+    let used = 0;
+    keys().forEach(key => {
+      const raw = localStorage.getItem(_prefixed(key));
+      if (raw) used += raw.length * 2; // 文字 × 2バイト（UTF-16）
+    });
+    return {
+      used,
+      usedKB: (used / 1024).toFixed(2),
+    };
+  }
+
+  // ============================================================
+  // 内部ユーティリティ
+  // ============================================================
+
+  /**
+   * キーにプレフィックスを付与する。
+   *
+   * @param {string} key
+   * @returns {string}
+   */
+  function _prefixed(key) {
+    return PREFIX + key;
+  }
+
+  // ============================================================
+  // グローバル公開
+  // ============================================================
+
+  const SumiokaStorage = { save, load, remove, clear, exists, keys, getUsage };
+
+  global.SumiokaStorage = SumiokaStorage;
+
+  // 省略形（直接呼べる）
+  global.storeSave   = save;
+  global.storeLoad   = load;
+  global.storeRemove = remove;
+  global.storeClear  = clear;
+  global.storeExists = exists;
+  global.storeKeys   = keys;
+
+})(window);
+
+  </script>
 
   <style>
     /* ============================================================
@@ -261,7 +1730,7 @@
     <div class="kintai-header">
       <div>
         <div class="kintai-header-name" id="display-name">――</div>
-        <div class="kintai-header-date" id="display-date">――</div>
+        <div class="kintai-header-date" id="display-date">2026-04-14</div>
       </div>
       <button class="kintai-header-logout" id="btn-logout">ログアウト</button>
     </div>
@@ -290,7 +1759,7 @@
       <!-- 未打刻の場合はこちらを表示 -->
       <div id="checkin-form">
         <!-- 現在時刻 -->
-        <div class="live-clock" id="live-clock">--:--:--</div>
+        <div class="live-clock" id="live-clock">12:01:05</div>
 
         <!-- 弁当要否（必須） -->
         <div class="sumioka-form-group">
@@ -860,7 +2329,7 @@
         btn.disabled       = true;
         status.textContent = '出勤打刻後に入力できます';
       } else if (state.breakMinutes === null) {
-        // 休憩時間が未選択の場合は退勤不可（業務報告より先にチェック）
+        // 休憩時間が未選択の場合は退勤不可
         btn.disabled       = true;
         status.textContent = '休憩時間を選択してください';
       } else if (!state.report) {
