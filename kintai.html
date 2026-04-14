@@ -1493,26 +1493,31 @@ p:last-child { margin-bottom: 0; }
       padding: 1rem;
     }
 
-    /* ── ログイン画面 ── */
+ <!-- ログイン画面 -->
 <div id="screen-login">
+
   <p class="login-title">住岡 勤怠管理</p>
 
   <div class="login-card">
     <div class="sumioka-form-group">
-      <label>PIN（4桁）</label>
-      <input id="input-pin">
+      <label class="sumioka-label">PIN（4桁）</label>
+      <input id="input-pin" class="sumioka-input" type="tel" maxlength="4">
     </div>
 
     <div class="sumioka-form-group">
-      <label>パスワード</label>
-      <input id="input-password">
+      <label class="sumioka-label">パスワード</label>
+      <input id="input-password" class="sumioka-input" type="password">
     </div>
 
-    <button id="btn-login">ログイン</button>
+    <button id="btn-login" class="sumioka-btn sumioka-btn-primary sumioka-btn-block">
+      ログイン
+    </button>
   </div>
+
 </div>
 
-    /* ── メイン打刻画面 ── */
+
+<!-- メイン画面（ログイン後） -->
 <div id="screen-main" style="display:none;">
 
   <p class="login-title">勤怠打刻</p>
@@ -1520,7 +1525,7 @@ p:last-child { margin-bottom: 0; }
   <!-- ユーザー情報 -->
   <div class="sumioka-card">
     <p>氏名：<span id="user-name">-</span></p>
-    <p>本日の勤務：<span id="today-status">未打刻</span></p>
+    <p>状態：<span id="today-status">未打刻</span></p>
   </div>
 
   <!-- 打刻ボタン -->
@@ -1534,10 +1539,10 @@ p:last-child { margin-bottom: 0; }
     </button>
   </div>
 
-  <!-- 状態表示 -->
+  <!-- 時刻表示 -->
   <div class="sumioka-card sumioka-mt-2">
-    <p>出勤時刻：<span id="clock-in-time">--:--</span></p>
-    <p>退勤時刻：<span id="clock-out-time">--:--</span></p>
+    <p>出勤：<span id="clock-in-time">--:--</span></p>
+    <p>退勤：<span id="clock-out-time">--:--</span></p>
   </div>
 
   <!-- ログアウト -->
