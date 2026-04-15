@@ -11,10 +11,8 @@
     管理者ツール固有の処理はこのファイル内に完結させる
     ============================================================
   -->
-  <link rel="stylesheet" href="../../common/styles.css">
-  <script src="../../common/api.js"></script>
-  <script src="../../common/ui.js"></script>
-  <script src="../../common/storage.js"></script>
+  <!-- CSSのみhead内で読み込む。JSはbody末尾で読み込む（DOM解析完了後に実行するため） -->
+  <link rel="stylesheet" href="common/styles.css">
 
   <style>
     /* ============================================================
@@ -1001,10 +999,6 @@
       // GAS URL を共通 api.js にセット
       setGasUrl(GAS_URL_ADMIN);
 
-      // バージョンバッジをセット（kintai.html と同じ左下固定表示）
-      const versionEl = document.getElementById('app-version');
-      if (versionEl) versionEl.textContent = 'v1.0.0';
-
       // 月次フィルタの初期値を今月にする
       const today = new Date();
       const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
@@ -1919,6 +1913,14 @@
       return escHtml(JSON.stringify(obj));
     }
   </script>
+
+  <!--
+    共通JSはbody末尾で読み込む。
+    headで読むとDOMより先に実行され setGasUrl 等が未定義になるため。
+  -->
+  <script src="common/api.js"></script>
+  <script src="common/ui.js"></script>
+  <script src="common/storage.js"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
   <div class="version-badge" id="app-version">v1.0.0</div>
