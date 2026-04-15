@@ -79,11 +79,11 @@ body {
 #screen-main {
   width: 100%;
   max-width: 480px;
-  margin: 40px auto; /* ←中央寄せはこれでOK */
+  margin: 40px auto;
   padding: 20px;
   box-sizing: border-box;
 }
-    
+
 a {
   color: LinkText;
 }
@@ -335,10 +335,6 @@ p:last-child { margin-bottom: 0; }
   font-weight: 700;
 }
 
-.sumioka-tab-content {
-  /* hidden 属性で表示・非表示を切り替える（JS 側で hidden を操作） */
-}
-
 .sumioka-tab-content[hidden] {
   display: none;
 }
@@ -379,7 +375,6 @@ p:last-child { margin-bottom: 0; }
   transform: translateY(8px);
 }
 
-/* ライト/ダーク両対応のトーストカラー */
 .sumioka-toast-success {
   background-color: #1a7f37;
   color: #fff;
@@ -591,6 +586,208 @@ p:last-child { margin-bottom: 0; }
   }
 }
 
+/* ============================================================
+   打刻画面 固有スタイル
+   ============================================================ */
+
+/* ログインカード */
+.login-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.login-card {
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  padding: 1.5rem;
+  background-color: Canvas;
+}
+
+/* ヘッダー */
+.kintai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid GrayText;
+}
+
+.kintai-header-name {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.kintai-header-date {
+  font-size: 0.85rem;
+  color: GrayText;
+}
+
+.kintai-header-logout {
+  font-size: 0.8rem;
+  background: none;
+  border: none;
+  color: GrayText;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+/* 残不足バナー */
+.balance-banner {
+  border: 1px solid GrayText;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+
+.balance-banner-label {
+  color: GrayText;
+}
+
+.balance-banner-value {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.balance-banner-value.over  { color: #1a7f37; } /* 超過 */
+.balance-banner-value.short { color: #c0392b; } /* 不足 */
+.balance-banner-value.even  { color: GrayText;  } /* ちょうど */
+
+/* 打刻カード */
+.kintai-card {
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  padding: 1.25rem 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  background-color: Canvas;
+}
+
+.kintai-card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: GrayText;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* 打刻済み時刻表示 */
+.stamped-time {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.stamped-label {
+  font-size: 0.8rem;
+  color: GrayText;
+}
+
+/* 弁当選択 */
+.lunch-options {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.lunch-option {
+  flex: 1;
+}
+
+/* ラジオボタンを非表示にしてカード風UIで代替 */
+.lunch-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.lunch-option label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem;
+  border: 1px solid GrayText;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: center;
+  transition: border-color 0.15s, background-color 0.15s;
+  user-select: none;
+}
+
+.lunch-option input[type="radio"]:checked + label {
+  border-color: Highlight;
+  background-color: Highlight;
+  color: HighlightText;
+}
+
+.lunch-option input[type="radio"]:focus-visible + label {
+  outline: 2px solid Highlight;
+  outline-offset: 2px;
+}
+
+/* 業務報告 */
+.report-area {
+  margin-bottom: 1rem;
+}
+
+/* 現在時刻ライブ表示 */
+.live-clock {
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* 状態テキスト */
+.status-text {
+  font-size: 0.85rem;
+  color: GrayText;
+  text-align: center;
+  margin-top: 0.5rem;
+  min-height: 1.2em;
+}
+
+/* バージョン表示（左下固定） */
+.version-badge {
+  position: fixed;
+  bottom: 0.6rem;
+  left: 0.75rem;
+  font-size: 0.72rem;
+  color: GrayText;
+  pointer-events: none;
+  user-select: none;
+  z-index: 10;
+}
+
+/* 定時通知バナー */
+.overtime-banner {
+  display: none;
+  border: 1px solid #b45309;
+  border-radius: 6px;
+  padding: 0.65rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  color: #b45309;
+  font-weight: 600;
+  text-align: center;
+}
+
+.overtime-banner.show {
+  display: block;
+}
   </style>
 
   <!-- api.js -->
@@ -602,14 +799,6 @@ p:last-child { margin-bottom: 0; }
  *   フロントエンドと GAS（Google Apps Script）の通信を担う。
  *   タイムアウト・エラー処理・ボタン無効化を自動で行う。
  *
- * 使い方:
- *   1. アプリ起動時に setGasUrl(url) を1回呼ぶ
- *   2. 以降は callGAS(action, data, options) だけ使えばOK
- *
- * グローバル公開:
- *   window.SumiokaAPI.callGAS / gasPost / setGasUrl
- *   window.callGAS / gasPost / setGasUrl（省略形）
- *
  * @version 1.0.0
  * @author  田中沙亜
  */
@@ -617,77 +806,22 @@ p:last-child { margin-bottom: 0; }
 (function (global) {
   'use strict';
 
-  // ============================================================
-  // 定数
-  // ============================================================
-
-  /** デフォルトのタイムアウト秒数 */
   const DEFAULT_TIMEOUT_SEC = 10;
-
-  /** GAS の app 識別子（全リクエストで固定） */
   const APP_ID = 'attendance';
 
-  // ============================================================
-  // 内部状態
-  // ============================================================
-
-  /** GAS デプロイ URL（setGasUrl で設定する） */
   let _gasUrl = '';
 
-  // ============================================================
-  // 公開関数
-  // ============================================================
-
-  /**
-   * GAS デプロイ URL をセットする。
-   * アプリ起動時に1回だけ呼ぶ。
-   * window.SUMIOKA_GAS_URL にも同時に書き込む。
-   *
-   * @param {string} url - GAS ウェブアプリのデプロイ URL
-   */
   function setGasUrl(url) {
     _gasUrl = url;
     global.SUMIOKA_GAS_URL = url;
   }
 
-  /**
-   * GAS にリクエストを送る主要関数。
-   * 全アプリからこれだけ使えばOK。
-   *
-   * @param {string} action           - 操作名（例: 'save', 'load'）
-   * @param {Object} [data={}]        - 送信データ
-   * @param {Object} [options={}]     - オプション
-   * @param {HTMLElement} [options.button]  - 通信中に無効化するボタン要素
-   * @param {number}  [options.timeout]     - タイムアウト秒（省略時は10秒）
-   * @param {number}  [options.retry=0]     - リトライ回数
-   * @returns {Promise<{success: boolean, data?: Object, error_message?: string, error_detail?: string, error_code?: string}>}
-   */
   async function callGAS(action, data = {}, options = {}) {
     const payload = { app: APP_ID, action, data };
     return gasPost(payload, options);
   }
 
-  /**
-   * 任意ペイロードを直接 POST する低レベル API。
-   * 通常は callGAS を使う。GAS のルーティングを独自にしたい場合のみ使用。
-   *
-   * エラーコード一覧:
-   *   GAS_URL_UNSET : URL 未設定
-   *   TIMEOUT       : タイムアウト
-   *   NETWORK       : ネットワーク接続不可
-   *   HTTP_5XX      : GAS サーバーエラー
-   *   GAS_ERROR     : GAS 側でエラーが返った
-   *   UNKNOWN       : その他
-   *
-   * @param {Object} payload          - 送信ペイロード
-   * @param {Object} [options={}]
-   * @param {HTMLElement} [options.button]
-   * @param {number}  [options.timeout]
-   * @param {number}  [options.retry=0]
-   * @returns {Promise<Object>}
-   */
   async function gasPost(payload, options = {}) {
-    // URL 未設定チェック
     if (!_gasUrl) {
       return _errorResult('GAS URL が設定されていません。', '', 'GAS_URL_UNSET');
     }
@@ -696,12 +830,10 @@ p:last-child { margin-bottom: 0; }
     const retryCount = options.retry   ?? 0;
     const button     = options.button  ?? null;
 
-    // ボタンを無効化
     if (button) _disableButton(button, true);
 
     let lastError;
 
-    // リトライループ（retryCount=0 なら1回だけ実行）
     for (let attempt = 0; attempt <= retryCount; attempt++) {
       try {
         const result = await _fetchWithTimeout(_gasUrl, payload, timeoutSec);
@@ -710,32 +842,15 @@ p:last-child { margin-bottom: 0; }
       } catch (err) {
         lastError = err;
         if (attempt < retryCount) {
-          // リトライ前に少し待つ（指数バックオフ）
           await _sleep(500 * Math.pow(2, attempt));
         }
       }
     }
 
-    // 全リトライ失敗
     if (button) _disableButton(button, false);
     return _parseError(lastError);
   }
 
-  // ============================================================
-  // 内部ユーティリティ
-  // ============================================================
-
-  /**
-   * タイムアウト付きで GAS に POST する。
-   *
-   * GAS は CORS 制約があるため Content-Type を text/plain にする。
-   * （application/json にすると preflight が走り GAS 側でエラーになる）
-   *
-   * @param {string} url
-   * @param {Object} payload
-   * @param {number} timeoutSec
-   * @returns {Promise<Object>}
-   */
   async function _fetchWithTimeout(url, payload, timeoutSec) {
     const controller = new AbortController();
     const timerId    = setTimeout(() => controller.abort(), timeoutSec * 1000);
@@ -743,11 +858,9 @@ p:last-child { margin-bottom: 0; }
     try {
       const response = await fetch(url, {
         method  : 'POST',
-        // GAS の CORS 制約を通すため text/plain を使う
         headers : { 'Content-Type': 'text/plain' },
         body    : JSON.stringify(payload),
         signal  : controller.signal,
-        // GAS はリダイレクトするため follow を指定
         redirect: 'follow',
       });
 
@@ -762,7 +875,6 @@ p:last-child { margin-bottom: 0; }
 
       const json = await response.json();
 
-      // GAS 側が { success: false } を返した場合
       if (!json.success) {
         const err    = new Error(json.error_message || 'GAS エラー');
         err.code     = 'GAS_ERROR';
@@ -776,7 +888,6 @@ p:last-child { margin-bottom: 0; }
     } catch (err) {
       clearTimeout(timerId);
 
-      // AbortController によるタイムアウト
       if (err.name === 'AbortError') {
         const e  = new Error('タイムアウト');
         e.code   = 'TIMEOUT';
@@ -784,7 +895,6 @@ p:last-child { margin-bottom: 0; }
         throw e;
       }
 
-      // fetch 自体が失敗（ネットワーク不可）
       if (err instanceof TypeError) {
         const e  = new Error('ネットワークエラー');
         e.code   = 'NETWORK';
@@ -796,12 +906,6 @@ p:last-child { margin-bottom: 0; }
     }
   }
 
-  /**
-   * エラーオブジェクトからエラーレスポンスを生成する。
-   *
-   * @param {Error} err
-   * @returns {Object}
-   */
   function _parseError(err) {
     return _errorResult(
       err.message   || '通信エラーが発生しました。',
@@ -810,60 +914,25 @@ p:last-child { margin-bottom: 0; }
     );
   }
 
-  /**
-   * エラーレスポンスオブジェクトを生成する。
-   *
-   * @param {string} message
-   * @param {string} detail
-   * @param {string} code
-   * @returns {Object}
-   */
   function _errorResult(message, detail, code) {
-    return {
-      success       : false,
-      error_message : message,
-      error_detail  : detail,
-      error_code    : code,
-    };
+    return { success: false, error_message: message, error_detail: detail, error_code: code };
   }
 
-  /**
-   * ボタンの有効・無効を切り替える。
-   *
-   * @param {HTMLElement} button
-   * @param {boolean} disabled
-   */
   function _disableButton(button, disabled) {
-    if (button && button instanceof HTMLElement) {
-      button.disabled = disabled;
-    }
+    if (button && button instanceof HTMLElement) button.disabled = disabled;
   }
 
-  /**
-   * 指定ミリ秒待つ。
-   *
-   * @param {number} ms
-   * @returns {Promise<void>}
-   */
   function _sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // ============================================================
-  // グローバル公開
-  // ============================================================
-
   const SumiokaAPI = { callGAS, gasPost, setGasUrl };
-
-  global.SumiokaAPI = SumiokaAPI;
-
-  // 省略形（直接呼べる）
-  global.callGAS  = callGAS;
-  global.gasPost  = gasPost;
-  global.setGasUrl = setGasUrl;
+  global.SumiokaAPI  = SumiokaAPI;
+  global.callGAS     = callGAS;
+  global.gasPost     = gasPost;
+  global.setGasUrl   = setGasUrl;
 
 })(window);
-
   </script>
 
   <!-- ui.js -->
@@ -872,17 +941,7 @@ p:last-child { margin-bottom: 0; }
  * ui.js - 共通UI表示モジュール
  *
  * 役割:
- *   トースト通知・ローディング・エラーダイアログ・確認ダイアログ・
- *   タブ切り替え・数値入力変換を提供する。
- *
- * 依存:
- *   styles.css（.toast-ov / .loading-overlay / .error-overlay / .confirm-overlay など）
- *
- * グローバル公開:
- *   window.SumiokaUI.showToast / showLoading / hideLoading / showError /
- *                   confirm / handleApiResult / initTabs / initNumericInputs /
- *                   convertNumericInput / initAppMeta
- *   window.XXX（省略形）
+ *   トースト・ローディング・エラーダイアログ・確認ダイアログ・タブ切り替えを提供する。
  *
  * @version 1.0.0
  * @author  田中沙亜
@@ -891,19 +950,7 @@ p:last-child { margin-bottom: 0; }
 (function (global) {
   'use strict';
 
-  // ============================================================
-  // トースト通知
-  // ============================================================
-
-  /**
-   * 画面下部にフワっとトースト通知を表示する。
-   *
-   * @param {string} message           - 表示するメッセージ
-   * @param {'success'|'error'|'info'|'warning'} [type='info'] - 種類
-   * @param {number} [duration=2000]   - 表示ミリ秒
-   */
   function showToast(message, type = 'info', duration = 2000) {
-    // 既存のトーストがあれば削除
     const existing = document.querySelector('.sumioka-toast-ov');
     if (existing) existing.remove();
 
@@ -917,12 +964,8 @@ p:last-child { margin-bottom: 0; }
     ov.appendChild(box);
     document.body.appendChild(ov);
 
-    // アニメーション付きで表示
-    requestAnimationFrame(() => {
-      box.classList.add('sumioka-toast-show');
-    });
+    requestAnimationFrame(() => { box.classList.add('sumioka-toast-show'); });
 
-    // 指定時間後にフェードアウトして削除
     setTimeout(() => {
       box.classList.remove('sumioka-toast-show');
       box.classList.add('sumioka-toast-hide');
@@ -930,18 +973,8 @@ p:last-child { margin-bottom: 0; }
     }, duration);
   }
 
-  // ============================================================
-  // ローディング
-  // ============================================================
-
-  /**
-   * 全画面ローディングオーバーレイを表示する。
-   * callGAS の前後に必ずペアで使う。
-   *
-   * @param {string} [message='処理中...'] - ローディング中のテキスト
-   */
   function showLoading(message = '処理中...') {
-    hideLoading(); // 二重表示防止
+    hideLoading();
 
     const ov = document.createElement('div');
     ov.className = 'sumioka-loading-overlay';
@@ -957,27 +990,12 @@ p:last-child { margin-bottom: 0; }
     document.body.appendChild(ov);
   }
 
-  /**
-   * ローディングオーバーレイを非表示にする。
-   */
   function hideLoading() {
     const el = document.getElementById('sumioka-loading');
     if (el) el.remove();
   }
 
-  // ============================================================
-  // エラーダイアログ
-  // ============================================================
-
-  /**
-   * エラーダイアログを表示する。
-   *
-   * @param {string}   errorMessage      - ユーザー向けメッセージ（日本語）
-   * @param {string}   [errorDetail='']  - デバッグ用詳細（折りたたみで表示）
-   * @param {Function} [onRetry]         - 「再試行」ボタンのコールバック（省略時はボタン非表示）
-   */
   function showError(errorMessage, errorDetail = '', onRetry = null) {
-    // 既存のエラーダイアログがあれば閉じる
     const existing = document.querySelector('.sumioka-error-overlay');
     if (existing) existing.remove();
 
@@ -985,10 +1003,7 @@ p:last-child { margin-bottom: 0; }
     ov.className = 'sumioka-error-overlay';
 
     const detailHtml = errorDetail
-      ? `<details class="sumioka-error-detail">
-           <summary>詳細</summary>
-           <pre>${_escapeHtml(errorDetail)}</pre>
-         </details>`
+      ? `<details class="sumioka-error-detail"><summary>詳細</summary><pre>${_escapeHtml(errorDetail)}</pre></details>`
       : '';
 
     const retryHtml = onRetry
@@ -1007,30 +1022,12 @@ p:last-child { margin-bottom: 0; }
     `;
 
     document.body.appendChild(ov);
-
     document.getElementById('sumioka-error-close').addEventListener('click', () => ov.remove());
-
     if (onRetry) {
-      document.getElementById('sumioka-error-retry').addEventListener('click', () => {
-        ov.remove();
-        onRetry();
-      });
+      document.getElementById('sumioka-error-retry').addEventListener('click', () => { ov.remove(); onRetry(); });
     }
   }
 
-  // ============================================================
-  // API結果ハンドラ
-  // ============================================================
-
-  /**
-   * callGAS の返り値を渡すだけで成功/失敗を自動表示する便利関数。
-   * 成功 → showToast、失敗 → showError を自動で呼ぶ。
-   *
-   * @param {Object}   result          - callGAS の返り値
-   * @param {string}   [successMessage='完了しました。'] - 成功時のトーストメッセージ
-   * @param {Function} [onRetry]       - 失敗時の再試行コールバック
-   * @returns {boolean} 成功したか
-   */
   function handleApiResult(result, successMessage = '完了しました。', onRetry = null) {
     if (result.success) {
       showToast(successMessage, 'success');
@@ -1041,22 +1038,6 @@ p:last-child { margin-bottom: 0; }
     }
   }
 
-  // ============================================================
-  // 確認ダイアログ
-  // ============================================================
-
-  /**
-   * 確認ダイアログを表示する。Promise<boolean> を返す。
-   *
-   * 使い方:
-   *   const ok = await confirm('削除しますか？');
-   *   if (ok) { ... }
-   *
-   * @param {string} [message='確認してください。']
-   * @param {string} [confirmText='OK']
-   * @param {string} [cancelText='キャンセル']
-   * @returns {Promise<boolean>}
-   */
   function confirm(message = '確認してください。', confirmText = 'OK', cancelText = 'キャンセル') {
     return new Promise(resolve => {
       const existing = document.querySelector('.sumioka-confirm-overlay');
@@ -1076,34 +1057,11 @@ p:last-child { margin-bottom: 0; }
       `;
 
       document.body.appendChild(ov);
-
-      document.getElementById('sumioka-confirm-ok').addEventListener('click', () => {
-        ov.remove();
-        resolve(true);
-      });
-
-      document.getElementById('sumioka-confirm-cancel').addEventListener('click', () => {
-        ov.remove();
-        resolve(false);
-      });
+      document.getElementById('sumioka-confirm-ok').addEventListener('click', () => { ov.remove(); resolve(true); });
+      document.getElementById('sumioka-confirm-cancel').addEventListener('click', () => { ov.remove(); resolve(false); });
     });
   }
 
-  // ============================================================
-  // タブ切り替え
-  // ============================================================
-
-  /**
-   * タブナビゲーションを初期化する。
-   *
-   * HTML 条件:
-   *   ボタンに class="sumioka-tab-btn" data-tab="タブ名"
-   *   コンテンツに id="tab-タブ名"
-   *
-   * @param {Object}   [options={}]
-   * @param {string}   [options.defaultTab]  - 初期表示タブ名（省略時は最初の .sumioka-tab-btn）
-   * @param {Function} [options.onSwitch]    - タブ切り替え時コールバック (tabName) => {}
-   */
   function initTabs(options = {}) {
     const buttons = Array.from(document.querySelectorAll('.sumioka-tab-btn'));
     if (buttons.length === 0) return;
@@ -1114,76 +1072,44 @@ p:last-child { margin-bottom: 0; }
         btn.classList.toggle('sumioka-tab-btn--active', isActive);
         btn.setAttribute('aria-selected', isActive);
       });
-
       document.querySelectorAll('.sumioka-tab-content').forEach(content => {
         content.hidden = content.id !== `tab-${tabName}`;
       });
-
       if (options.onSwitch) options.onSwitch(tabName);
     }
 
-    buttons.forEach(btn => {
-      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-    });
-
-    // 外部からタブを切り替えられるようにグローバルに公開
+    buttons.forEach(btn => { btn.addEventListener('click', () => switchTab(btn.dataset.tab)); });
     global._sumiokaSwitch = switchTab;
-
-    // 初期タブを表示
     const defaultTab = options.defaultTab || buttons[0].dataset.tab;
     switchTab(defaultTab);
   }
 
-  // ============================================================
-  // 数値ショートカット入力
-  // ============================================================
-
-  /**
-   * data-convert 属性を持つ input を一括で数値ショートカット入力に設定する。
-   * DOMContentLoaded 後に1回呼ぶだけでOK。
-   *
-   * data-convert の種類:
-   *   "time"     : 830 → 8:30
-   *   "duration" : 90  → 1:30
-   *   "money"    : 9000 → 9,000
-   */
   function initNumericInputs() {
     document.querySelectorAll('input[data-convert]').forEach(input => {
       convertNumericInput(input, input.dataset.convert);
     });
   }
 
-  /**
-   * 個別の input に数値ショートカットを設定する。
-   *
-   * @param {HTMLInputElement} inputEl
-   * @param {'time'|'duration'|'money'} type
-   */
   function convertNumericInput(inputEl, type) {
     inputEl.addEventListener('blur', () => {
       const raw = inputEl.value.replace(/[^0-9]/g, '');
       if (!raw) return;
-
       const num = parseInt(raw, 10);
-
       switch (type) {
         case 'time': {
-          // 830 → 8:30 / 900 → 9:00
           const h = Math.floor(num / 100);
           const m = num % 100;
-          if (m >= 60) return; // 不正な分は変換しない
+          if (m >= 60) return;
           inputEl.value = `${h}:${String(m).padStart(2, '0')}`;
           break;
         }
         case 'duration': {
-          // 90 → 1:30
           const h = Math.floor(num / 60);
           const m = num % 60;
           inputEl.value = `${h}:${String(m).padStart(2, '0')}`;
           break;
         }
         case 'money': {
-          // 9000 → 9,000
           inputEl.value = num.toLocaleString('ja-JP');
           break;
         }
@@ -1191,21 +1117,6 @@ p:last-child { margin-bottom: 0; }
     });
   }
 
-  // ============================================================
-  // アプリメタ情報
-  // ============================================================
-
-  /**
-   * ヘッダーのバージョン表示と設定タブのバージョン履歴アコーディオンを生成する。
-   *
-   * HTML 条件:
-   *   id="sumioka-app-version" : バージョン文字列を表示する要素
-   *   id="sumioka-acc-versions": バージョン履歴アコーディオンを挿入する要素
-   *
-   * @param {Object}   options
-   * @param {string}   options.version - 現在のバージョン（例: 'v1.0.0'）
-   * @param {Array}    options.history - [{ v, date, note }] の配列（新しい順）
-   */
   function initAppMeta({ version, history = [] }) {
     const versionEl = document.getElementById('sumioka-app-version');
     if (versionEl) versionEl.textContent = version;
@@ -1221,16 +1132,6 @@ p:last-child { margin-bottom: 0; }
     }
   }
 
-  // ============================================================
-  // 内部ユーティリティ
-  // ============================================================
-
-  /**
-   * HTML エスケープ。XSS を防ぐため、ユーザー入力を DOM に埋め込む前に必ず使う。
-   *
-   * @param {string} str
-   * @returns {string}
-   */
   function _escapeHtml(str) {
     return String(str)
       .replace(/&/g,  '&amp;')
@@ -1240,39 +1141,20 @@ p:last-child { margin-bottom: 0; }
       .replace(/'/g,  '&#039;');
   }
 
-  // ============================================================
-  // グローバル公開
-  // ============================================================
-
-  const SumiokaUI = {
-    showToast,
-    showLoading,
-    hideLoading,
-    showError,
-    handleApiResult,
-    confirm,
-    initTabs,
-    initNumericInputs,
-    convertNumericInput,
-    initAppMeta,
-  };
-
-  global.SumiokaUI = SumiokaUI;
-
-  // 省略形（直接呼べる）
-  global.showToast       = showToast;
-  global.showLoading     = showLoading;
-  global.hideLoading     = hideLoading;
-  global.showError       = showError;
-  global.handleApiResult = handleApiResult;
-  global.confirm         = confirm;
-  global.initTabs        = initTabs;
+  const SumiokaUI = { showToast, showLoading, hideLoading, showError, handleApiResult, confirm, initTabs, initNumericInputs, convertNumericInput, initAppMeta };
+  global.SumiokaUI           = SumiokaUI;
+  global.showToast           = showToast;
+  global.showLoading         = showLoading;
+  global.hideLoading         = hideLoading;
+  global.showError           = showError;
+  global.handleApiResult     = handleApiResult;
+  global.confirm             = confirm;
+  global.initTabs            = initTabs;
   global.initNumericInputs   = initNumericInputs;
   global.convertNumericInput = convertNumericInput;
-  global.initAppMeta     = initAppMeta;
+  global.initAppMeta         = initAppMeta;
 
 })(window);
-
   </script>
 
   <!-- storage.js -->
@@ -1283,16 +1165,6 @@ p:last-child { margin-bottom: 0; }
  * 役割:
  *   localStorage への保存・読込を一元管理する。
  *   キーに sumioka_ プレフィックスを自動付与し、他アプリとの衝突を防ぐ。
- *   データにはバージョン情報を付与する（将来のマイグレーション対応）。
- *
- * キー命名規則:
- *   保存時: sumioka_ + 引数のキー名
- *   例: save('gas_url', ...) → localStorage の 'sumioka_gas_url' に保存
- *   呼び出し側は sumioka_ なしで渡せばOK
- *
- * グローバル公開:
- *   window.SumiokaStorage.save / load / remove / clear / exists / keys / getUsage
- *   window.XXX（省略形）
  *
  * @version 1.0.0
  * @author  田中沙亜
@@ -1301,42 +1173,16 @@ p:last-child { margin-bottom: 0; }
 (function (global) {
   'use strict';
 
-  // ============================================================
-  // 定数
-  // ============================================================
-
-  /** localStorage キーのプレフィックス */
   const PREFIX = 'sumioka_';
-
-  /** データに付与するスキーマバージョン */
   const SCHEMA_VERSION = 1;
 
-  // ============================================================
-  // 公開関数
-  // ============================================================
-
-  /**
-   * データを保存する。
-   *
-   * @param {string}  key                      - キー名（プレフィックスなしで渡す）
-   * @param {*}       value                    - 保存する値（JSON シリアライズ可能なもの）
-   * @param {Object}  [options={}]
-   * @param {boolean} [options.withVersion=true] - バージョン情報を付与するか
-   * @returns {boolean} 成功したか
-   */
   function save(key, value, options = {}) {
     const withVersion = options.withVersion ?? true;
-
     try {
-      const payload = withVersion
-        ? { _v: SCHEMA_VERSION, value }
-        : value;
-
+      const payload = withVersion ? { _v: SCHEMA_VERSION, value } : value;
       localStorage.setItem(_prefixed(key), JSON.stringify(payload));
       return true;
-
     } catch (err) {
-      // 容量超過（QuotaExceededError）の場合もコンソールに警告を出して false を返す
       if (err.name === 'QuotaExceededError') {
         console.warn('[SumiokaStorage] localStorage 容量超過:', key);
       } else {
@@ -1346,41 +1192,19 @@ p:last-child { margin-bottom: 0; }
     }
   }
 
-  /**
-   * データを読み込む。
-   * キーが存在しない場合は defaultValue を返す。
-   * バージョン情報が付与されたデータは自動的に展開して value だけ返す。
-   *
-   * @param {string} key          - キー名（プレフィックスなしで渡す）
-   * @param {*}      [defaultValue=null] - キーが存在しない場合の返り値
-   * @returns {*}
-   */
   function load(key, defaultValue = null) {
     try {
       const raw = localStorage.getItem(_prefixed(key));
       if (raw === null) return defaultValue;
-
       const parsed = JSON.parse(raw);
-
-      // バージョン情報が付与されている場合は value を取り出す
-      if (parsed && typeof parsed === 'object' && '_v' in parsed) {
-        return parsed.value;
-      }
-
+      if (parsed && typeof parsed === 'object' && '_v' in parsed) return parsed.value;
       return parsed;
-
     } catch (err) {
       console.error('[SumiokaStorage] load エラー:', key, err);
       return defaultValue;
     }
   }
 
-  /**
-   * 指定キーのデータを削除する。
-   *
-   * @param {string} key
-   * @returns {boolean} 成功したか
-   */
   function remove(key) {
     try {
       localStorage.removeItem(_prefixed(key));
@@ -1391,19 +1215,11 @@ p:last-child { margin-bottom: 0; }
     }
   }
 
-  /**
-   * sumioka_ プレフィックスのキーをすべて削除する。
-   * 他アプリのデータには触れない。
-   *
-   * @param {boolean} confirmed - true を渡さないと実行されない（誤操作防止）
-   * @returns {boolean} 実行されたか
-   */
   function clear(confirmed) {
     if (confirmed !== true) {
       console.warn('[SumiokaStorage] clear() は clear(true) として呼んでください。');
       return false;
     }
-
     try {
       keys().forEach(key => localStorage.removeItem(_prefixed(key)));
       return true;
@@ -1413,349 +1229,50 @@ p:last-child { margin-bottom: 0; }
     }
   }
 
-  /**
-   * キーが存在するか確認する。
-   *
-   * @param {string} key
-   * @returns {boolean}
-   */
-  function exists(key) {
-    return localStorage.getItem(_prefixed(key)) !== null;
-  }
+  function exists(key) { return localStorage.getItem(_prefixed(key)) !== null; }
 
-  /**
-   * 現在保存されている全キー一覧を返す（プレフィックスなし）。
-   *
-   * @returns {string[]}
-   */
   function keys() {
     const result = [];
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (k && k.startsWith(PREFIX)) {
-        result.push(k.slice(PREFIX.length));
-      }
+      if (k && k.startsWith(PREFIX)) result.push(k.slice(PREFIX.length));
     }
     return result;
   }
 
-  /**
-   * sumioka_ プレフィックスのキーが使用している容量の概算を返す。
-   *
-   * @returns {{ used: number, usedKB: string }}
-   */
   function getUsage() {
     let used = 0;
     keys().forEach(key => {
       const raw = localStorage.getItem(_prefixed(key));
-      if (raw) used += raw.length * 2; // 文字 × 2バイト（UTF-16）
+      if (raw) used += raw.length * 2;
     });
-    return {
-      used,
-      usedKB: (used / 1024).toFixed(2),
-    };
+    return { used, usedKB: (used / 1024).toFixed(2) };
   }
 
-  // ============================================================
-  // 内部ユーティリティ
-  // ============================================================
-
-  /**
-   * キーにプレフィックスを付与する。
-   *
-   * @param {string} key
-   * @returns {string}
-   */
-  function _prefixed(key) {
-    return PREFIX + key;
-  }
-
-  // ============================================================
-  // グローバル公開
-  // ============================================================
+  function _prefixed(key) { return PREFIX + key; }
 
   const SumiokaStorage = { save, load, remove, clear, exists, keys, getUsage };
-
   global.SumiokaStorage = SumiokaStorage;
-
-  // 省略形（直接呼べる）
-  global.storeSave   = save;
-  global.storeLoad   = load;
-  global.storeRemove = remove;
-  global.storeClear  = clear;
-  global.storeExists = exists;
-  global.storeKeys   = keys;
+  global.storeSave      = save;
+  global.storeLoad      = load;
+  global.storeRemove    = remove;
+  global.storeClear     = clear;
+  global.storeExists    = exists;
+  global.storeKeys      = keys;
 
 })(window);
-
   </script>
 
-  <style>
-    /* ============================================================
-       打刻画面 固有スタイル
-       ============================================================ */
-
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100dvh;
-      padding: 1rem;
-    }
-
- <!-- ログイン画面 -->
-<div id="screen-login">
-
-  <p class="login-title">住岡 勤怠管理</p>
-
-  <div class="login-card">
-    <div class="sumioka-form-group">
-      <label class="sumioka-label">PIN（4桁）</label>
-      <input id="input-pin" class="sumioka-input" type="tel" maxlength="4">
-    </div>
-
-    <div class="sumioka-form-group">
-      <label class="sumioka-label">パスワード</label>
-      <input id="input-password" class="sumioka-input" type="password">
-    </div>
-
-    <button id="btn-login" class="sumioka-btn sumioka-btn-primary sumioka-btn-block">
-      ログイン
-    </button>
-  </div>
-
-</div>
-
-
-<!-- メイン画面（ログイン後） -->
-<div id="screen-main" style="display:none;">
-
-  <p class="login-title">勤怠打刻</p>
-
-  <!-- ユーザー情報 -->
-  <div class="sumioka-card">
-    <p>氏名：<span id="user-name">-</span></p>
-    <p>状態：<span id="today-status">未打刻</span></p>
-  </div>
-
-  <!-- 打刻ボタン -->
-  <div class="sumioka-mt-2">
-    <button id="btn-clock-in" class="sumioka-btn sumioka-btn-primary sumioka-btn-block">
-      出勤
-    </button>
-
-    <button id="btn-clock-out" class="sumioka-btn sumioka-btn-block sumioka-mt-1">
-      退勤
-    </button>
-  </div>
-
-  <!-- 時刻表示 -->
-  <div class="sumioka-card sumioka-mt-2">
-    <p>出勤：<span id="clock-in-time">--:--</span></p>
-    <p>退勤：<span id="clock-out-time">--:--</span></p>
-  </div>
-
-  <!-- ログアウト -->
-  <button id="btn-logout" class="sumioka-btn sumioka-btn-block sumioka-mt-2">
-    ログアウト
-  </button>
-
-</div>
-
-
-    /* ヘッダー */
-    .kintai-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.5rem;
-      padding-bottom: 0.75rem;
-      border-bottom: 1px solid GrayText;
-    }
-
-    .kintai-header-name {
-      font-size: 1rem;
-      font-weight: 700;
-    }
-
-    .kintai-header-date {
-      font-size: 0.85rem;
-      color: GrayText;
-    }
-
-    .kintai-header-logout {
-      font-size: 0.8rem;
-      background: none;
-      border: none;
-      color: GrayText;
-      cursor: pointer;
-      text-decoration: underline;
-      padding: 0;
-    }
-
-    /* 残不足バナー */
-    .balance-banner {
-      border: 1px solid GrayText;
-      border-radius: 6px;
-      padding: 0.75rem 1rem;
-      margin-bottom: 1.25rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 0.9rem;
-    }
-
-    .balance-banner-label {
-      color: GrayText;
-    }
-
-    .balance-banner-value {
-      font-weight: 700;
-      font-size: 1rem;
-    }
-
-    .balance-banner-value.over  { color: #1a7f37; } /* 超過 */
-    .balance-banner-value.short { color: #c0392b; } /* 不足 */
-    .balance-banner-value.even  { color: GrayText;  } /* ちょうど */
-
-    /* 打刻カード */
-    .kintai-card {
-      border: 1px solid GrayText;
-      border-radius: 8px;
-      padding: 1.25rem 1.25rem 1.5rem;
-      margin-bottom: 1rem;
-      background-color: Canvas;
-    }
-
-    .kintai-card-title {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: GrayText;
-      margin-bottom: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    /* 打刻済み時刻表示 */
-    .stamped-time {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .stamped-label {
-      font-size: 0.8rem;
-      color: GrayText;
-    }
-
-    /* 弁当選択 */
-    .lunch-options {
-      display: flex;
-      gap: 0.75rem;
-      margin-bottom: 1rem;
-    }
-
-    .lunch-option {
-      flex: 1;
-    }
-
-    /* ラジオボタンを非表示にしてカード風UIで代替 */
-    .lunch-option input[type="radio"] {
-      position: absolute;
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .lunch-option label {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0.6rem;
-      border: 1px solid GrayText;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.95rem;
-      font-weight: 500;
-      text-align: center;
-      transition: border-color 0.15s, background-color 0.15s;
-      user-select: none;
-    }
-
-    .lunch-option input[type="radio"]:checked + label {
-      border-color: Highlight;
-      background-color: Highlight;
-      color: HighlightText;
-    }
-
-    .lunch-option input[type="radio"]:focus-visible + label {
-      outline: 2px solid Highlight;
-      outline-offset: 2px;
-    }
-
-    /* 業務報告 */
-    .report-area {
-      margin-bottom: 1rem;
-    }
-
-    /* 現在時刻ライブ表示 */
-    .live-clock {
-      font-size: 2rem;
-      font-weight: 700;
-      text-align: center;
-      margin-bottom: 1.25rem;
-      font-variant-numeric: tabular-nums;
-      letter-spacing: 0.02em;
-    }
-
-    /* 状態テキスト */
-    .status-text {
-      font-size: 0.85rem;
-      color: GrayText;
-      text-align: center;
-      margin-top: 0.5rem;
-      min-height: 1.2em;
-    }
-
-    /* バージョン表示（左下固定）
-       画面の邪魔にならないよう小さく・薄く表示する */
-    .version-badge {
-      position: fixed;
-      bottom: 0.6rem;
-      left: 0.75rem;
-      font-size: 0.72rem;
-      color: GrayText;
-      pointer-events: none; /* クリックを素通りさせる */
-      user-select: none;
-      z-index: 10;
-    }
-
-    /* 定時通知バナー（非表示→表示） */
-    .overtime-banner {
-      display: none;
-      border: 1px solid #b45309;
-      border-radius: 6px;
-      padding: 0.65rem 1rem;
-      margin-bottom: 1rem;
-      font-size: 0.9rem;
-      color: #b45309;
-      font-weight: 600;
-      text-align: center;
-    }
-
-    .overtime-banner.show {
-      display: block;
-    }
-  </style>
 </head>
 <body>
 
   <!-- ============================================================
        ログイン画面
+       【修正①】screen-login と screen-main を正しく並列配置。
+                 元のコードは screen-login の中に screen-main が
+                 入れ子になっていたため showScreen() が誤作動していた。
        ============================================================ -->
   <div id="screen-login">
-    <div id="screen-main" style="display:none">
     <p class="login-title">住岡 勤怠管理</p>
 
     <div class="login-card">
@@ -1793,9 +1310,10 @@ p:last-child { margin-bottom: 0; }
   </div>
 
   <!-- ============================================================
-       メイン打刻画面
+       メイン打刻画面（ログイン後）
+       【修正②】初期状態は display:none。showScreen('main') で表示する。
        ============================================================ -->
-  <div id="screen-main">
+  <div id="screen-main" style="display:none;">
 
     <!-- ヘッダー -->
     <div class="kintai-header">
@@ -1829,10 +1347,10 @@ p:last-child { margin-bottom: 0; }
 
       <!-- 未打刻の場合はこちらを表示 -->
       <div id="checkin-form">
-        <!-- 現在時刻 -->
+        <!-- 現在時刻ライブ表示 -->
         <div class="live-clock" id="live-clock">--:--:--</div>
 
-        <!-- 弁当要否（必須） -->
+        <!-- 弁当要否（必須：未選択では出勤ボタンが押せない） -->
         <div class="sumioka-form-group">
           <div class="sumioka-label">弁当</div>
           <div class="lunch-options">
@@ -1890,7 +1408,7 @@ p:last-child { margin-bottom: 0; }
           </select>
         </div>
 
-        <!-- 業務報告（必須） -->
+        <!-- 業務報告（必須：未入力では退勤ボタンが押せない） -->
         <div class="report-area">
           <label class="sumioka-label" for="input-report">業務報告（必須）</label>
           <textarea
@@ -1914,9 +1432,8 @@ p:last-child { margin-bottom: 0; }
 
   </div><!-- /#screen-main -->
 
-  <!-- バージョン表示（左下固定）
-       ｖ1.2.1 はアップロード時に Uploader が実際のバージョン番号に置換する -->
-  <div class="version-badge" id="app-version">ｖ1.2.1</div>
+  <!-- バージョン表示（左下固定） -->
+  <div class="version-badge" id="app-version">v1.2.1</div>
 
 
   <script>
@@ -1928,12 +1445,12 @@ p:last-child { margin-bottom: 0; }
 
     /**
      * GAS デプロイ URL。
-     * URLは変えない運用。変更が必要な場合はこの1行だけ書き換える。
+     * 変更が必要な場合はこの1行だけ書き換える。
      */
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec';
 
     /**
-     * 定時通知を出す分数（定時の何分前に通知するか）。
+     * 定時の何分前に通知バナーを表示するか。
      * 提案書仕様: 定時5分前。
      */
     const OVERTIME_NOTICE_MINUTES = 5;
@@ -1945,30 +1462,18 @@ p:last-child { margin-bottom: 0; }
     /**
      * アプリの状態を1か所で管理する。
      * 状態が変わるたびに renderState() を呼んで画面を同期する。
-     *
-     * @type {{
-     *   employeeId   : string,
-     *   name         : string,
-     *   scheduledEnd : string,   // 'HH:MM' 形式の所定終業時刻
-     *   checkedIn    : boolean,
-     *   checkedOut   : boolean,
-     *   checkinTime  : string,   // 'HH:MM' 形式
-     *   checkoutTime : string,   // 'HH:MM' 形式
-     *   lunch        : boolean|null,
-     *   report       : string,
-     * }}
      */
     const state = {
       employeeId   : '',
       name         : '',
-      scheduledEnd : '',
+      scheduledEnd : '',   // 'HH:MM' 形式の所定終業時刻
       checkedIn    : false,
       checkedOut   : false,
-      checkinTime  : '',
-      checkoutTime : '',
-      lunch        : null,
+      checkinTime  : '',   // 'HH:MM' 形式
+      checkoutTime : '',   // 'HH:MM' 形式
+      lunch        : null, // true=要 / false=不要 / null=未選択
       report       : '',
-      breakMinutes : null,   // 休憩時間（分）。null = 未選択。退勤時に必須
+      breakMinutes : null, // 休憩時間（分）。null=未選択。退勤時に必須
     };
 
     // ============================================================
@@ -2032,7 +1537,6 @@ p:last-child { margin-bottom: 0; }
       });
 
       // 休憩時間選択 → 退勤ボタンの有効化
-      // 値は文字列で来るので Number に変換して保持する
       document.getElementById('select-break').addEventListener('change', e => {
         const val = e.target.value;
         state.breakMinutes = val === '' ? null : Number(val);
@@ -2066,9 +1570,7 @@ p:last-child { margin-bottom: 0; }
       }
 
       showLoading('認証中...');
-
       const result = await callGAS('authenticate', { pin, password }, { button: btn });
-
       hideLoading();
 
       if (!result.success) {
@@ -2096,8 +1598,6 @@ p:last-child { margin-bottom: 0; }
 
     /**
      * セッション情報を state に適用して打刻画面へ切り替える。
-     *
-     * @param {{ employeeId: string, name: string, scheduledEnd: string }} session
      */
     function applySession(session) {
       state.employeeId   = session.employeeId;
@@ -2128,9 +1628,9 @@ p:last-child { margin-bottom: 0; }
 
       // フォームをリセット
       document.querySelectorAll('input[name="lunch"]').forEach(r => r.checked = false);
-      document.getElementById('input-report').value = '';
-      document.getElementById('select-break').value = '';  // 休憩時間セレクトをリセット
-      document.getElementById('input-pin').value = '';
+      document.getElementById('input-report').value  = '';
+      document.getElementById('select-break').value  = '';
+      document.getElementById('input-pin').value     = '';
       document.getElementById('input-password').value = '';
 
       showScreen('login');
@@ -2147,16 +1647,14 @@ p:last-child { margin-bottom: 0; }
     async function loadTodayRecord() {
       showLoading('データを読み込み中...');
 
-      const today  = todayString();
       const result = await callGAS('load', {
         employee_id : state.employeeId,
-        date        : today,
+        date        : todayString(),
       });
 
       hideLoading();
 
       if (!result.success) {
-        // 取得失敗はトースト通知のみ（致命的エラーではない）
         showToast('データの読み込みに失敗しました。', 'error');
         renderState();
         return;
@@ -2167,26 +1665,21 @@ p:last-child { margin-bottom: 0; }
       if (record && record.data) {
         const d = record.data;
 
-        // 出勤済みの場合
         if (d.time_in) {
           state.checkedIn   = true;
           state.checkinTime = d.time_in;
           state.lunch       = d.lunch ?? null;
         }
 
-        // 退勤済みの場合
         if (d.time_out) {
           state.checkedOut   = true;
           state.checkoutTime = d.time_out;
           state.report       = d.memo || '';
-          // 保存済みの休憩時間を復元する（画面を開き直したときに正しく表示するため）
           state.breakMinutes = typeof d.break_minutes === 'number' ? d.break_minutes : null;
         }
       }
 
-      // 残不足時間を読み込む
       await loadBalance();
-
       renderState();
     }
 
@@ -2196,13 +1689,9 @@ p:last-child { margin-bottom: 0; }
     async function loadBalance() {
       const yearMonth = todayString().slice(0, 7); // 'YYYY-MM'
 
-      const result = await callGAS('monthly_report', {
-        year_month: yearMonth,
-      });
-
+      const result = await callGAS('monthly_report', { year_month: yearMonth });
       if (!result.success) return;
 
-      // 自分のサマリーを探す
       const summary = result.data.report?.find(r => r.employee_id === state.employeeId);
 
       if (!summary) {
@@ -2212,10 +1701,10 @@ p:last-child { margin-bottom: 0; }
 
       // 残不足 = 合計勤務時間 - 所定労働時間合計（簡易計算）
       // ※ 正確な計算は Phase 3（給与計算）で実装
-      const totalMin    = summary.total_work_minutes || 0;
-      const workDays    = summary.work_days || 0;
+      const totalMin     = summary.total_work_minutes || 0;
+      const workDays     = summary.work_days || 0;
       const scheduledMin = workDays * 8 * 60; // 暫定: 1日8時間
-      const diffMin     = totalMin - scheduledMin;
+      const diffMin      = totalMin - scheduledMin;
 
       const el = document.getElementById('display-balance');
       el.textContent = formatMinutes(diffMin, true);
@@ -2274,7 +1763,7 @@ p:last-child { margin-bottom: 0; }
 
     /**
      * 退勤打刻処理。
-     * 業務報告を確認してから GAS に送信する。
+     * 業務報告・休憩時間を確認してから GAS に送信する。
      * 出勤時のデータを引き継いで upsert する。
      */
     async function handleCheckout() {
@@ -2286,10 +1775,8 @@ p:last-child { margin-bottom: 0; }
       const ok = await confirm('退勤打刻をしますか？');
       if (!ok) return;
 
-      const now = nowTimeString();
-      const btn = document.getElementById('btn-checkout');
-
-      // 勤務時間を計算（分）
+      const now    = nowTimeString();
+      const btn    = document.getElementById('btn-checkout');
       const workMin = calcWorkMinutes(state.checkinTime, now);
 
       showLoading('退勤打刻中...');
@@ -2301,7 +1788,7 @@ p:last-child { margin-bottom: 0; }
           status        : state.checkinTime ? deriveStatus() : '出勤',
           time_in       : state.checkinTime,
           time_out      : now,
-          break_minutes : state.breakMinutes,   // ユーザーが選択した休憩時間（分）
+          break_minutes : state.breakMinutes,
           work_minutes  : Math.max(0, workMin - state.breakMinutes),
           lunch         : state.lunch ?? false,
           memo          : state.report,
@@ -2329,8 +1816,7 @@ p:last-child { margin-bottom: 0; }
      * @returns {'出勤'|'遅刻'|'早退'}
      */
     function deriveStatus() {
-      // 暫定: 9:00 を所定開始時刻とする
-      const scheduledStart = '09:00';
+      const scheduledStart = '09:00'; // 暫定: Phase 2 でマスタから取得する
       if (state.checkinTime > scheduledStart) return '遅刻';
       if (state.scheduledEnd && state.checkoutTime < state.scheduledEnd) return '早退';
       return '出勤';
@@ -2342,7 +1828,7 @@ p:last-child { margin-bottom: 0; }
 
     /**
      * state を見て画面全体を同期する。
-     * 状態が変わるたびにこの関数を呼ぶ。
+     * 状態が変わるたびにこの関数を呼ぶ（単一責任の原則）。
      */
     function renderState() {
       renderCheckinArea();
@@ -2352,9 +1838,7 @@ p:last-child { margin-bottom: 0; }
       checkOvertimeNotice();
     }
 
-    /**
-     * 出勤エリアの表示を更新する。
-     */
+    /** 出勤エリアの表示を更新する */
     function renderCheckinArea() {
       const stamped = document.getElementById('checkin-stamped');
       const form    = document.getElementById('checkin-form');
@@ -2369,9 +1853,7 @@ p:last-child { margin-bottom: 0; }
       }
     }
 
-    /**
-     * 退勤エリアの表示を更新する。
-     */
+    /** 退勤エリアの表示を更新する */
     function renderCheckoutArea() {
       const stamped = document.getElementById('checkout-stamped');
       const form    = document.getElementById('checkout-form');
@@ -2386,9 +1868,7 @@ p:last-child { margin-bottom: 0; }
       }
     }
 
-    /**
-     * 出勤ボタンの有効・無効と状態テキストを更新する。
-     */
+    /** 出勤ボタンの有効・無効と状態テキストを更新する */
     function renderCheckinButton() {
       const btn    = document.getElementById('btn-checkin');
       const status = document.getElementById('checkin-status');
@@ -2396,17 +1876,15 @@ p:last-child { margin-bottom: 0; }
       if (state.checkedIn) return;
 
       if (state.lunch === null) {
-        btn.disabled    = true;
+        btn.disabled       = true;
         status.textContent = '弁当の要否を選択してください';
       } else {
-        btn.disabled    = false;
+        btn.disabled       = false;
         status.textContent = '';
       }
     }
 
-    /**
-     * 退勤ボタンの有効・無効と状態テキストを更新する。
-     */
+    /** 退勤ボタンの有効・無効と状態テキストを更新する */
     function renderCheckoutButton() {
       const btn    = document.getElementById('btn-checkout');
       const status = document.getElementById('checkout-status');
@@ -2417,7 +1895,6 @@ p:last-child { margin-bottom: 0; }
         btn.disabled       = true;
         status.textContent = '出勤打刻後に入力できます';
       } else if (state.breakMinutes === null) {
-        // 休憩時間が未選択の場合は退勤不可
         btn.disabled       = true;
         status.textContent = '休憩時間を選択してください';
       } else if (!state.report) {
@@ -2432,25 +1909,23 @@ p:last-child { margin-bottom: 0; }
     /**
      * ログイン画面 / メイン画面を切り替える。
      *
+     * 【修正③】元のコードでは screen-login の中に screen-main が
+     *           入れ子になっていたため、getElementById が誤った要素を
+     *           取得していた。HTML 構造の修正と合わせてここも整理。
+     *
      * @param {'login'|'main'} screen
      */
-function showScreen(screen) {
-  const login = document.getElementById('screen-login');
-  const main  = document.getElementById('screen-main');
+    function showScreen(screen) {
+      const login = document.getElementById('screen-login');
+      const main  = document.getElementById('screen-main');
 
-  // 一旦全部非表示
-  login.style.display = 'none';
-  main.style.display  = 'none';
+      // 一旦全部非表示にしてから指定画面だけ表示する
+      login.style.display = 'none';
+      main.style.display  = 'none';
 
-  // 指定画面だけ表示
-  if (screen === 'login') {
-    login.style.display = 'block';
-  }
-
-  if (screen === 'main') {
-    main.style.display = 'block';
-  }
-}
+      if (screen === 'login') login.style.display = 'block';
+      if (screen === 'main')  main.style.display  = 'block';
+    }
 
     // ============================================================
     // ライブ時計
@@ -2489,10 +1964,9 @@ function showScreen(screen) {
         return;
       }
 
-      const now     = nowTimeString(); // 'HH:MM'
+      const now        = nowTimeString();
       const noticeTime = subtractMinutes(state.scheduledEnd, OVERTIME_NOTICE_MINUTES);
 
-      // 通知時刻を過ぎていて、定時を過ぎていなければバナーを表示
       if (now >= noticeTime && now < state.scheduledEnd) {
         banner.classList.add('show');
       } else {
@@ -2504,24 +1978,16 @@ function showScreen(screen) {
     // ユーティリティ
     // ============================================================
 
-    /**
-     * 今日の日付を 'YYYY-MM-DD' 形式で返す。
-     *
-     * @returns {string}
-     */
+    /** 今日の日付を 'YYYY-MM-DD' 形式で返す */
     function todayString() {
-      const d = new Date();
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const d   = new Date();
+      const y   = d.getFullYear();
+      const m   = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       return `${y}-${m}-${day}`;
     }
 
-    /**
-     * 現在時刻を 'HH:MM' 形式で返す。
-     *
-     * @returns {string}
-     */
+    /** 現在時刻を 'HH:MM' 形式で返す */
     function nowTimeString() {
       const d = new Date();
       const h = String(d.getHours()).padStart(2, '0');
@@ -2531,7 +1997,6 @@ function showScreen(screen) {
 
     /**
      * 出勤時刻と退勤時刻から勤務時間（分）を計算する。
-     *
      * @param {string} timeIn  - 'HH:MM'
      * @param {string} timeOut - 'HH:MM'
      * @returns {number} 分
@@ -2544,7 +2009,6 @@ function showScreen(screen) {
 
     /**
      * 'HH:MM' 形式の時刻から指定分数を引いた時刻を返す。
-     *
      * @param {string} time - 'HH:MM'
      * @param {number} minutes
      * @returns {string} 'HH:MM'
@@ -2558,8 +2022,7 @@ function showScreen(screen) {
     }
 
     /**
-     * 分数を 'H時間M分' 形式にフォーマットする。
-     *
+     * 分数を '+H時間M分' / '-H時間M分' 形式にフォーマットする。
      * @param {number}  minutes
      * @param {boolean} [showSign=false] - 符号（+/-）を付けるか
      * @returns {string}
