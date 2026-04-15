@@ -471,6 +471,18 @@
         grid-template-columns: repeat(2, 1fr);
       }
     }
+
+    /* バージョン表示（左下固定）— kintai.html と同デザイン */
+    .version-badge {
+      position: fixed;
+      bottom: 0.6rem;
+      left: 0.75rem;
+      font-size: 0.72rem;
+      color: GrayText;
+      pointer-events: none;
+      user-select: none;
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
@@ -988,6 +1000,10 @@
     document.addEventListener('DOMContentLoaded', () => {
       // GAS URL を共通 api.js にセット
       setGasUrl(GAS_URL_ADMIN);
+
+      // バージョンバッジをセット（kintai.html と同じ左下固定表示）
+      const versionEl = document.getElementById('app-version');
+      if (versionEl) versionEl.textContent = 'v1.0.0';
 
       // 月次フィルタの初期値を今月にする
       const today = new Date();
@@ -1903,5 +1919,9 @@
       return escHtml(JSON.stringify(obj));
     }
   </script>
+
+  <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
+  <div class="version-badge" id="app-version">v1.0.0</div>
+
 </body>
 </html>
