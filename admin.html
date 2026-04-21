@@ -1163,21 +1163,12 @@
      * @param {'login'|'admin'} screen
      */
     function showScreen(screen) {
+      // display: '' だと CSS の display:none に戻るため 'block' / 'none' を明示する。
+      // screen-login は通常フロー（フレックスセンタリング）なので flex を使う。
       document.getElementById('screen-login').style.display =
-        screen === 'login' ? '' : 'none';
+        screen === 'login' ? 'flex' : 'none';
       document.getElementById('screen-admin').style.display =
-        screen === 'admin' ? '' : 'none';
-
-      // admin 画面表示時にヘッダーとタブが確実に見えるようにする。
-      // screen-admin 全体を none にすると中のヘッダーも消えてしまうが、
-      // ログイン画面では screen-admin ごと非表示にするため、
-      // admin画面に切り替えたタイミングでヘッダーを明示的に表示する。
-      if (screen === 'admin') {
-        const header = document.querySelector('#screen-admin .admin-header');
-        const nav    = document.querySelector('#screen-admin .admin-tabs');
-        if (header) header.style.display = '';
-        if (nav)    nav.style.display    = '';
-      }
+        screen === 'admin' ? 'block' : 'none';
     }
 
     /**
