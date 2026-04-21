@@ -673,11 +673,13 @@
             <span class="filter-label">スタッフ</span>
             <select class="sumioka-input" id="att-filter-staff" style="width:140px">
               <option value="">全員</option>
-              <!-- JS で動的に挿入 -->
             </select>
           </div>
           <button class="sumioka-btn sumioka-btn-primary" id="btn-att-search"
             style="align-self:flex-end">検索</button>
+          <!-- 打刻し忘れたスタッフを管理者が代理入力するためのボタン -->
+          <button class="sumioka-btn" id="btn-att-add"
+            style="align-self:flex-end;margin-left:auto">＋ 打刻を新規登録</button>
         </div>
 
         <!-- 一覧テーブル -->
@@ -947,30 +949,69 @@
   </div><!-- /#screen-admin -->
 
   <!-- ============================================================
-       打刻修正モーダル（②勤怠一覧から呼び出す）
-       管理者のみが操作可能。修正は操作ログに記録される（GAS側）
+       打刻修正 / 新規登録モーダル（勤怠一覧タブから呼び出す）
+       - 既存行の「修正」ボタン → 編集モード（employee_id・date は固定）
+       - 「新規打刻登録」ボタン → 新規モード（スタッフ・日付を選択）
+       - 修正理由は必須（監査ログシートに記録する）
        ============================================================ -->
   <div class="modal-overlay hidden" id="modal-edit-attendance">
     <div class="modal">
-      <p class="modal-title">打刻修正</p>
+      <p class="modal-title" id="modal-edit-title">打刻修正</p>
 
-      <!-- 対象情報（読み取り専用で表示） -->
-      <div class="sumioka-form-group">
+      <!-- 対象スタッフ・日付（新規モードではプルダウン、編集モードでは表示のみ） -->
+      <div id="modal-edit-target-display" class="sumioka-form-group">
         <label class="sumioka-label">対象</label>
-        <div id="modal-edit-target" style="font-size:0.9rem;padding:0.3rem 0">―</div>
+        <div id="modal-edit-target" style="font-size:0.9rem;padding:0.3rem 0;font-weight:600">―</div>
       </div>
 
+      <!-- 新規モードのみ表示：スタッフ選択 -->
+      <div id="modal-edit-staff-select-wrap" class="sumioka-form-group" style="display:none">
+        <label class="sumioka-label" for="modal-edit-staff-select">スタッフ <span style="color:#c0392b">*</span></label>
+        <select class="sumioka-input" id="modal-edit-staff-select">
+          <option value="">選択してください</option>
+        </select>
+      </div>
+
+      <!-- 新規モードのみ表示：日付選択 -->
+      <div id="modal-edit-date-input-wrap" class="sumioka-form-group" style="display:none">
+        <label class="sumioka-label" for="modal-edit-date-input">日付 <span style="color:#c0392b">*</span></label>
+        <input class="sumioka-input" type="date" id="modal-edit-date-input">
+      </div>
+
+      <!-- 編集モード用の隠しフィールド -->
       <input type="hidden" id="modal-edit-employee-id">
       <input type="hidden" id="modal-edit-date">
+      <!-- 新規/編集モードを判定するフラグ -->
+      <input type="hidden" id="modal-edit-mode"> <!-- 'edit' | 'add' -->
 
+      <!-- 勤怠区分（既存モーダルに欠落していたため追加） -->
       <div class="sumioka-form-group">
-        <label class="sumioka-label" for="modal-edit-timein">出勤時刻</label>
-        <input class="sumioka-input" type="time" id="modal-edit-timein">
+        <label class="sumioka-label" for="modal-edit-status">勤怠区分 <span style="color:#c0392b">*</span></label>
+        <select class="sumioka-input" id="modal-edit-status">
+          <option value="出勤">出勤</option>
+          <option value="遅刻">遅刻</option>
+          <option value="早退">早退</option>
+          <option value="欠勤">欠勤</option>
+          <option value="休日">休日</option>
+        </select>
+      </div>
+
+      <!-- 出勤・退勤を横並びに -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem">
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="modal-edit-timein">出勤時刻</label>
+          <input class="sumioka-input" type="time" id="modal-edit-timein">
+        </div>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="modal-edit-timeout">退勤時刻</label>
+          <input class="sumioka-input" type="time" id="modal-edit-timeout">
+        </div>
       </div>
 
       <div class="sumioka-form-group">
-        <label class="sumioka-label" for="modal-edit-timeout">退勤時刻</label>
-        <input class="sumioka-input" type="time" id="modal-edit-timeout">
+        <label class="sumioka-label" for="modal-edit-break">休憩時間（分）</label>
+        <input class="sumioka-input" type="number" id="modal-edit-break"
+          min="0" max="480" placeholder="例：60">
       </div>
 
       <div class="sumioka-form-group">
@@ -983,18 +1024,21 @@
 
       <div class="sumioka-form-group">
         <label class="sumioka-label" for="modal-edit-memo">業務報告</label>
-        <textarea class="sumioka-textarea" id="modal-edit-memo" rows="3"></textarea>
+        <textarea class="sumioka-textarea" id="modal-edit-memo" rows="2"></textarea>
       </div>
 
       <div class="sumioka-form-group">
-        <label class="sumioka-label" for="modal-edit-reason">修正理由（監査ログ用・必須）</label>
+        <label class="sumioka-label" for="modal-edit-reason">
+          修正・登録理由 <span style="color:#c0392b">*</span>
+          <span style="color:GrayText;font-weight:400">（監査ログに記録されます）</span>
+        </label>
         <input class="sumioka-input" type="text" id="modal-edit-reason"
-          placeholder="例：打刻忘れのため管理者が修正">
+          placeholder="例：打刻忘れのため管理者が代理入力">
       </div>
 
       <div class="modal-footer">
         <button class="sumioka-btn" id="modal-edit-cancel">キャンセル</button>
-        <button class="sumioka-btn sumioka-btn-primary" id="modal-edit-save">修正を保存</button>
+        <button class="sumioka-btn sumioka-btn-primary" id="modal-edit-save">保存</button>
       </div>
     </div>
   </div>
@@ -1040,9 +1084,16 @@
         </select>
       </div>
 
-      <div class="sumioka-form-group">
-        <label class="sumioka-label" for="modal-staff-scheduled-end">所定終業時刻</label>
-        <input class="sumioka-input" type="time" id="modal-staff-scheduled-end">
+      <!-- 始業・終業を横並びにして視認性を高める -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem">
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="modal-staff-scheduled-start">所定始業時刻</label>
+          <input class="sumioka-input" type="time" id="modal-staff-scheduled-start">
+        </div>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="modal-staff-scheduled-end">所定終業時刻</label>
+          <input class="sumioka-input" type="time" id="modal-staff-scheduled-end">
+        </div>
       </div>
 
       <div class="sumioka-form-group">
@@ -1311,6 +1362,8 @@
 
       // ── 勤怠一覧 ──
       document.getElementById('btn-att-search').addEventListener('click', loadAttendance);
+      // 打刻忘れスタッフの代理入力：新規モードでモーダルを開く
+      document.getElementById('btn-att-add').addEventListener('click', () => openEditModal(null));
 
       // ── 申請管理 ──
       document.getElementById('btn-req-search').addEventListener('click', loadRequests);
@@ -1696,67 +1749,144 @@
       }).join('');
     }
 
-    // ── 打刻修正モーダル ──
+    // ── 打刻修正 / 新規登録モーダル ──
 
     /**
-     * 打刻修正モーダルを開き、選択行のデータをフォームに流し込む。
+     * 打刻修正 / 新規登録モーダルを開く。
      *
-     * @param {Object} record - 勤怠レコード
+     * @param {Object|null} record
+     *   - null          → 新規登録モード（スタッフ・日付を選択させる）
+     *   - Object        → 編集モード（既存レコードの値を流し込む）
      */
     function openEditModal(record) {
-      document.getElementById('modal-edit-target').textContent =
-        `${record.name} ／ ${record.date}`;
-      document.getElementById('modal-edit-employee-id').value = record.employee_id || '';
-      document.getElementById('modal-edit-date').value        = record.date        || '';
-      document.getElementById('modal-edit-timein').value      = record.time_in     || '';
-      document.getElementById('modal-edit-timeout').value     = record.time_out    || '';
-      document.getElementById('modal-edit-lunch').value       = String(record.lunch ?? 'false');
-      document.getElementById('modal-edit-memo').value        = record.memo        || '';
-      document.getElementById('modal-edit-reason').value      = '';
+      const isNew = !record;
+
+      // モードをフラグに保存する（保存時に振り分けに使う）
+      document.getElementById('modal-edit-mode').value = isNew ? 'add' : 'edit';
+
+      // タイトルを切り替える
+      document.getElementById('modal-edit-title').textContent =
+        isNew ? '打刻を新規登録' : '打刻修正';
+
+      // 新規モード：スタッフ選択・日付入力を表示する
+      const isNewDisplay = isNew ? '' : 'none';
+      document.getElementById('modal-edit-staff-select-wrap').style.display  = isNew ? '' : 'none';
+      document.getElementById('modal-edit-date-input-wrap').style.display    = isNew ? '' : 'none';
+      document.getElementById('modal-edit-target-display').style.display     = isNew ? 'none' : '';
+
+      if (isNew) {
+        // 新規モード：スタッフ選択肢をadminState.staffListから生成する
+        const select = document.getElementById('modal-edit-staff-select');
+        select.innerHTML = '<option value="">選択してください</option>';
+        adminState.staffList
+          .filter(s => s.type !== '利用者') // 利用者は打刻管理対象外
+          .forEach(s => {
+            const opt = document.createElement('option');
+            opt.value       = s.id;
+            opt.textContent = `${s.name}（${s.type || '―'}）`;
+            select.appendChild(opt);
+          });
+
+        // 日付は今日をデフォルトにする
+        document.getElementById('modal-edit-date-input').value = todayString();
+
+        // フォームをクリアする
+        document.getElementById('modal-edit-status').value  = '出勤';
+        document.getElementById('modal-edit-timein').value  = '';
+        document.getElementById('modal-edit-timeout').value = '';
+        document.getElementById('modal-edit-break').value   = '';
+        document.getElementById('modal-edit-lunch').value   = 'false';
+        document.getElementById('modal-edit-memo').value    = '';
+        document.getElementById('modal-edit-reason').value  = '';
+
+      } else {
+        // 編集モード：既存レコードの値を流し込む
+        document.getElementById('modal-edit-target').textContent =
+          `${record.name}  ／  ${record.date}`;
+        document.getElementById('modal-edit-employee-id').value = record.employee_id || '';
+        document.getElementById('modal-edit-date').value        = record.date        || '';
+        document.getElementById('modal-edit-status').value      = record.status      || '出勤';
+        document.getElementById('modal-edit-timein').value      = record.time_in     || '';
+        document.getElementById('modal-edit-timeout').value     = record.time_out    || '';
+        document.getElementById('modal-edit-break').value       = record.break_minutes != null ? record.break_minutes : '';
+        document.getElementById('modal-edit-lunch').value       = String(record.lunch ?? false);
+        document.getElementById('modal-edit-memo').value        = record.memo        || '';
+        document.getElementById('modal-edit-reason').value      = '';
+      }
 
       document.getElementById('modal-edit-attendance').classList.remove('hidden');
     }
 
-    /**
-     * 打刻修正モーダルを閉じる。
-     */
+    /** 打刻修正 / 新規登録モーダルを閉じる */
     function closeEditModal() {
       document.getElementById('modal-edit-attendance').classList.add('hidden');
     }
 
     /**
-     * 打刻修正を GAS に送信する。
-     * 修正理由は必須（監査ログに記録するため）。
-     * 成功後にテーブルを再取得して最新状態を表示する。
+     * 打刻修正 / 新規登録を GAS に送信する。
+     * modal-edit-mode の値で呼び出す action を切り替える。
+     * どちらも修正理由が必須（監査ログに記録するため）。
      */
     async function saveAttendanceEdit() {
-      const employeeId = document.getElementById('modal-edit-employee-id').value;
-      const date       = document.getElementById('modal-edit-date').value;
-      const timeIn     = document.getElementById('modal-edit-timein').value;
-      const timeOut    = document.getElementById('modal-edit-timeout').value;
-      const lunch      = document.getElementById('modal-edit-lunch').value === 'true';
-      const memo       = document.getElementById('modal-edit-memo').value.trim();
-      const reason     = document.getElementById('modal-edit-reason').value.trim();
+      const mode   = document.getElementById('modal-edit-mode').value;
+      const isNew  = mode === 'add';
+      const reason = document.getElementById('modal-edit-reason').value.trim();
 
-      // 修正理由は監査ログのために必須
       if (!reason) {
-        showToast('修正理由を入力してください。', 'warning');
+        showToast('修正・登録理由を入力してください。', 'warning');
         return;
       }
 
-      const ok = await confirm('打刻を修正しますか？\nこの操作は操作ログに記録されます。');
+      // 新規モードはスタッフと日付を選択欄から取得する
+      let employeeId, date;
+      if (isNew) {
+        employeeId = document.getElementById('modal-edit-staff-select').value;
+        date       = document.getElementById('modal-edit-date-input').value;
+        if (!employeeId) { showToast('スタッフを選択してください。', 'warning'); return; }
+        if (!date)       { showToast('日付を選択してください。', 'warning');     return; }
+      } else {
+        employeeId = document.getElementById('modal-edit-employee-id').value;
+        date       = document.getElementById('modal-edit-date').value;
+      }
+
+      const status = document.getElementById('modal-edit-status').value;
+      const timeIn  = document.getElementById('modal-edit-timein').value;
+      const timeOut = document.getElementById('modal-edit-timeout').value;
+      const breakMin = document.getElementById('modal-edit-break').value;
+      const lunch   = document.getElementById('modal-edit-lunch').value === 'true';
+      const memo    = document.getElementById('modal-edit-memo').value.trim();
+
+      // 「出勤」「遅刻」「早退」は時刻入力を必須にする
+      const requiresTime = ['出勤', '遅刻', '早退'].includes(status);
+      if (requiresTime && !timeIn) {
+        showToast('出勤時刻を入力してください。', 'warning');
+        return;
+      }
+
+      const label = isNew ? '新規登録' : '修正';
+      const ok = await confirm(
+        `打刻を${label}しますか？\nこの操作は監査ログに記録されます。`
+      );
       if (!ok) return;
 
-      const btn = document.getElementById('modal-edit-save');
+      const btn    = document.getElementById('modal-edit-save');
+      const action = isNew ? 'admin_add_attendance' : 'admin_edit_attendance';
 
-      showLoading('修正を保存中...');
+      showLoading(`${label}を保存中...`);
 
-      const result = await callGAS('admin_edit_attendance', {
+      const result = await callGAS(action, {
         employee_id     : employeeId,
-        date            : date,
-        attendance_data : { time_in: timeIn, time_out: timeOut, lunch, memo },
-        admin_id        : adminState.employeeId,
-        reason          : reason,
+        date,
+        attendance_data : {
+          status,
+          time_in       : timeIn,
+          time_out      : timeOut,
+          break_minutes : breakMin !== '' ? Number(breakMin) : null,
+          lunch,
+          memo,
+        },
+        admin_id : adminState.employeeId,
+        reason,
       }, { button: btn });
 
       hideLoading();
@@ -1766,9 +1896,9 @@
         return;
       }
 
-      showToast('打刻を修正しました。', 'success');
+      showToast(`打刻を${label}しました。`, 'success');
       closeEditModal();
-      loadAttendance(); // テーブルを再取得
+      loadAttendance(); // 一覧を再取得して反映する
     }
 
     // ============================================================
@@ -1989,18 +2119,19 @@
       document.getElementById('modal-staff-password-hint').textContent =
         isNew ? '（必須）' : '（空欄＝変更なし）';
 
-      // フォームをリセットしてから値を設定する
-      document.getElementById('modal-staff-id').value              = isNew ? '' : (staff.id            || '');
-      document.getElementById('modal-staff-name').value            = isNew ? '' : (staff.name          || '');
-      document.getElementById('modal-staff-pin').value             = isNew ? '' : (staff.pin           || '');
+      // 新規追加時はよく使うデフォルト値を設定しておく（入力の手間を減らす）
+      document.getElementById('modal-staff-id').value              = isNew ? '' : (staff.id              || '');
+      document.getElementById('modal-staff-name').value            = isNew ? '' : (staff.name            || '');
+      document.getElementById('modal-staff-pin').value             = isNew ? '' : (staff.pin             || '');
       document.getElementById('modal-staff-password').value        = ''; // 常に空で開く
-      document.getElementById('modal-staff-employment').value      = isNew ? '' : (staff.employment    || '');
-      document.getElementById('modal-staff-scheduled-end').value   = isNew ? '' : (staff.scheduled_end || '');
-      document.getElementById('modal-staff-wage-type').value       = isNew ? '' : (staff.wage_type     || '');
-      document.getElementById('modal-staff-hourly-wage').value     = isNew ? '' : (staff.hourly_wage   || '');
-      document.getElementById('modal-staff-monthly-wage').value    = isNew ? '' : (staff.monthly_wage  || '');
-      document.getElementById('modal-staff-transport').value       = isNew ? '' : (staff.transport_fee || '');
-      document.getElementById('modal-staff-scheduled-hours').value = isNew ? '' : (staff.scheduled_hours || '');
+      document.getElementById('modal-staff-employment').value      = isNew ? '' : (staff.employment      || '');
+      document.getElementById('modal-staff-scheduled-start').value = isNew ? '10:00' : (staff.scheduled_start || '');
+      document.getElementById('modal-staff-scheduled-end').value   = isNew ? '15:00' : (staff.scheduled_end   || '');
+      document.getElementById('modal-staff-wage-type').value       = isNew ? '時給' : (staff.wage_type    || '');
+      document.getElementById('modal-staff-hourly-wage').value     = isNew ? '' : (staff.hourly_wage      || '');
+      document.getElementById('modal-staff-monthly-wage').value    = isNew ? '' : (staff.monthly_wage     || '');
+      document.getElementById('modal-staff-transport').value       = isNew ? '' : (staff.transport_fee    || '');
+      document.getElementById('modal-staff-scheduled-hours').value = isNew ? '5' : (staff.scheduled_hours || '');
 
       document.getElementById('modal-edit-staff').classList.remove('hidden');
     }
@@ -2020,6 +2151,7 @@
       const pin            = document.getElementById('modal-staff-pin').value.trim();
       const password       = document.getElementById('modal-staff-password').value.trim();
       const employment     = document.getElementById('modal-staff-employment').value;
+      const scheduledStart = document.getElementById('modal-staff-scheduled-start').value;
       const scheduledEnd   = document.getElementById('modal-staff-scheduled-end').value;
       const wageType       = document.getElementById('modal-staff-wage-type').value;
       const hourlyWage     = document.getElementById('modal-staff-hourly-wage').value;
@@ -2046,10 +2178,11 @@
         pin,
         ...(password ? { password } : {}),
         employment_type  : employment,
+        scheduled_start  : scheduledStart,
         scheduled_end    : scheduledEnd,
         wage_type        : wageType,
-        hourly_wage      : hourlyWage  ? Number(hourlyWage)     : null,
-        monthly_wage     : monthlyWage ? Number(monthlyWage)    : null,
+        hourly_wage      : hourlyWage   ? Number(hourlyWage)    : null,
+        monthly_wage     : monthlyWage  ? Number(monthlyWage)   : null,
         transport_fee    : transportFee ? Number(transportFee)  : 0,
         scheduled_hours  : scheduledHours ? Number(scheduledHours) : null,
       };
