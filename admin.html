@@ -961,8 +961,9 @@
 
     /**
      * 管理者専用 GAS デプロイ URL。
-     * kintai.html とは別の GAS デプロイを使う方針（管理者アクションを分離）。
-     * URL は変えない運用。変更が必要な場合はこの1行だけ書き換える。
+     * https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec は sumioka-uploader の Vault から自動注入される。
+     * URL を直接書かないことでセキュリティと保守性を向上させる。
+     * デプロイ URL が変わった場合は Vault を更新して再アップロードするだけでよい。
      */
     const GAS_URL_ADMIN = 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec';
 
@@ -1098,6 +1099,11 @@
       hideLoading();
 
       if (!result.success) {
+        // GAS_URL_UNSET はデプロイURL未設定（uploaderでGAS URLを注入していない場合）
+        if (result.error_code === 'GAS_URL_UNSET') {
+          showError('GAS URLが設定されていません。uploaderからGAS URLを注入して再アップロードしてください。');
+          return;
+        }
         showError(result.error_message, result.error_detail);
         return;
       }
@@ -1223,7 +1229,20 @@
       setTabLoading('dashboard', false);
 
       if (!result.success) {
-        showToast('ダッシュボードの読み込みに失敗しました。', 'error');
+        // セッション切れ（GAS側でauth系エラー）は自動ログアウトする
+        if (result.error_code === 'GAS_URL_UNSET') {
+          showError(
+            'GAS URLが未設定です。uploaderからGAS URLを注入して再アップロードしてください。',
+            result.error_detail
+          );
+          return;
+        }
+        // それ以外はリトライボタン付きエラーダイアログを表示する
+        showError(
+          'ダッシュボードの読み込みに失敗しました。',
+          result.error_detail,
+          loadDashboard  // 再試行コールバック
+        );
         return;
       }
 
@@ -1322,7 +1341,7 @@
       setTabLoading('attendance', false);
 
       if (!result.success) {
-        showToast('勤怠データの取得に失敗しました。', 'error');
+        showError('勤怠データの取得に失敗しました。', result.error_detail, loadAttendance);
         return;
       }
 
@@ -1465,7 +1484,7 @@
       setTabLoading('requests', false);
 
       if (!result.success) {
-        showToast('申請データの取得に失敗しました。', 'error');
+        showError('申請データの取得に失敗しました。', result.error_detail, loadRequests);
         return;
       }
 
@@ -1578,7 +1597,7 @@
       setTabLoading('staff', false);
 
       if (!result.success) {
-        showToast('スタッフデータの取得に失敗しました。', 'error');
+        showError('スタッフデータの取得に失敗しました。', result.error_detail, loadStaff);
         return;
       }
 
@@ -1742,7 +1761,7 @@
       setTabLoading('monthly', false);
 
       if (!result.success) {
-        showToast('月次レポートの取得に失敗しました。', 'error');
+        showError('月次レポートの取得に失敗しました。', result.error_detail, loadMonthly);
         return;
       }
 
@@ -1925,7 +1944,8 @@
   <script src="common/storage.js"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <div class="version-badge" id="app-version">v1.0.0</div>
+  <!-- バージョン番号は sumioka-uploader の v1.1.0 プレースホルダーで自動埋め込みされる -->
+  <div class="version-badge" id="app-version">v1.1.0</div>
 
 </body>
 </html>
