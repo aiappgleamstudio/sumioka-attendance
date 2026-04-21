@@ -1104,9 +1104,11 @@
 
       const { employee } = result.data;
 
-      // 管理者フラグを確認する。一般スタッフはアクセス拒否
+      // 管理者フラグを確認する。
+      // GAS 側で is_admin チェックは実施済みだが、
+      // フロント側でも二重チェックして画面遷移を防ぐ。
       if (!employee.is_admin) {
-        showToast('管理者権限がありません。', 'error');
+        showToast('権限がありません。', 'error');
         return;
       }
 
@@ -1923,8 +1925,7 @@
   <script src="common/storage.js"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- バージョン番号は sumioka-uploader の v1.1.0 プレースホルダーで自動埋め込みされる -->
-  <div class="version-badge" id="app-version">v1.1.0</div>
+  <div class="version-badge" id="app-version">v1.0.0</div>
 
 </body>
 </html>
