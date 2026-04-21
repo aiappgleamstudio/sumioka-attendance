@@ -961,9 +961,12 @@
 
     /**
      * 管理者専用 GAS デプロイ URL。
+     * kintai.html とは別の GAS デプロイを使う方針（管理者アクションを分離）。
+     * URL は変えない運用。変更が必要な場合はこの1行だけ書き換える。
+     */
+    /**
      * https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec は sumioka-uploader の Vault から自動注入される。
      * URL を直接書かないことでセキュリティと保守性を向上させる。
-     * デプロイ URL が変わった場合は Vault を更新して再アップロードするだけでよい。
      */
     const GAS_URL_ADMIN = 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec';
 
@@ -1099,22 +1102,15 @@
       hideLoading();
 
       if (!result.success) {
-        // GAS_URL_UNSET はデプロイURL未設定（uploaderでGAS URLを注入していない場合）
-        if (result.error_code === 'GAS_URL_UNSET') {
-          showError('GAS URLが設定されていません。uploaderからGAS URLを注入して再アップロードしてください。');
-          return;
-        }
         showError(result.error_message, result.error_detail);
         return;
       }
 
       const { employee } = result.data;
 
-      // 管理者フラグを確認する。
-      // GAS 側で is_admin チェックは実施済みだが、
-      // フロント側でも二重チェックして画面遷移を防ぐ。
+      // 管理者フラグを確認する。一般スタッフはアクセス拒否
       if (!employee.is_admin) {
-        showToast('権限がありません。', 'error');
+        showToast('管理者権限がありません。', 'error');
         return;
       }
 
@@ -1171,6 +1167,17 @@
         screen === 'login' ? '' : 'none';
       document.getElementById('screen-admin').style.display =
         screen === 'admin' ? '' : 'none';
+
+      // admin 画面表示時にヘッダーとタブが確実に見えるようにする。
+      // screen-admin 全体を none にすると中のヘッダーも消えてしまうが、
+      // ログイン画面では screen-admin ごと非表示にするため、
+      // admin画面に切り替えたタイミングでヘッダーを明示的に表示する。
+      if (screen === 'admin') {
+        const header = document.querySelector('#screen-admin .admin-header');
+        const nav    = document.querySelector('#screen-admin .admin-tabs');
+        if (header) header.style.display = '';
+        if (nav)    nav.style.display    = '';
+      }
     }
 
     /**
@@ -1229,19 +1236,26 @@
       setTabLoading('dashboard', false);
 
       if (!result.success) {
-        // セッション切れ（GAS側でauth系エラー）は自動ログアウトする
-        if (result.error_code === 'GAS_URL_UNSET') {
-          showError(
-            'GAS URLが未設定です。uploaderからGAS URLを注入して再アップロードしてください。',
-            result.error_detail
-          );
-          return;
-        }
-        // それ以外はリトライボタン付きエラーダイアログを表示する
+        // パネル内にエラーメッセージを表示する。
+        // showError（オーバーレイ）を閉じた後も状態が残るようにするため
+        // パネル自体にもエラー表示を埋め込む。
+        const panel = document.getElementById('panel-dashboard');
+        panel.innerHTML = `
+          <div style="padding:2rem;text-align:center;color:var(--color-error,#dc2626);">
+            <p style="font-size:1rem;font-weight:700;margin-bottom:1rem;">
+              ⚠️ ダッシュボードの読み込みに失敗しました
+            </p>
+            <p style="font-size:0.82rem;color:var(--color-text-sub,#64748b);margin-bottom:1.5rem;">
+              ${result.error_detail || result.error_message || ''}
+            </p>
+            <button class="sumioka-btn sumioka-btn-primary" onclick="loadDashboard()">
+              再読み込み
+            </button>
+          </div>`;
         showError(
           'ダッシュボードの読み込みに失敗しました。',
           result.error_detail,
-          loadDashboard  // 再試行コールバック
+          loadDashboard
         );
         return;
       }
@@ -1341,7 +1355,7 @@
       setTabLoading('attendance', false);
 
       if (!result.success) {
-        showError('勤怠データの取得に失敗しました。', result.error_detail, loadAttendance);
+        showToast('勤怠データの取得に失敗しました。', 'error');
         return;
       }
 
@@ -1484,7 +1498,7 @@
       setTabLoading('requests', false);
 
       if (!result.success) {
-        showError('申請データの取得に失敗しました。', result.error_detail, loadRequests);
+        showToast('申請データの取得に失敗しました。', 'error');
         return;
       }
 
@@ -1597,7 +1611,7 @@
       setTabLoading('staff', false);
 
       if (!result.success) {
-        showError('スタッフデータの取得に失敗しました。', result.error_detail, loadStaff);
+        showToast('スタッフデータの取得に失敗しました。', 'error');
         return;
       }
 
@@ -1761,7 +1775,7 @@
       setTabLoading('monthly', false);
 
       if (!result.success) {
-        showError('月次レポートの取得に失敗しました。', result.error_detail, loadMonthly);
+        showToast('月次レポートの取得に失敗しました。', 'error');
         return;
       }
 
