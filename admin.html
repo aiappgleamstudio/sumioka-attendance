@@ -481,6 +481,20 @@
       user-select: none;
       z-index: 10;
     }
+
+    /* ── 給与計算タブ固有スタイル ── */
+
+    /* インセンティブ追加ボタン行 */
+    #payroll-incentive-row {
+      display: none; /* 計算実行後に表示する */
+      justify-content: flex-end;
+      margin-bottom: 0.75rem;
+    }
+
+    /* 給与明細モーダルの区切り行 */
+    #modal-pd-body tr td:first-child {
+      width: 55%;
+    }
   </style>
 </head>
 <body>
@@ -546,11 +560,12 @@
 
     <!-- タブナビゲーション -->
     <nav class="admin-tabs" id="admin-tabs" role="tablist">
-      <button class="admin-tab active" data-tab="dashboard"   role="tab">① ダッシュボード</button>
-      <button class="admin-tab"        data-tab="attendance"  role="tab">② 勤怠一覧</button>
-      <button class="admin-tab"        data-tab="requests"    role="tab">③ 申請管理</button>
-      <button class="admin-tab"        data-tab="staff"       role="tab">④ スタッフ管理</button>
-      <button class="admin-tab"        data-tab="monthly"     role="tab">⑤ 月次レポート</button>
+      <button class="admin-tab active" data-tab="dashboard"   role="tab">ダッシュボード</button>
+      <button class="admin-tab"        data-tab="attendance"  role="tab">勤怠一覧</button>
+      <button class="admin-tab"        data-tab="requests"    role="tab">申請管理</button>
+      <button class="admin-tab"        data-tab="staff"       role="tab">スタッフ管理</button>
+      <button class="admin-tab"        data-tab="monthly"     role="tab">月次レポート</button>
+      <button class="admin-tab"        data-tab="payroll"     role="tab">給与計算</button>
     </nav>
 
     <!-- ============================================================
@@ -738,11 +753,11 @@
         </div>
       </section>
 
-      <!-- ④スタッフ管理 -->
+      <!-- スタッフ管理 -->
       <section class="tab-panel" id="panel-staff">
         <div class="tab-loading" id="loading-staff">読み込み中...</div>
 
-        <!-- 区分切り替え -->
+        <!-- 区分切り替え + 追加ボタン -->
         <div class="filter-row" style="margin-bottom:1rem">
           <div class="filter-group">
             <span class="filter-label">区分</span>
@@ -754,6 +769,9 @@
           </div>
           <button class="sumioka-btn sumioka-btn-primary" id="btn-staff-search"
             style="align-self:flex-end">絞り込み</button>
+          <!-- 新規追加ボタン：モーダルを空状態で開く -->
+          <button class="sumioka-btn sumioka-btn-primary" id="btn-staff-add"
+            style="align-self:flex-end;margin-left:auto">＋ スタッフ追加</button>
         </div>
 
         <div class="admin-table-wrap">
@@ -836,6 +854,94 @@
         </div>
       </section>
 
+      <!-- 給与計算 -->
+      <section class="tab-panel" id="panel-payroll">
+        <div class="tab-loading" id="loading-payroll">読み込み中...</div>
+
+        <!-- ── 月選択・計算実行 ── -->
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label">対象月</span>
+            <input class="sumioka-input" type="month" id="payroll-filter-month" style="width:160px">
+          </div>
+          <button class="sumioka-btn sumioka-btn-primary" id="btn-payroll-calc"
+            style="align-self:flex-end">給与計算を実行</button>
+          <button class="sumioka-btn" id="btn-payroll-settings"
+            style="align-self:flex-end">⚙ 給与設定</button>
+        </div>
+
+        <!-- ── サマリーカード ── -->
+        <div class="summary-grid" id="payroll-summary-grid" style="display:none">
+          <div class="summary-card">
+            <div class="summary-card-label">対象人数</div>
+            <div class="summary-card-value">
+              <span id="payroll-total-members">―</span>
+              <span class="summary-card-unit">名</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">総支給合計</div>
+            <div class="summary-card-value value-green">
+              <span id="payroll-total-gross">―</span>
+              <span class="summary-card-unit">円</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">差引支給合計</div>
+            <div class="summary-card-value">
+              <span id="payroll-total-net">―</span>
+              <span class="summary-card-unit">円</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">社保合計</div>
+            <div class="summary-card-value value-orange">
+              <span id="payroll-total-insurance">―</span>
+              <span class="summary-card-unit">円</span>
+            </div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-card-label">所得税合計</div>
+            <div class="summary-card-value value-red">
+              <span id="payroll-total-tax">―</span>
+              <span class="summary-card-unit">円</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── インセンティブ追加ボタン ── -->
+        <div style="display:flex;justify-content:flex-end;margin-bottom:0.75rem" id="payroll-incentive-row" style="display:none">
+          <button class="sumioka-btn" id="btn-add-incentive">＋ インセンティブ追加</button>
+        </div>
+
+        <!-- ── 給与一覧テーブル ── -->
+        <div class="admin-table-wrap">
+          <table class="admin-table" id="payroll-table">
+            <thead>
+              <tr>
+                <th>氏名</th>
+                <th>雇用形態</th>
+                <th>出勤日数</th>
+                <th>実働時間</th>
+                <th>残業時間</th>
+                <th>基本給</th>
+                <th>残業手当</th>
+                <th>インセンティブ</th>
+                <th>総支給</th>
+                <th>社保計</th>
+                <th>所得税</th>
+                <th>弁当控除</th>
+                <th>差引支給</th>
+                <th>明細</th>
+              </tr>
+            </thead>
+            <tbody id="payroll-body">
+              <tr><td colspan="14" class="empty-state">月を選択して給与計算を実行してください</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
     </main><!-- /.admin-content -->
 
   </div><!-- /#screen-admin -->
@@ -894,34 +1000,33 @@
   </div>
 
   <!-- ============================================================
-       スタッフ編集モーダル（④スタッフ管理から呼び出す）
+       スタッフ追加 / 編集モーダル（スタッフ管理タブから呼び出す）
+       modal-staff-id が空 → 新規追加、値あり → 編集
        ============================================================ -->
   <div class="modal-overlay hidden" id="modal-edit-staff">
     <div class="modal">
-      <p class="modal-title">スタッフ情報を編集</p>
+      <p class="modal-title" id="modal-staff-title">スタッフ情報を編集</p>
 
+      <!-- 新規/編集を判定するための隠しフィールド -->
       <input type="hidden" id="modal-staff-id">
 
       <div class="sumioka-form-group">
-        <label class="sumioka-label" for="modal-staff-name">氏名</label>
+        <label class="sumioka-label" for="modal-staff-name">氏名 <span style="color:#c0392b">*</span></label>
         <input class="sumioka-input" type="text" id="modal-staff-name">
       </div>
 
       <div class="sumioka-form-group">
-        <label class="sumioka-label" for="modal-staff-pin">PIN（4桁）</label>
+        <label class="sumioka-label" for="modal-staff-pin">PIN（4桁） <span style="color:#c0392b">*</span></label>
         <input class="sumioka-input" type="tel" id="modal-staff-pin"
           maxlength="4" inputmode="numeric">
       </div>
 
       <div class="sumioka-form-group">
-        <label class="sumioka-label" for="modal-staff-password">パスワード（空欄＝変更なし）</label>
+        <label class="sumioka-label" for="modal-staff-password">
+          パスワード <span id="modal-staff-password-hint" style="color:GrayText;font-weight:400">（空欄＝変更なし）</span>
+        </label>
         <input class="sumioka-input" type="text" id="modal-staff-password"
           placeholder="変更する場合のみ入力">
-      </div>
-
-      <div class="sumioka-form-group">
-        <label class="sumioka-label" for="modal-staff-scheduled-end">所定終業時刻</label>
-        <input class="sumioka-input" type="time" id="modal-staff-scheduled-end">
       </div>
 
       <div class="sumioka-form-group">
@@ -936,14 +1041,173 @@
       </div>
 
       <div class="sumioka-form-group">
-        <label class="sumioka-label" for="modal-staff-wage">時給 / 月給（円）</label>
-        <input class="sumioka-input" type="number" id="modal-staff-wage"
-          placeholder="例：1000">
+        <label class="sumioka-label" for="modal-staff-scheduled-end">所定終業時刻</label>
+        <input class="sumioka-input" type="time" id="modal-staff-scheduled-end">
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-staff-wage-type">給与形態</label>
+        <select class="sumioka-input" id="modal-staff-wage-type">
+          <option value="">未設定</option>
+          <option value="時給">時給</option>
+          <option value="月給">月給</option>
+        </select>
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-staff-hourly-wage">時給（円）</label>
+        <input class="sumioka-input" type="number" id="modal-staff-hourly-wage"
+          placeholder="例：1,050" min="0">
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-staff-monthly-wage">月給（円）</label>
+        <input class="sumioka-input" type="number" id="modal-staff-monthly-wage"
+          placeholder="例：220,000" min="0">
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-staff-transport">交通費（月額・円）</label>
+        <input class="sumioka-input" type="number" id="modal-staff-transport"
+          placeholder="例：5,000" min="0">
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-staff-scheduled-hours">所定労働時間（時間/日）</label>
+        <input class="sumioka-input" type="number" id="modal-staff-scheduled-hours"
+          placeholder="例：8" min="0" max="24" step="0.5">
       </div>
 
       <div class="modal-footer">
         <button class="sumioka-btn" id="modal-staff-cancel">キャンセル</button>
         <button class="sumioka-btn sumioka-btn-primary" id="modal-staff-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       給与設定モーダル（給与計算タブから呼び出す）
+       社会保険料率・残業割増率・弁当代などを設定する
+       ============================================================ -->
+  <div class="modal-overlay hidden" id="modal-payroll-settings">
+    <div class="modal" style="max-width:520px">
+      <p class="modal-title">給与設定</p>
+
+      <p class="section-title">社会保険料率（本人負担・%）</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem">
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="ps-health">健康保険率</label>
+          <input class="sumioka-input" type="number" id="ps-health"
+            step="0.01" min="0" placeholder="4.99">
+        </div>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="ps-care">介護保険率（40歳以上）</label>
+          <input class="sumioka-input" type="number" id="ps-care"
+            step="0.01" min="0" placeholder="0.80">
+        </div>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="ps-pension">厚生年金率</label>
+          <input class="sumioka-input" type="number" id="ps-pension"
+            step="0.01" min="0" placeholder="9.15">
+        </div>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="ps-employment">雇用保険率</label>
+          <input class="sumioka-input" type="number" id="ps-employment"
+            step="0.01" min="0" placeholder="0.60">
+        </div>
+      </div>
+
+      <div class="sumioka-form-group" style="margin-top:0.5rem">
+        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;cursor:pointer">
+          <input type="checkbox" id="ps-care-enabled">
+          介護保険を徴収する（40歳以上スタッフに適用）
+        </label>
+      </div>
+
+      <p class="section-title">割増賃金率（%）</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.65rem">
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="ps-overtime">時間外</label>
+          <input class="sumioka-input" type="number" id="ps-overtime"
+            min="0" placeholder="25">
+        </div>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="ps-holiday">休日出勤</label>
+          <input class="sumioka-input" type="number" id="ps-holiday"
+            min="0" placeholder="35">
+        </div>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="ps-latenight">深夜</label>
+          <input class="sumioka-input" type="number" id="ps-latenight"
+            min="0" placeholder="50">
+        </div>
+      </div>
+
+      <p class="section-title">その他</p>
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="ps-lunch">弁当代（円/食）</label>
+        <input class="sumioka-input" type="number" id="ps-lunch"
+          min="0" placeholder="500">
+      </div>
+
+      <div class="modal-footer">
+        <button class="sumioka-btn" id="modal-ps-cancel">キャンセル</button>
+        <button class="sumioka-btn sumioka-btn-primary" id="modal-ps-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       インセンティブ追加モーダル（給与計算タブから呼び出す）
+       ============================================================ -->
+  <div class="modal-overlay hidden" id="modal-incentive">
+    <div class="modal">
+      <p class="modal-title">インセンティブ追加</p>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="inc-employee">対象スタッフ</label>
+        <select class="sumioka-input" id="inc-employee">
+          <option value="">選択してください</option>
+        </select>
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="inc-label">項目名</label>
+        <input class="sumioka-input" type="text" id="inc-label"
+          placeholder="例：販売奨励金、皆勤手当">
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="inc-amount">金額（円）</label>
+        <input class="sumioka-input" type="number" id="inc-amount" min="0" placeholder="0">
+      </div>
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="inc-note">備考</label>
+        <input class="sumioka-input" type="text" id="inc-note" placeholder="任意">
+      </div>
+
+      <div class="modal-footer">
+        <button class="sumioka-btn" id="modal-inc-cancel">キャンセル</button>
+        <button class="sumioka-btn sumioka-btn-primary" id="modal-inc-save">追加</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       給与明細モーダル（給与計算タブの「明細」ボタンから呼び出す）
+       ============================================================ -->
+  <div class="modal-overlay hidden" id="modal-payroll-detail">
+    <div class="modal" style="max-width:480px">
+      <p class="modal-title" id="modal-pd-title">給与明細</p>
+
+      <table class="admin-table" style="margin-bottom:0.5rem">
+        <tbody id="modal-pd-body"></tbody>
+      </table>
+
+      <div class="modal-footer">
+        <button class="sumioka-btn sumioka-btn-primary" id="modal-pd-close">閉じる</button>
       </div>
     </div>
   </div>
@@ -990,9 +1254,11 @@
      * }}
      */
     const adminState = {
-      employeeId : '',
-      name       : '',
-      staffList  : [],
+      employeeId       : '',
+      name             : '',
+      staffList        : [],   // スタッフマスタ（フィルタ用プルダウン等で使う）
+      payrollData      : [],   // 給与計算結果（明細表示用）
+      payrollSettings  : null, // 給与設定キャッシュ
     };
 
     // ============================================================
@@ -1043,36 +1309,70 @@
         tab.addEventListener('click', () => switchTab(tab.dataset.tab));
       });
 
-      // ── ①ダッシュボード ──
-      // 自動ロードのため個別ボタンなし
-
-      // ── ②勤怠一覧 ──
+      // ── 勤怠一覧 ──
       document.getElementById('btn-att-search').addEventListener('click', loadAttendance);
 
-      // ── ③申請管理 ──
+      // ── 申請管理 ──
       document.getElementById('btn-req-search').addEventListener('click', loadRequests);
       document.getElementById('req-filter-status').addEventListener('change', loadRequests);
 
-      // ── ④スタッフ管理 ──
+      // ── スタッフ管理 ──
       document.getElementById('btn-staff-search').addEventListener('click', loadStaff);
+      // 追加ボタン：モーダルを空状態（新規モード）で開く
+      document.getElementById('btn-staff-add').addEventListener('click', () => openStaffModal(null));
 
-      // ── ⑤月次レポート ──
+      // ── 月次レポート ──
       document.getElementById('btn-monthly-search').addEventListener('click', loadMonthly);
+
+      // ── 給与計算 ──
+      document.getElementById('btn-payroll-calc').addEventListener('click', runPayrollCalc);
+      document.getElementById('btn-payroll-settings').addEventListener('click', openPayrollSettings);
+      document.getElementById('btn-add-incentive').addEventListener('click', openIncentiveModal);
 
       // ── 打刻修正モーダル ──
       document.getElementById('modal-edit-cancel').addEventListener('click', closeEditModal);
       document.getElementById('modal-edit-save').addEventListener('click', saveAttendanceEdit);
-
-      // モーダル外クリックで閉じる（UX向上）
       document.getElementById('modal-edit-attendance').addEventListener('click', e => {
         if (e.target === e.currentTarget) closeEditModal();
       });
 
-      // ── スタッフ編集モーダル ──
+      // ── スタッフ追加/編集モーダル ──
       document.getElementById('modal-staff-cancel').addEventListener('click', closeStaffModal);
-      document.getElementById('modal-staff-save').addEventListener('click', saveStaffEdit);
+      document.getElementById('modal-staff-save').addEventListener('click', saveStaffModal);
       document.getElementById('modal-edit-staff').addEventListener('click', e => {
         if (e.target === e.currentTarget) closeStaffModal();
+      });
+
+      // ── 給与設定モーダル ──
+      document.getElementById('modal-ps-cancel').addEventListener('click', () => {
+        document.getElementById('modal-payroll-settings').classList.add('hidden');
+      });
+      document.getElementById('modal-ps-save').addEventListener('click', savePayrollSettings);
+      document.getElementById('modal-payroll-settings').addEventListener('click', e => {
+        if (e.target === e.currentTarget) {
+          document.getElementById('modal-payroll-settings').classList.add('hidden');
+        }
+      });
+
+      // ── インセンティブモーダル ──
+      document.getElementById('modal-inc-cancel').addEventListener('click', () => {
+        document.getElementById('modal-incentive').classList.add('hidden');
+      });
+      document.getElementById('modal-inc-save').addEventListener('click', saveIncentive);
+      document.getElementById('modal-incentive').addEventListener('click', e => {
+        if (e.target === e.currentTarget) {
+          document.getElementById('modal-incentive').classList.add('hidden');
+        }
+      });
+
+      // ── 給与明細モーダル ──
+      document.getElementById('modal-pd-close').addEventListener('click', () => {
+        document.getElementById('modal-payroll-detail').classList.add('hidden');
+      });
+      document.getElementById('modal-payroll-detail').addEventListener('click', e => {
+        if (e.target === e.currentTarget) {
+          document.getElementById('modal-payroll-detail').classList.add('hidden');
+        }
       });
     }
 
@@ -1190,8 +1490,9 @@
 
       // タブ初回表示時にデータを自動ロードする
       switch (tabKey) {
-        case 'requests': loadRequests();   break;
-        case 'staff':    loadStaff();      break;
+        case 'requests': loadRequests();          break;
+        case 'staff':    loadStaff();             break;
+        case 'payroll':  initPayrollTab();        break;
         case 'monthly':  /* 明示的に検索ボタンを押す運用 */ break;
       }
     }
@@ -1585,18 +1886,16 @@
     }
 
     // ============================================================
-    // ④スタッフ管理
+    // スタッフ管理
     // ============================================================
 
     /**
      * スタッフ一覧を取得してテーブルに描画する。
-     * フィルタ用プルダウンにも同じデータを使う。
      */
     async function loadStaff() {
       setTabLoading('staff', true);
 
-      const type = document.getElementById('staff-filter-type').value;
-
+      const type   = document.getElementById('staff-filter-type').value;
       const result = await callGAS('admin_staff_list', { type });
 
       setTabLoading('staff', false);
@@ -1611,8 +1910,8 @@
     }
 
     /**
-     * フィルタ用プルダウン（勤怠一覧タブ）を最新のスタッフ一覧で更新する。
-     * ログイン直後に1回だけ呼ぶ。
+     * フィルタ用プルダウン（勤怠一覧・インセンティブ追加など）を
+     * 最新のスタッフ一覧で更新する。ログイン直後に1回だけ呼ぶ。
      */
     async function loadStaffListForFilter() {
       const result = await callGAS('admin_staff_list', { type: 'all' });
@@ -1620,19 +1919,19 @@
 
       adminState.staffList = result.data.staff || [];
 
-      const select = document.getElementById('att-filter-staff');
-      // 先頭の「全員」オプションを残して追加する
+      // 勤怠一覧フィルタを更新する
+      const attSelect = document.getElementById('att-filter-staff');
       adminState.staffList.forEach(s => {
         const opt = document.createElement('option');
         opt.value       = s.id;
         opt.textContent = `${s.name}（${s.type || '―'}）`;
-        select.appendChild(opt);
+        attSelect.appendChild(opt);
       });
     }
 
     /**
      * スタッフ一覧テーブルを描画する。
-     * 各行に「編集」ボタンを設置し、クリックでスタッフ編集モーダルを開く。
+     * 各行に「編集」「削除」ボタンを設置する。
      *
      * @param {Array} staff
      */
@@ -1644,109 +1943,480 @@
         return;
       }
 
-      tbody.innerHTML = staff.map(s => `
-        <tr>
-          <td>${escHtml(s.name || '―')}</td>
-          <td>${escHtml(s.type || '―')}</td>
-          <td>${escHtml(s.pin  || '―')}</td>
-          <td>${escHtml(s.employment || '―')}</td>
-          <td>${escHtml(s.scheduled_end || '―')}</td>
-          <td>${s.wage ? `${Number(s.wage).toLocaleString()}円` : '―'}</td>
-          <td>${s.is_admin ? '<span class="badge badge-blue">管理者</span>' : '―'}</td>
-          <td>
-            <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
-              onclick="openStaffModal(${escJson(s)})">
-              編集
-            </button>
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = staff.map(s => {
+        // 表示する給与額：給与形態に応じて時給 or 月給を出す
+        const wageLabel = s.wage_type === '月給'
+          ? `月${Number(s.monthly_wage || 0).toLocaleString()}円`
+          : s.wage_type === '時給'
+          ? `${Number(s.hourly_wage || 0).toLocaleString()}円/h`
+          : '―';
+
+        return `
+          <tr>
+            <td>${escHtml(s.name || '―')}</td>
+            <td>${escHtml(s.type || '―')}</td>
+            <td>${escHtml(s.pin  || '―')}</td>
+            <td>${escHtml(s.employment || '―')}</td>
+            <td>${escHtml(s.scheduled_end || '―')}</td>
+            <td>${wageLabel}</td>
+            <td>${s.is_admin ? '<span class="badge badge-blue">管理者</span>' : '―'}</td>
+            <td>
+              <div class="action-btn-group">
+                <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
+                  onclick="openStaffModal(${escJson(s)})">編集</button>
+                <button class="btn-reject" style="font-size:0.78rem"
+                  onclick="deleteStaff('${escHtml(s.id)}', '${escHtml(s.name)}')">削除</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
-    // ── スタッフ編集モーダル ──
+    // ── スタッフ モーダル ──
 
     /**
-     * スタッフ編集モーダルを開く。
+     * スタッフ追加/編集モーダルを開く。
      *
-     * @param {Object} staff
+     * @param {Object|null} staff - null なら新規追加モード
      */
     function openStaffModal(staff) {
-      document.getElementById('modal-staff-id').value             = staff.id            || '';
-      document.getElementById('modal-staff-name').value           = staff.name          || '';
-      document.getElementById('modal-staff-pin').value            = staff.pin           || '';
-      document.getElementById('modal-staff-password').value       = ''; // 変更時のみ入力
-      document.getElementById('modal-staff-scheduled-end').value  = staff.scheduled_end || '';
-      document.getElementById('modal-staff-employment').value     = staff.employment    || '';
-      document.getElementById('modal-staff-wage').value           = staff.wage          || '';
+      const isNew = !staff;
+
+      // タイトルとパスワードヒントを切り替える
+      document.getElementById('modal-staff-title').textContent =
+        isNew ? 'スタッフを追加' : 'スタッフ情報を編集';
+      document.getElementById('modal-staff-password-hint').textContent =
+        isNew ? '（必須）' : '（空欄＝変更なし）';
+
+      // フォームをリセットしてから値を設定する
+      document.getElementById('modal-staff-id').value              = isNew ? '' : (staff.id            || '');
+      document.getElementById('modal-staff-name').value            = isNew ? '' : (staff.name          || '');
+      document.getElementById('modal-staff-pin').value             = isNew ? '' : (staff.pin           || '');
+      document.getElementById('modal-staff-password').value        = ''; // 常に空で開く
+      document.getElementById('modal-staff-employment').value      = isNew ? '' : (staff.employment    || '');
+      document.getElementById('modal-staff-scheduled-end').value   = isNew ? '' : (staff.scheduled_end || '');
+      document.getElementById('modal-staff-wage-type').value       = isNew ? '' : (staff.wage_type     || '');
+      document.getElementById('modal-staff-hourly-wage').value     = isNew ? '' : (staff.hourly_wage   || '');
+      document.getElementById('modal-staff-monthly-wage').value    = isNew ? '' : (staff.monthly_wage  || '');
+      document.getElementById('modal-staff-transport').value       = isNew ? '' : (staff.transport_fee || '');
+      document.getElementById('modal-staff-scheduled-hours').value = isNew ? '' : (staff.scheduled_hours || '');
 
       document.getElementById('modal-edit-staff').classList.remove('hidden');
     }
 
-    /**
-     * スタッフ編集モーダルを閉じる。
-     */
+    /** スタッフモーダルを閉じる */
     function closeStaffModal() {
       document.getElementById('modal-edit-staff').classList.add('hidden');
     }
 
     /**
-     * スタッフ情報を GAS に送信して保存する。
-     * パスワードは空欄の場合は送信しない（変更なしとして扱う）。
+     * スタッフ追加/更新を GAS に送信する。
+     * modal-staff-id が空なら新規、値があれば更新として振り分ける。
      */
-    async function saveStaffEdit() {
-      const id           = document.getElementById('modal-staff-id').value;
-      const name         = document.getElementById('modal-staff-name').value.trim();
-      const pin          = document.getElementById('modal-staff-pin').value.trim();
-      const password     = document.getElementById('modal-staff-password').value.trim();
-      const scheduledEnd = document.getElementById('modal-staff-scheduled-end').value;
-      const employment   = document.getElementById('modal-staff-employment').value;
-      const wage         = document.getElementById('modal-staff-wage').value;
+    async function saveStaffModal() {
+      const id             = document.getElementById('modal-staff-id').value;
+      const name           = document.getElementById('modal-staff-name').value.trim();
+      const pin            = document.getElementById('modal-staff-pin').value.trim();
+      const password       = document.getElementById('modal-staff-password').value.trim();
+      const employment     = document.getElementById('modal-staff-employment').value;
+      const scheduledEnd   = document.getElementById('modal-staff-scheduled-end').value;
+      const wageType       = document.getElementById('modal-staff-wage-type').value;
+      const hourlyWage     = document.getElementById('modal-staff-hourly-wage').value;
+      const monthlyWage    = document.getElementById('modal-staff-monthly-wage').value;
+      const transportFee   = document.getElementById('modal-staff-transport').value;
+      const scheduledHours = document.getElementById('modal-staff-scheduled-hours').value;
 
-      if (!name || !pin) {
-        showToast('氏名と PIN は必須です。', 'warning');
-        return;
-      }
+      const isNew = !id;
 
-      if (pin.length !== 4 || !/^\d{4}$/.test(pin)) {
+      // バリデーション
+      if (!name) { showToast('氏名は必須です。', 'warning'); return; }
+      if (!pin)  { showToast('PIN は必須です。', 'warning'); return; }
+      if (!/^\d{4}$/.test(pin)) {
         showToast('PIN は4桁の数字で入力してください。', 'warning');
         return;
       }
+      if (isNew && !password) {
+        showToast('新規追加時はパスワードが必須です。', 'warning');
+        return;
+      }
 
-      const btn = document.getElementById('modal-staff-save');
-
-      showLoading('保存中...');
-
-      // パスワードが未入力の場合はフィールドごと省略（変更なし扱い）
-      const payload = {
-        employee_id   : id,
-        admin_id      : adminState.employeeId,
-        staff_data    : {
-          name,
-          pin,
-          scheduled_end : scheduledEnd,
-          employment,
-          wage          : wage ? Number(wage) : null,
-          ...(password ? { password } : {}), // 空欄なら含めない
-        },
+      const staffData = {
+        name,
+        pin,
+        ...(password ? { password } : {}),
+        employment_type  : employment,
+        scheduled_end    : scheduledEnd,
+        wage_type        : wageType,
+        hourly_wage      : hourlyWage  ? Number(hourlyWage)     : null,
+        monthly_wage     : monthlyWage ? Number(monthlyWage)    : null,
+        transport_fee    : transportFee ? Number(transportFee)  : 0,
+        scheduled_hours  : scheduledHours ? Number(scheduledHours) : null,
       };
 
-      const result = await callGAS('admin_update_staff', payload, { button: btn });
+      const btn    = document.getElementById('modal-staff-save');
+      const action = isNew ? 'admin_add_staff' : 'admin_update_staff';
+      const payload = isNew
+        ? { admin_id: adminState.employeeId, staff_data: staffData }
+        : { admin_id: adminState.employeeId, employee_id: id, staff_data: staffData };
+
+      showLoading('保存中...');
+      const result = await callGAS(action, payload, { button: btn });
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast(isNew ? 'スタッフを追加しました。' : 'スタッフ情報を更新しました。', 'success');
+      closeStaffModal();
+      loadStaff(); // 一覧を再取得して反映する
+    }
+
+    /**
+     * スタッフを削除する。
+     * 確認ダイアログを出してから GAS に送信する。
+     *
+     * @param {string} employeeId
+     * @param {string} name - 確認メッセージ用
+     */
+    async function deleteStaff(employeeId, name) {
+      // 削除は取り消しできないためダブルチェックを入れる
+      const ok = await confirm(`「${name}」を削除しますか？\nこの操作は取り消せません。`);
+      if (!ok) return;
+
+      showLoading('削除中...');
+
+      const result = await callGAS('admin_delete_staff', {
+        admin_id    : adminState.employeeId,
+        employee_id : employeeId,
+      });
 
       hideLoading();
 
       if (!result.success) {
-        showError(result.error_message, result.error_detail, saveStaffEdit);
+        showError(result.error_message, result.error_detail);
         return;
       }
 
-      showToast('スタッフ情報を更新しました。', 'success');
-      closeStaffModal();
-      loadStaff(); // テーブルを再取得
+      showToast('スタッフを削除しました。', 'success');
+      loadStaff(); // 一覧を再取得して反映する
     }
 
     // ============================================================
-    // ⑤月次レポート
+    // 給与計算
     // ============================================================
+
+    /**
+     * 給与計算タブを初回表示する際に呼ばれる。
+     * 今月を初期値として設定し、給与設定をバックグラウンドで読み込む。
+     */
+    function initPayrollTab() {
+      // 月次レポートと同じ今月を初期値にする
+      const today = new Date();
+      const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+      document.getElementById('payroll-filter-month').value = ym;
+
+      // 設定を読み込んでモーダルのデフォルト値に使うためバックグラウンドで取得する
+      loadPayrollSettingsFromGAS();
+    }
+
+    /**
+     * GAS から給与設定を読み込んで adminState に保存する。
+     * モーダルを開く前に呼ばれる（エラーは非致命的に処理する）。
+     */
+    async function loadPayrollSettingsFromGAS() {
+      const result = await callGAS('payroll_load_settings', {});
+      if (result.success) {
+        adminState.payrollSettings = result.data.settings;
+      }
+    }
+
+    /**
+     * 給与計算を実行する。
+     * GAS に対象月を送り、全スタッフ分の給与計算結果を受け取る。
+     */
+    async function runPayrollCalc() {
+      const yearMonth = document.getElementById('payroll-filter-month').value;
+      if (!yearMonth) {
+        showToast('対象月を選択してください。', 'warning');
+        return;
+      }
+
+      setTabLoading('payroll', true);
+      showLoading('給与計算中...');
+
+      const result = await callGAS('payroll_calculate', { year_month: yearMonth });
+
+      hideLoading();
+      setTabLoading('payroll', false);
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      const payroll = result.data.payroll || [];
+      adminState.payrollData = payroll; // 明細表示用に保持する
+
+      renderPayrollTable(payroll);
+      renderPayrollSummary(payroll);
+
+      // インセンティブ追加ボタンとスタッフ選択肢を更新する
+      document.getElementById('payroll-incentive-row').style.display = 'flex';
+      updateIncentiveStaffSelect(payroll);
+
+      showToast(`${payroll.length}名分の給与計算が完了しました。`, 'success');
+    }
+
+    /**
+     * 給与計算結果テーブルを描画する。
+     *
+     * @param {Array} payroll
+     */
+    function renderPayrollTable(payroll) {
+      const tbody = document.getElementById('payroll-body');
+
+      if (payroll.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="14" class="empty-state">対象データがありません</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = payroll.map((p, i) => `
+        <tr>
+          <td>${escHtml(p.name)}</td>
+          <td>${escHtml(p.employment)}</td>
+          <td>${p.work_days}日</td>
+          <td>${p.total_work_hours}h</td>
+          <td>${p.overtime_hours > 0
+            ? `<span class="value-orange">${p.overtime_hours}h</span>`
+            : '―'}</td>
+          <td>${Number(p.basic_wage).toLocaleString()}円</td>
+          <td>${p.overtime_pay > 0 ? `${Number(p.overtime_pay).toLocaleString()}円` : '―'}</td>
+          <td>${p.incentive_total > 0
+            ? `<span class="value-green">${Number(p.incentive_total).toLocaleString()}円</span>`
+            : '―'}</td>
+          <td style="font-weight:600">${Number(p.total_gross).toLocaleString()}円</td>
+          <td class="value-orange">${Number(p.social_insurance_total).toLocaleString()}円</td>
+          <td class="value-red">${Number(p.income_tax).toLocaleString()}円</td>
+          <td>${p.lunch_deduction > 0 ? `${Number(p.lunch_deduction).toLocaleString()}円` : '―'}</td>
+          <td style="font-weight:700;color:#1a7f37">${Number(p.net_pay).toLocaleString()}円</td>
+          <td>
+            <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
+              onclick="openPayrollDetail(${i})">明細</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    /**
+     * 給与計算サマリーカードを更新する。
+     *
+     * @param {Array} payroll
+     */
+    function renderPayrollSummary(payroll) {
+      const totalGross     = payroll.reduce((s, p) => s + (p.total_gross     || 0), 0);
+      const totalNet       = payroll.reduce((s, p) => s + (p.net_pay         || 0), 0);
+      const totalInsurance = payroll.reduce((s, p) => s + (p.social_insurance_total || 0), 0);
+      const totalTax       = payroll.reduce((s, p) => s + (p.income_tax      || 0), 0);
+
+      setText('payroll-total-members',   payroll.length);
+      setText('payroll-total-gross',     Number(totalGross).toLocaleString());
+      setText('payroll-total-net',       Number(totalNet).toLocaleString());
+      setText('payroll-total-insurance', Number(totalInsurance).toLocaleString());
+      setText('payroll-total-tax',       Number(totalTax).toLocaleString());
+
+      document.getElementById('payroll-summary-grid').style.display = '';
+    }
+
+    /**
+     * 給与明細モーダルを開く。
+     *
+     * @param {number} index - adminState.payrollData のインデックス
+     */
+    function openPayrollDetail(index) {
+      const p = (adminState.payrollData || [])[index];
+      if (!p) return;
+
+      document.getElementById('modal-pd-title').textContent =
+        `${p.name} さんの給与明細（${p.year_month}）`;
+
+      // 明細行を構築する
+      const rows = [
+        ['【勤怠】', ''],
+        ['出勤日数',     `${p.work_days}日`],
+        ['実働時間',     `${p.total_work_hours}時間`],
+        ['残業時間',     `${p.overtime_hours}時間`],
+        ['弁当注文数',   `${p.lunch_count}食`],
+        ['', ''],
+        ['【支給】', ''],
+        ['基本給',       `${Number(p.basic_wage).toLocaleString()}円`],
+        ['残業手当',     `${Number(p.overtime_pay).toLocaleString()}円`],
+        ['休日手当',     `${Number(p.holiday_pay).toLocaleString()}円`],
+        ['交通費',       `${Number(p.transport_fee).toLocaleString()}円`],
+        ['インセンティブ計', `${Number(p.incentive_total).toLocaleString()}円`],
+        ...(p.incentive_items || []).map(inc => [`　└ ${inc.label}`, `${Number(inc.amount).toLocaleString()}円`]),
+        ['総支給額',     `${Number(p.total_gross).toLocaleString()}円`],
+        ['', ''],
+        ['【控除】', ''],
+        ['健康保険',     `${Number(p.health_insurance).toLocaleString()}円`],
+        ['介護保険',     `${Number(p.care_insurance).toLocaleString()}円`],
+        ['厚生年金',     `${Number(p.pension).toLocaleString()}円`],
+        ['雇用保険',     `${Number(p.employment_insurance).toLocaleString()}円`],
+        ['社会保険料計', `${Number(p.social_insurance_total).toLocaleString()}円`],
+        ['所得税（源泉）', `${Number(p.income_tax).toLocaleString()}円`],
+        ['弁当代控除',   `${Number(p.lunch_deduction).toLocaleString()}円`],
+        ['', ''],
+        ['【差引支給額】', `${Number(p.net_pay).toLocaleString()}円`],
+      ];
+
+      document.getElementById('modal-pd-body').innerHTML = rows.map(([label, value]) => {
+        // 区切り行は背景色で強調する
+        if (label.startsWith('【')) {
+          return `<tr style="background:Canvas">
+            <td colspan="2" style="font-weight:700;font-size:0.8rem;color:GrayText;
+              padding:0.4rem 0.85rem;border-bottom:1px solid GrayText">
+              ${escHtml(label)}</td></tr>`;
+        }
+        if (!label && !value) {
+          return ''; // 空行は無視する
+        }
+        const isBold = label.startsWith('【') || label === '総支給額' || label === '【差引支給額】';
+        return `<tr>
+          <td style="color:GrayText;font-size:0.85rem">${escHtml(label)}</td>
+          <td style="text-align:right;font-weight:${isBold ? 700 : 400}">${escHtml(value)}</td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('modal-payroll-detail').classList.remove('hidden');
+    }
+
+    // ── 給与設定モーダル ──
+
+    /**
+     * 給与設定モーダルを開く。
+     * 保存済みの設定値をフォームに反映する。
+     */
+    async function openPayrollSettings() {
+      // 未取得なら取得する
+      if (!adminState.payrollSettings) {
+        await loadPayrollSettingsFromGAS();
+      }
+
+      const s = adminState.payrollSettings || {};
+
+      document.getElementById('ps-health').value      = s.health_insurance_rate     ?? 4.99;
+      document.getElementById('ps-care').value        = s.care_insurance_rate       ?? 0.80;
+      document.getElementById('ps-pension').value     = s.pension_rate              ?? 9.15;
+      document.getElementById('ps-employment').value  = s.employment_insurance_rate ?? 0.60;
+      document.getElementById('ps-overtime').value    = s.overtime_rate             ?? 25;
+      document.getElementById('ps-holiday').value     = s.holiday_rate              ?? 35;
+      document.getElementById('ps-latenight').value   = s.late_night_rate           ?? 50;
+      document.getElementById('ps-lunch').value       = s.lunch_price               ?? 500;
+      document.getElementById('ps-care-enabled').checked = !!s.care_insurance_enabled;
+
+      document.getElementById('modal-payroll-settings').classList.remove('hidden');
+    }
+
+    /**
+     * 給与設定を GAS に保存する。
+     */
+    async function savePayrollSettings() {
+      const settings = {
+        health_insurance_rate     : Number(document.getElementById('ps-health').value),
+        care_insurance_rate       : Number(document.getElementById('ps-care').value),
+        pension_rate              : Number(document.getElementById('ps-pension').value),
+        employment_insurance_rate : Number(document.getElementById('ps-employment').value),
+        overtime_rate             : Number(document.getElementById('ps-overtime').value),
+        holiday_rate              : Number(document.getElementById('ps-holiday').value),
+        late_night_rate           : Number(document.getElementById('ps-latenight').value),
+        lunch_price               : Number(document.getElementById('ps-lunch').value),
+        care_insurance_enabled    : document.getElementById('ps-care-enabled').checked,
+      };
+
+      showLoading('設定を保存中...');
+      const result = await callGAS('payroll_save_settings', { settings });
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      adminState.payrollSettings = settings; // ローカルにも反映する
+      showToast('給与設定を保存しました。', 'success');
+      document.getElementById('modal-payroll-settings').classList.add('hidden');
+    }
+
+    // ── インセンティブモーダル ──
+
+    /**
+     * インセンティブ追加モーダルを開く。
+     * スタッフ選択肢を現在の計算済みデータから生成する。
+     */
+    function openIncentiveModal() {
+      document.getElementById('inc-label').value  = '';
+      document.getElementById('inc-amount').value = '';
+      document.getElementById('inc-note').value   = '';
+      document.getElementById('modal-incentive').classList.remove('hidden');
+    }
+
+    /**
+     * インセンティブ追加モーダルのスタッフ選択肢を更新する。
+     *
+     * @param {Array} payroll - 計算済み給与データ
+     */
+    function updateIncentiveStaffSelect(payroll) {
+      const select = document.getElementById('inc-employee');
+      select.innerHTML = '<option value="">選択してください</option>';
+      payroll.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value       = p.employee_id;
+        opt.textContent = p.name;
+        select.appendChild(opt);
+      });
+    }
+
+    /**
+     * インセンティブを GAS に登録する。
+     * 登録後は給与計算を再実行して結果を更新する。
+     */
+    async function saveIncentive() {
+      const yearMonth  = document.getElementById('payroll-filter-month').value;
+      const employeeId = document.getElementById('inc-employee').value;
+      const label      = document.getElementById('inc-label').value.trim();
+      const amount     = document.getElementById('inc-amount').value;
+      const note       = document.getElementById('inc-note').value.trim();
+
+      if (!employeeId) { showToast('スタッフを選択してください。', 'warning'); return; }
+      if (!label)      { showToast('項目名を入力してください。', 'warning');   return; }
+      if (!amount || isNaN(Number(amount))) {
+        showToast('金額を数値で入力してください。', 'warning');
+        return;
+      }
+
+      showLoading('インセンティブを登録中...');
+      const result = await callGAS('payroll_save_incentive', {
+        year_month  : yearMonth,
+        employee_id : employeeId,
+        label,
+        amount      : Number(amount),
+        note,
+      });
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('インセンティブを登録しました。給与計算を再実行します。', 'success');
+      document.getElementById('modal-incentive').classList.add('hidden');
+
+      // インセンティブを反映するために給与計算を再実行する
+      await runPayrollCalc();
+    }
 
     /**
      * 指定月の全スタッフ月次サマリーを取得してテーブルに描画する。
@@ -1949,8 +2619,8 @@
   <script src="common/storage.js"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- バージョン番号は sumioka-uploader の v1.1.0 プレースホルダーで自動埋め込みされる -->
-  <div class="version-badge" id="app-version">v1.1.0</div>
+  <!-- バージョン番号は sumioka-uploader の v1.1.1 プレースホルダーで自動埋め込みされる -->
+  <div class="version-badge" id="app-version">v1.1.1</div>
 
 </body>
 </html>
