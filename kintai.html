@@ -1767,11 +1767,6 @@ p:last-child { margin-bottom: 0; }
             </span>
           </label>
           <input class="sumioka-input" type="date" id="req-fillup-date">
-          <div style="margin-top:0.4rem">
-            <label class="sumioka-label" for="req-fillup-time">補填予定時間数（例: 2時間 → 120）</label>
-            <input class="sumioka-input" type="number" id="req-fillup-time"
-              min="0" max="480" placeholder="分で入力（例: 120）" style="margin-top:0.3rem">
-          </div>
         </div>
         <div class="sumioka-form-group">
           <label class="sumioka-label" for="req-reason">理由</label>
@@ -2146,7 +2141,6 @@ p:last-child { margin-bottom: 0; }
         // 非表示にしたときは値をクリアして送信データに混入しないようにする
         if (!showFillup) {
           document.getElementById('req-fillup-date').value = '';
-          document.getElementById('req-fillup-time').value = '';
         }
       });
 
@@ -2806,7 +2800,6 @@ p:last-child { margin-bottom: 0; }
       const time        = document.getElementById('req-time').value.trim();
       const reason      = document.getElementById('req-reason').value.trim();
       const fillupDate  = document.getElementById('req-fillup-date').value;
-      const fillupTime  = document.getElementById('req-fillup-time').value.trim();
 
       if (!date) {
         showToast('対象日を選択してください。', 'warning');
@@ -2814,21 +2807,17 @@ p:last-child { margin-bottom: 0; }
       }
 
       // 補填予定日が入力されている場合は確認メッセージに含める
-      const fillupMsg = fillupDate
-        ? `\n補填予定日: ${fillupDate}${fillupTime ? `（${fillupTime}分）` : ''}`
-        : '';
+      const fillupMsg = fillupDate ? `\n補填予定日: ${fillupDate}` : '';
       const ok = await confirm(`${type}の申請を送信しますか？\n対象日: ${date}${fillupMsg}`);
       if (!ok) return;
 
       showLoading('申請を送信中...');
 
-      // 理由フィールドに補填予定情報を付記して1つのフィールドに収める。
+      // 補填予定日が入力されている場合は理由フィールドに付記する。
       // GAS側のスキーマ変更なしに補填情報を保存するための実装。
       let fullReason = reason;
       if (fillupDate && ['遅刻', '早退', '休み'].includes(type)) {
-        const fillupNote = fillupTime
-          ? `【補填予定: ${fillupDate}（${fillupTime}分）】`
-          : `【補填予定: ${fillupDate}】`;
+        const fillupNote = `【補填予定: ${fillupDate}】`;
         fullReason = fullReason ? `${fullReason} ${fillupNote}` : fillupNote;
       }
 
@@ -2856,7 +2845,6 @@ p:last-child { margin-bottom: 0; }
       document.getElementById('req-time').value        = '';
       document.getElementById('req-reason').value      = '';
       document.getElementById('req-fillup-date').value = '';
-      document.getElementById('req-fillup-time').value = '';
       document.getElementById('req-fillup-wrap').style.display = 'none';
 
       // カレンダーと履歴を再描画して送信した申請を反映する
