@@ -1913,17 +1913,24 @@
       document.getElementById('modal-edit-target-display').style.display     = isNew ? 'none' : '';
 
       if (isNew) {
-        // 新規モード：スタッフ選択肢をadminState.staffListから生成する
+        // 新規モード：最新のスタッフ一覧を GAS から取得してプルダウンを生成する。
+        // キャッシュ（adminState.staffList）を使うとスタッフ追加後に反映されないため
+        // モーダルを開くたびに最新データを取得する。
         const select = document.getElementById('modal-edit-staff-select');
-        select.innerHTML = '<option value="">選択してください</option>';
-        adminState.staffList
-          .filter(s => s.type !== '利用者') // 利用者は打刻管理対象外
-          .forEach(s => {
-            const opt = document.createElement('option');
-            opt.value       = s.id;
-            opt.textContent = `${s.name}（${s.type || '―'}）`;
-            select.appendChild(opt);
-          });
+        select.innerHTML = '<option value="">読み込み中...</option>';
+
+        callGAS('admin_staff_list', { type: 'all' }).then(r => {
+          if (r.success) adminState.staffList = r.data.staff || [];
+          select.innerHTML = '<option value="">選択してください</option>';
+          adminState.staffList
+            .filter(s => s.type !== '利用者') // 利用者は打刻管理対象外
+            .forEach(s => {
+              const opt = document.createElement('option');
+              opt.value       = s.id;
+              opt.textContent = `${s.name}（${s.type || '―'}）`;
+              select.appendChild(opt);
+            });
+        });
 
         // 日付は今日をデフォルトにする
         document.getElementById('modal-edit-date-input').value = todayString();
@@ -3234,8 +3241,8 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- バージョン番号は sumioka-uploader の v1.2.0 プレースホルダーで自動埋め込みされる -->
-  <div class="version-badge" id="app-version">v1.2.0</div>
+  <!-- バージョン番号は sumioka-uploader の v1.2.1 プレースホルダーで自動埋め込みされる -->
+  <div class="version-badge" id="app-version">v1.2.1</div>
 
 </body>
 </html>
