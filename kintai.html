@@ -788,6 +788,266 @@ p:last-child { margin-bottom: 0; }
 .overtime-banner.show {
   display: block;
 }
+
+/* ============================================================
+   Phase 2: タブナビゲーション
+   既存の打刻カードをタブ1に収め、②〜⑤を追加する
+   ============================================================ */
+
+.kintai-tabs {
+  display: flex;
+  border-bottom: 1px solid GrayText;
+  margin-bottom: 1.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.kintai-tabs::-webkit-scrollbar { display: none; }
+
+.kintai-tab {
+  flex-shrink: 0;
+  padding: 0.6rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: GrayText;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.kintai-tab.active {
+  color: CanvasText;
+  border-bottom-color: Highlight;
+  font-weight: 700;
+}
+
+.kintai-tab-panel { display: none; }
+.kintai-tab-panel.active { display: block; }
+
+/* ============================================================
+   Phase 2: カレンダー（タブ2）
+   ============================================================ */
+
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.calendar-nav-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.calendar-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-bottom: 1.25rem;
+}
+
+.calendar-grid th {
+  text-align: center;
+  padding: 0.35rem 0;
+  font-weight: 600;
+  color: GrayText;
+  font-size: 0.75rem;
+}
+
+.calendar-grid td {
+  vertical-align: top;
+  border: 1px solid GrayText;
+  padding: 0.3rem 0.25rem;
+  min-height: 60px;
+  width: calc(100% / 7);
+}
+
+.calendar-day-num {
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+  color: GrayText;
+}
+
+.calendar-day-num.today {
+  background: Highlight;
+  color: HighlightText;
+  border-radius: 50%;
+  width: 1.4em;
+  height: 1.4em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-event {
+  font-size: 0.68rem;
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+  margin-bottom: 0.15em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+/* 仕様書: 休み=赤、遅刻・早退=黄、補填予定=緑、補填完了=青 */
+.ev-休み      { background: #fee2e2; color: #991b1b; }
+.ev-遅刻      { background: #fef9c3; color: #78350f; }
+.ev-早退      { background: #fef9c3; color: #78350f; }
+.ev-補填予定  { background: #d1fae5; color: #065f46; }
+.ev-補填完了  { background: #dbeafe; color: #1e40af; }
+
+/* ============================================================
+   Phase 2: 申請フォーム（タブ2）
+   ============================================================ */
+
+.request-form-card {
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  background: Canvas;
+}
+
+.request-history-item {
+  border: 1px solid GrayText;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.65rem;
+  font-size: 0.85rem;
+}
+
+.request-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.request-reject-reason {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  color: #c0392b;
+}
+
+/* ============================================================
+   Phase 2: タスク管理（タブ3）・納期管理（タブ4）共通
+   ============================================================ */
+
+.ph2-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  align-items: flex-end;
+}
+
+.ph2-card {
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 0.75rem;
+  background: Canvas;
+  font-size: 0.88rem;
+}
+
+.ph2-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.4rem;
+}
+
+.ph2-card-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.ph2-card-meta {
+  font-size: 0.78rem;
+  color: GrayText;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.ph2-card-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* 納期アラート: 3日以内の案件を赤くハイライト */
+.deadline-alert {
+  border-color: #c0392b;
+  background: #fff5f5;
+}
+
+/* 進捗バー */
+.progress-bar-wrap {
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.4rem;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: Highlight;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+/* ============================================================
+   Phase 2: 自分の状況（タブ5）
+   ============================================================ */
+
+.status-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.status-card {
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  background: Canvas;
+}
+
+.status-card-label {
+  font-size: 0.75rem;
+  color: GrayText;
+  margin-bottom: 0.3rem;
+}
+
+.status-card-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2em 0.6em;
+  border-radius: 4px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-pending  { background: #fef9c3; color: #92400e; }
+.badge-approved { background: #d1fae5; color: #065f46; }
+.badge-rejected { background: #fee2e2; color: #991b1b; }
   </style>
 
   <!-- api.js -->
@@ -812,7 +1072,7 @@ p:last-child { margin-bottom: 0; }
   let _gasUrl = '';
 
   function setGasUrl(url) {
-_gasUrl = url;
+    _gasUrl = url;
     global.SUMIOKA_GAS_URL = url;
   }
 
@@ -1324,111 +1584,389 @@ _gasUrl = url;
       <button class="kintai-header-logout" id="btn-logout">ログアウト</button>
     </div>
 
-    <!-- 定時通知バナー -->
+    <!-- 定時通知バナー（全タブ共通で表示する） -->
     <div class="overtime-banner" id="overtime-banner">
       ⏰ まもなく定時です。退勤の準備をしてください。
     </div>
 
-    <!-- 残不足バナー -->
-    <div class="balance-banner">
-      <span class="balance-banner-label">今月の残不足</span>
-      <span class="balance-banner-value" id="display-balance">読み込み中...</span>
-    </div>
+    <!-- タブナビゲーション（Phase 2 追加: 打刻・カレンダー・タスク・納期・状況） -->
+    <nav class="kintai-tabs" id="kintai-tabs">
+      <button class="kintai-tab active" data-tab="checkin">打刻</button>
+      <button class="kintai-tab" data-tab="calendar">カレンダー・申請</button>
+      <button class="kintai-tab" data-tab="tasks">タスク</button>
+      <button class="kintai-tab" data-tab="deadlines">納期</button>
+      <button class="kintai-tab" data-tab="mystatus">自分の状況</button>
+    </nav>
 
-    <!-- 出勤カード -->
-    <div class="kintai-card" id="card-checkin">
-      <div class="kintai-card-title">出勤</div>
+    <!-- ============================================================
+         タブ1: 打刻（既存コンテンツをそのまま包む）
+         ============================================================ -->
+    <div class="kintai-tab-panel active" id="panel-checkin">
 
-      <!-- 打刻済みの場合はこちらを表示 -->
-      <div id="checkin-stamped" class="sumioka-hidden">
-        <div class="stamped-time" id="display-checkin-time">--:--</div>
-        <div class="stamped-label">出勤打刻済み</div>
+      <!-- 残不足バナー -->
+      <div class="balance-banner">
+        <span class="balance-banner-label">今月の残不足</span>
+        <span class="balance-banner-value" id="display-balance">読み込み中...</span>
       </div>
 
-      <!-- 未打刻の場合はこちらを表示 -->
-      <div id="checkin-form">
-        <!-- 現在時刻ライブ表示 -->
-        <div class="live-clock" id="live-clock">--:--:--</div>
+      <!-- 出勤カード -->
+      <div class="kintai-card" id="card-checkin">
+        <div class="kintai-card-title">出勤</div>
 
-        <!-- 弁当要否（必須：未選択では出勤ボタンが押せない） -->
-        <div class="sumioka-form-group">
-          <div class="sumioka-label">弁当</div>
-          <div class="lunch-options">
-            <div class="lunch-option">
-              <input type="radio" name="lunch" id="lunch-yes" value="yes">
-              <label for="lunch-yes">要</label>
-            </div>
-            <div class="lunch-option">
-              <input type="radio" name="lunch" id="lunch-no" value="no">
-              <label for="lunch-no">不要</label>
+        <!-- 打刻済みの場合はこちらを表示 -->
+        <div id="checkin-stamped" class="sumioka-hidden">
+          <div class="stamped-time" id="display-checkin-time">--:--</div>
+          <div class="stamped-label">出勤打刻済み</div>
+        </div>
+
+        <!-- 未打刻の場合はこちらを表示 -->
+        <div id="checkin-form">
+          <!-- 現在時刻ライブ表示 -->
+          <div class="live-clock" id="live-clock">--:--:--</div>
+
+          <!-- 弁当要否（必須：未選択では出勤ボタンが押せない） -->
+          <div class="sumioka-form-group">
+            <div class="sumioka-label">弁当</div>
+            <div class="lunch-options">
+              <div class="lunch-option">
+                <input type="radio" name="lunch" id="lunch-yes" value="yes">
+                <label for="lunch-yes">要</label>
+              </div>
+              <div class="lunch-option">
+                <input type="radio" name="lunch" id="lunch-no" value="no">
+                <label for="lunch-no">不要</label>
+              </div>
             </div>
           </div>
+
+          <button
+            class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
+            id="btn-checkin"
+            disabled
+          >
+            出勤打刻
+          </button>
+          <p class="status-text" id="checkin-status">弁当の要否を選択してください</p>
+        </div>
+      </div>
+
+      <!-- 退勤カード -->
+      <div class="kintai-card" id="card-checkout">
+        <div class="kintai-card-title">退勤</div>
+
+        <!-- 打刻済みの場合はこちらを表示 -->
+        <div id="checkout-stamped" class="sumioka-hidden">
+          <div class="stamped-time" id="display-checkout-time">--:--</div>
+          <div class="stamped-label">退勤打刻済み</div>
         </div>
 
-        <button
-          class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
-          id="btn-checkin"
-          disabled
-        >
-          出勤打刻
-        </button>
-        <p class="status-text" id="checkin-status">弁当の要否を選択してください</p>
+        <!-- 未打刻の場合はこちらを表示 -->
+        <div id="checkout-form">
+
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="select-break">休憩時間（必須）</label>
+            <select class="sumioka-input" id="select-break">
+              <option value="">-- 選択してください --</option>
+              <option value="0">0分</option>
+              <option value="15">15分</option>
+              <option value="30">30分</option>
+              <option value="45">45分</option>
+              <option value="60">60分</option>
+              <option value="75">75分</option>
+              <option value="90">90分</option>
+              <option value="105">105分</option>
+              <option value="120">120分</option>
+            </select>
+          </div>
+
+          <div class="report-area">
+            <label class="sumioka-label" for="input-report">業務報告（必須）</label>
+            <textarea
+              class="sumioka-textarea"
+              id="input-report"
+              placeholder="本日の業務内容を入力してください"
+              rows="3"
+            ></textarea>
+          </div>
+
+          <button
+            class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
+            id="btn-checkout"
+            disabled
+          >
+            退勤打刻
+          </button>
+          <p class="status-text" id="checkout-status">出勤打刻後に入力できます</p>
+        </div>
       </div>
-    </div>
 
-    <!-- 退勤カード -->
-    <div class="kintai-card" id="card-checkout">
-      <div class="kintai-card-title">退勤</div>
+    </div><!-- /#panel-checkin -->
 
-      <!-- 打刻済みの場合はこちらを表示 -->
-      <div id="checkout-stamped" class="sumioka-hidden">
-        <div class="stamped-time" id="display-checkout-time">--:--</div>
-        <div class="stamped-label">退勤打刻済み</div>
+    <!-- ============================================================
+         タブ2: カレンダー・申請
+         ============================================================ -->
+    <div class="kintai-tab-panel" id="panel-calendar">
+
+      <!-- 月カレンダー -->
+      <div class="calendar-nav">
+        <button class="sumioka-btn" id="btn-cal-prev">◀ 前月</button>
+        <span class="calendar-nav-title" id="cal-title">――</span>
+        <button class="sumioka-btn" id="btn-cal-next">翌月 ▶</button>
       </div>
 
-      <!-- 未打刻の場合はこちらを表示 -->
-      <div id="checkout-form">
+      <table class="calendar-grid" id="calendar-grid">
+        <thead>
+          <tr>
+            <th>日</th><th>月</th><th>火</th><th>水</th>
+            <th>木</th><th>金</th><th>土</th>
+          </tr>
+        </thead>
+        <tbody id="calendar-body">
+          <tr><td colspan="7" style="text-align:center;color:GrayText">読み込み中...</td></tr>
+        </tbody>
+      </table>
 
-        <!-- 休憩時間（必須）
-             15分単位の選択式。未選択では退勤ボタンが押せない。
-             Phase 2 で「法定休憩の自動チェック」を追加予定。 -->
+      <!-- 凡例 -->
+      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.25rem;font-size:0.75rem">
+        <span class="calendar-event ev-休み">休み</span>
+        <span class="calendar-event ev-遅刻">遅刻・早退</span>
+        <span class="calendar-event ev-補填予定">補填予定</span>
+        <span class="calendar-event ev-補填完了">補填完了</span>
+      </div>
+
+      <!-- 申請フォーム -->
+      <p class="section-title" style="font-size:0.82rem;font-weight:600;color:GrayText;
+        text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.85rem">
+        申請フォーム
+      </p>
+      <div class="request-form-card">
         <div class="sumioka-form-group">
-          <label class="sumioka-label" for="select-break">休憩時間（必須）</label>
-          <select class="sumioka-input" id="select-break">
-            <option value="">-- 選択してください --</option>
-            <option value="0">0分</option>
-            <option value="15">15分</option>
-            <option value="30">30分</option>
-            <option value="45">45分</option>
-            <option value="60">60分</option>
-            <option value="75">75分</option>
-            <option value="90">90分</option>
-            <option value="105">105分</option>
-            <option value="120">120分</option>
+          <label class="sumioka-label" for="req-type">種別</label>
+          <select class="sumioka-input" id="req-type">
+            <option value="休み">休み</option>
+            <option value="遅刻">遅刻</option>
+            <option value="早退">早退</option>
+            <option value="補填予定">補填予定（事前申請）</option>
+            <option value="補填完了">補填完了（事後報告）</option>
           </select>
         </div>
-
-        <!-- 業務報告（必須：未入力では退勤ボタンが押せない） -->
-        <div class="report-area">
-          <label class="sumioka-label" for="input-report">業務報告（必須）</label>
-          <textarea
-            class="sumioka-textarea"
-            id="input-report"
-            placeholder="本日の業務内容を入力してください"
-            rows="3"
-          ></textarea>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="req-date">対象日</label>
+          <input class="sumioka-input" type="date" id="req-date">
         </div>
-
-        <button
-          class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
-          id="btn-checkout"
-          disabled
-        >
-          退勤打刻
-        </button>
-        <p class="status-text" id="checkout-status">出勤打刻後に入力できます</p>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="req-time">時間（例: 09:00 または 90分）</label>
+          <input class="sumioka-input" type="text" id="req-time" placeholder="任意">
+        </div>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="req-reason">理由</label>
+          <textarea class="sumioka-textarea" id="req-reason" rows="2"
+            placeholder="理由を入力してください"></textarea>
+        </div>
+        <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
+          id="btn-submit-request">申請を送信</button>
       </div>
-    </div>
+
+      <!-- 申請履歴 -->
+      <p class="section-title" style="font-size:0.82rem;font-weight:600;color:GrayText;
+        text-transform:uppercase;letter-spacing:0.06em;margin:1.5rem 0 0.85rem">
+        申請履歴
+      </p>
+      <div id="request-history-list">
+        <div style="text-align:center;color:GrayText;padding:1.5rem;font-size:0.85rem">
+          読み込み中...
+        </div>
+      </div>
+
+    </div><!-- /#panel-calendar -->
+
+    <!-- ============================================================
+         タブ3: タスク管理
+         ============================================================ -->
+    <div class="kintai-tab-panel" id="panel-tasks">
+
+      <!-- ソート・追加 -->
+      <div class="ph2-filter-row">
+        <select class="sumioka-input" id="task-sort" style="width:130px">
+          <option value="due_date">期限順</option>
+          <option value="priority">優先度順</option>
+        </select>
+        <button class="sumioka-btn sumioka-btn-primary" id="btn-task-add"
+          style="margin-left:auto">＋ タスク追加</button>
+      </div>
+
+      <div id="task-list">
+        <div style="text-align:center;color:GrayText;padding:2rem;font-size:0.85rem">
+          読み込み中...
+        </div>
+      </div>
+
+      <!-- タスク追加・編集フォーム（インライン表示） -->
+      <div id="task-form-wrap" style="display:none">
+        <div class="request-form-card">
+          <p style="font-weight:700;margin-bottom:1rem" id="task-form-title">タスクを追加</p>
+          <input type="hidden" id="task-form-id">
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="task-form-title-input">
+              タイトル <span style="color:#c0392b">*</span>
+            </label>
+            <input class="sumioka-input" type="text" id="task-form-title-input">
+          </div>
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="task-form-detail">詳細</label>
+            <textarea class="sumioka-textarea" id="task-form-detail" rows="2"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem">
+            <div class="sumioka-form-group">
+              <label class="sumioka-label" for="task-form-priority">優先度</label>
+              <select class="sumioka-input" id="task-form-priority">
+                <option value="高">高</option>
+                <option value="中" selected>中</option>
+                <option value="低">低</option>
+              </select>
+            </div>
+            <div class="sumioka-form-group">
+              <label class="sumioka-label" for="task-form-status">ステータス</label>
+              <select class="sumioka-input" id="task-form-status">
+                <option value="未着手">未着手</option>
+                <option value="進行中">進行中</option>
+                <option value="完了">完了</option>
+              </select>
+            </div>
+          </div>
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="task-form-due">期限</label>
+            <input class="sumioka-input" type="date" id="task-form-due">
+          </div>
+          <div style="display:flex;gap:0.65rem;justify-content:flex-end">
+            <button class="sumioka-btn" id="btn-task-form-cancel">キャンセル</button>
+            <button class="sumioka-btn sumioka-btn-primary" id="btn-task-form-save">保存</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /#panel-tasks -->
+
+    <!-- ============================================================
+         タブ4: 納期管理
+         ============================================================ -->
+    <div class="kintai-tab-panel" id="panel-deadlines">
+
+      <div class="ph2-filter-row">
+        <select class="sumioka-input" id="deadline-sort" style="width:130px">
+          <option value="due_date">納品日順</option>
+          <option value="progress">進捗順</option>
+        </select>
+        <button class="sumioka-btn sumioka-btn-primary" id="btn-deadline-add"
+          style="margin-left:auto">＋ 案件追加</button>
+      </div>
+
+      <div id="deadline-list">
+        <div style="text-align:center;color:GrayText;padding:2rem;font-size:0.85rem">
+          読み込み中...
+        </div>
+      </div>
+
+      <!-- 案件追加・編集フォーム -->
+      <div id="deadline-form-wrap" style="display:none">
+        <div class="request-form-card">
+          <p style="font-weight:700;margin-bottom:1rem" id="deadline-form-title">案件を追加</p>
+          <input type="hidden" id="deadline-form-id">
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="deadline-form-title-input">
+              案件名 <span style="color:#c0392b">*</span>
+            </label>
+            <input class="sumioka-input" type="text" id="deadline-form-title-input">
+          </div>
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="deadline-form-due">
+              納品日 <span style="color:#c0392b">*</span>
+            </label>
+            <input class="sumioka-input" type="date" id="deadline-form-due">
+          </div>
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="deadline-form-progress">
+              進捗（0〜100）
+            </label>
+            <input class="sumioka-input" type="number" id="deadline-form-progress"
+              min="0" max="100" value="0">
+          </div>
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="deadline-form-memo">メモ</label>
+            <textarea class="sumioka-textarea" id="deadline-form-memo" rows="2"></textarea>
+          </div>
+          <div style="display:flex;gap:0.65rem;justify-content:flex-end">
+            <button class="sumioka-btn" id="btn-deadline-form-cancel">キャンセル</button>
+            <button class="sumioka-btn sumioka-btn-primary" id="btn-deadline-form-save">保存</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /#panel-deadlines -->
+
+    <!-- ============================================================
+         タブ5: 自分の状況
+         ============================================================ -->
+    <div class="kintai-tab-panel" id="panel-mystatus">
+
+      <div style="display:flex;align-items:flex-end;gap:0.65rem;margin-bottom:1rem">
+        <div>
+          <span style="font-size:0.75rem;color:GrayText;display:block;margin-bottom:0.3rem">
+            対象月
+          </span>
+          <input class="sumioka-input" type="month" id="mystatus-month" style="width:160px">
+        </div>
+        <button class="sumioka-btn sumioka-btn-primary" id="btn-mystatus-load">表示</button>
+      </div>
+
+      <!-- 勤怠実績カード -->
+      <div class="status-cards" id="mystatus-cards" style="display:none">
+        <div class="status-card">
+          <div class="status-card-label">出勤日数</div>
+          <div class="status-card-value" id="ms-work-days">―</div>
+        </div>
+        <div class="status-card">
+          <div class="status-card-label">実労働時間</div>
+          <div class="status-card-value" style="font-size:1rem" id="ms-work-hours">―</div>
+        </div>
+        <div class="status-card">
+          <div class="status-card-label">残不足</div>
+          <div class="status-card-value" style="font-size:1rem" id="ms-balance">―</div>
+        </div>
+      </div>
+
+      <!-- 補填消化サマリー -->
+      <div id="mystatus-fillup-wrap" style="display:none;margin-bottom:1.25rem">
+        <p style="font-size:0.82rem;font-weight:600;color:GrayText;margin-bottom:0.65rem">
+          補填の消化状況
+        </p>
+        <div class="status-cards">
+          <div class="status-card">
+            <div class="status-card-label">不足時間</div>
+            <div class="status-card-value" style="font-size:1rem;color:#c0392b" id="ms-short">―</div>
+          </div>
+          <div class="status-card">
+            <div class="status-card-label">補填完了</div>
+            <div class="status-card-value" style="font-size:1rem;color:#1a7f37" id="ms-done">―</div>
+          </div>
+          <div class="status-card">
+            <div class="status-card-label">残不足</div>
+            <div class="status-card-value" style="font-size:1rem" id="ms-remain">―</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 申請履歴（承認状況） -->
+      <p style="font-size:0.82rem;font-weight:600;color:GrayText;margin-bottom:0.65rem">
+        申請の承認状況
+      </p>
+      <div id="mystatus-request-list">
+        <div style="text-align:center;color:GrayText;padding:1.5rem;font-size:0.85rem">
+          月を選択して「表示」を押してください
+        </div>
+      </div>
+
+    </div><!-- /#panel-mystatus -->
 
   </div><!-- /#screen-main -->
 
@@ -1502,6 +2040,15 @@ _gasUrl = url;
 
       // 今日の日付をヘッダーに表示
       document.getElementById('display-date').textContent = todayString();
+
+      // Phase 2: 自分の状況タブの月フィルタを今月に初期化する
+      const today = new Date();
+      const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+      document.getElementById('mystatus-month').value = ym;
+
+      // Phase 2: カレンダーの表示月を今月に初期化する
+      phase2State.calYear  = today.getFullYear();
+      phase2State.calMonth = today.getMonth() + 1;
     });
 
     // ============================================================
@@ -1548,6 +2095,47 @@ _gasUrl = url;
 
       // 退勤打刻
       document.getElementById('btn-checkout').addEventListener('click', handleCheckout);
+
+      // ── Phase 2: タブ切り替え ──────────────────────────────────
+      // タブボタンのクリックでパネルを切り替える。
+      // タブ初回表示時にデータをロードする（都度ロードして最新状態を保つ）。
+      document.querySelectorAll('.kintai-tab').forEach(tab => {
+        tab.addEventListener('click', () => switchKintaiTab(tab.dataset.tab));
+      });
+
+      // ── Phase 2: カレンダー・申請 ──────────────────────────────
+      document.getElementById('btn-cal-prev').addEventListener('click', () => {
+        phase2State.calYear  = phase2State.calMonth === 1
+          ? phase2State.calYear - 1 : phase2State.calYear;
+        phase2State.calMonth = phase2State.calMonth === 1 ? 12
+          : phase2State.calMonth - 1;
+        loadCalendar();
+      });
+
+      document.getElementById('btn-cal-next').addEventListener('click', () => {
+        phase2State.calYear  = phase2State.calMonth === 12
+          ? phase2State.calYear + 1 : phase2State.calYear;
+        phase2State.calMonth = phase2State.calMonth === 12 ? 1
+          : phase2State.calMonth + 1;
+        loadCalendar();
+      });
+
+      document.getElementById('btn-submit-request').addEventListener('click', handleSubmitRequest);
+
+      // ── Phase 2: タスク ────────────────────────────────────────
+      document.getElementById('task-sort').addEventListener('change', renderTaskList);
+      document.getElementById('btn-task-add').addEventListener('click', openTaskForm);
+      document.getElementById('btn-task-form-cancel').addEventListener('click', closeTaskForm);
+      document.getElementById('btn-task-form-save').addEventListener('click', saveTask);
+
+      // ── Phase 2: 納期 ──────────────────────────────────────────
+      document.getElementById('deadline-sort').addEventListener('change', renderDeadlineList);
+      document.getElementById('btn-deadline-add').addEventListener('click', openDeadlineForm);
+      document.getElementById('btn-deadline-form-cancel').addEventListener('click', closeDeadlineForm);
+      document.getElementById('btn-deadline-form-save').addEventListener('click', saveDeadline);
+
+      // ── Phase 2: 自分の状況 ────────────────────────────────────
+      document.getElementById('btn-mystatus-load').addEventListener('click', loadMyStatus);
     }
 
     // ============================================================
@@ -2033,6 +2621,692 @@ _gasUrl = url;
       const m    = abs % 60;
       const sign = showSign ? (minutes >= 0 ? '+' : '-') : '';
       return `${sign}${h}時間${m}分`;
+    }
+
+    // ============================================================
+    // Phase 2: 状態管理
+    // ============================================================
+
+    /**
+     * Phase 2 機能専用の状態オブジェクト。
+     * 既存の state を汚染しないよう独立させる。
+     */
+    const phase2State = {
+      calYear   : 0,      // カレンダー表示中の年
+      calMonth  : 0,      // カレンダー表示中の月（1〜12）
+      calEvents : [],     // カレンダーイベントキャッシュ（月変更で再取得）
+      tasks     : [],     // タスク一覧キャッシュ
+      deadlines : [],     // 納期一覧キャッシュ
+    };
+
+    // ============================================================
+    // Phase 2: タブ切り替え
+    // ============================================================
+
+    /**
+     * 指定したタブに切り替え、初回表示時にデータをロードする。
+     *
+     * タブ切り替えのたびに最新データをロードすることで、
+     * 他ページでの変更がリアルタイムに反映される。
+     *
+     * @param {string} tabKey - 'checkin'|'calendar'|'tasks'|'deadlines'|'mystatus'
+     */
+    function switchKintaiTab(tabKey) {
+      // アクティブタブ・パネルを切り替える
+      document.querySelectorAll('.kintai-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === tabKey);
+      });
+      document.querySelectorAll('.kintai-tab-panel').forEach(p => {
+        p.classList.toggle('active', p.id === `panel-${tabKey}`);
+      });
+
+      // タブごとにデータをロードする
+      // 打刻タブは既存の loadTodayRecord で管理するため除外
+      if (tabKey === 'calendar') {
+        loadCalendar();
+        loadMyRequests();
+      } else if (tabKey === 'tasks') {
+        loadTasks();
+      } else if (tabKey === 'deadlines') {
+        loadDeadlines();
+      }
+      // 'mystatus' は「表示」ボタン押下でロードする（月選択が必要なため）
+    }
+
+    // ============================================================
+    // Phase 2: カレンダー・申請
+    // ============================================================
+
+    /**
+     * 指定月のカレンダーを GAS から取得して描画する。
+     *
+     * カレンダーは全スタッフの申請を色分け表示する。
+     * 自分の申請は理由も表示し、他人の申請は氏名と種別のみ表示する。
+     */
+    async function loadCalendar() {
+      const yearMonth = `${phase2State.calYear}-${String(phase2State.calMonth).padStart(2, '0')}`;
+      document.getElementById('cal-title').textContent =
+        `${phase2State.calYear}年${phase2State.calMonth}月`;
+
+      const result = await callGAS('get_calendar', { year_month: yearMonth });
+
+      if (!result.success) {
+        showToast('カレンダーの取得に失敗しました。', 'error');
+        return;
+      }
+
+      phase2State.calEvents = result.data.events || [];
+      renderCalendar(phase2State.calYear, phase2State.calMonth, phase2State.calEvents);
+    }
+
+    /**
+     * 月カレンダーを純粋な JS + HTML テーブルで描画する。
+     *
+     * 外部ライブラリを使わず自前実装することで、
+     * 追加の依存なくオフライン環境でも動作する。
+     *
+     * @param {number}   year
+     * @param {number}   month  - 1〜12
+     * @param {Object[]} events
+     */
+    function renderCalendar(year, month, events) {
+      const tbody   = document.getElementById('calendar-body');
+      const today   = todayString();
+      const firstDay = new Date(year, month - 1, 1).getDay(); // 0=日曜
+      const lastDate = new Date(year, month, 0).getDate();
+
+      // イベントを日付ごとにグループ化（描画の都度 filter しない）
+      const eventMap = {};
+      events.forEach(ev => {
+        const d = ev.target_date;
+        if (!eventMap[d]) eventMap[d] = [];
+        eventMap[d].push(ev);
+      });
+
+      let html = '';
+      let dayCount = 1;
+      const totalCells = Math.ceil((firstDay + lastDate) / 7) * 7;
+
+      for (let i = 0; i < totalCells; i += 7) {
+        html += '<tr>';
+        for (let j = 0; j < 7; j++) {
+          const cell = i + j;
+          if (cell < firstDay || dayCount > lastDate) {
+            html += '<td></td>';
+            continue;
+          }
+
+          const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(dayCount).padStart(2, '0')}`;
+          const isToday = dateStr === today;
+          const dayEvs  = eventMap[dateStr] || [];
+
+          const dayNumHtml = isToday
+            ? `<span class="calendar-day-num today">${dayCount}</span>`
+            : `<span class="calendar-day-num">${dayCount}</span>`;
+
+          // イベントを最大3件表示（多い場合は件数のみ表示）
+          const evHtml = dayEvs.slice(0, 3).map(ev => {
+            // 遅刻・早退は同じ黄色クラスを使う
+            const cls = ev.type === '早退' ? 'ev-遅刻' : `ev-${ev.type}`;
+            const label = ev.employee_id === state.employeeId
+              ? `${ev.name}：${ev.type}`
+              : `${ev.name}：${ev.type}`;
+            return `<div class="calendar-event ${escHtml(cls)}" title="${escHtml(ev.name)}：${escHtml(ev.type)}">${escHtml(label)}</div>`;
+          }).join('');
+
+          const moreHtml = dayEvs.length > 3
+            ? `<div style="font-size:0.65rem;color:GrayText">他${dayEvs.length - 3}件</div>`
+            : '';
+
+          html += `<td>${dayNumHtml}${evHtml}${moreHtml}</td>`;
+          dayCount++;
+        }
+        html += '</tr>';
+      }
+
+      tbody.innerHTML = html;
+    }
+
+    /**
+     * 申請フォームを送信する。
+     *
+     * バリデーション後に GAS へ送り、成功したらカレンダーと履歴を再描画する。
+     */
+    async function handleSubmitRequest() {
+      const type   = document.getElementById('req-type').value;
+      const date   = document.getElementById('req-date').value;
+      const time   = document.getElementById('req-time').value.trim();
+      const reason = document.getElementById('req-reason').value.trim();
+
+      if (!date) {
+        showToast('対象日を選択してください。', 'warning');
+        return;
+      }
+
+      const ok = await confirm(`${type}の申請を送信しますか？\n対象日: ${date}`);
+      if (!ok) return;
+
+      showLoading('申請を送信中...');
+
+      const result = await callGAS('submit_request', {
+        employee_id : state.employeeId,
+        name        : state.name,
+        type, date, time, reason,
+        target_date : date,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('申請を送信しました。管理者の承認をお待ちください。', 'success');
+
+      // フォームをリセットする
+      document.getElementById('req-date').value   = '';
+      document.getElementById('req-time').value   = '';
+      document.getElementById('req-reason').value = '';
+
+      // カレンダーと履歴を再描画して送信した申請を反映する
+      await loadCalendar();
+      await loadMyRequests();
+    }
+
+    /**
+     * 本人の申請履歴を取得して表示する。
+     */
+    async function loadMyRequests() {
+      const result = await callGAS('get_my_requests', { employee_id: state.employeeId });
+
+      if (!result.success) {
+        showToast('申請履歴の取得に失敗しました。', 'error');
+        return;
+      }
+
+      renderRequestHistory(result.data.requests || [], 'request-history-list');
+    }
+
+    /**
+     * 申請履歴を描画する（カレンダータブ・自分の状況タブで共用）。
+     *
+     * @param {Object[]} requests
+     * @param {string}   containerId - 描画先要素のID
+     */
+    function renderRequestHistory(requests, containerId) {
+      const el = document.getElementById(containerId);
+
+      if (requests.length === 0) {
+        el.innerHTML = '<div style="text-align:center;color:GrayText;padding:1.5rem;font-size:0.85rem">申請履歴がありません</div>';
+        return;
+      }
+
+      const badgeClass = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
+      const badgeLabel = { pending: '承認待ち', approved: '承認済み', rejected: '却下' };
+
+      el.innerHTML = requests.map(r => {
+        const cls   = badgeClass[r.status] || 'badge-pending';
+        const label = badgeLabel[r.status] || r.status;
+        const rejectHtml = r.status === 'rejected' && r.reject_reason
+          ? `<div class="request-reject-reason">却下理由: ${escHtml(r.reject_reason)}</div>`
+          : '';
+
+        return `
+          <div class="request-history-item">
+            <div class="request-history-header">
+              <span>${escHtml(r.type)} — ${escHtml(r.target_date)}</span>
+              <span class="badge ${cls}">${label}</span>
+            </div>
+            <div style="font-size:0.78rem;color:GrayText">
+              申請日: ${escHtml(r.created_at)}
+              ${r.time ? ` / 時間: ${escHtml(r.time)}` : ''}
+              ${r.reason ? ` / 理由: ${escHtml(r.reason)}` : ''}
+            </div>
+            ${rejectHtml}
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ============================================================
+    // Phase 2: タスク管理
+    // ============================================================
+
+    /**
+     * 本人のタスク一覧を取得してキャッシュし、描画する。
+     */
+    async function loadTasks() {
+      const result = await callGAS('get_tasks', { employee_id: state.employeeId, all: false });
+
+      if (!result.success) {
+        showToast('タスクの取得に失敗しました。', 'error');
+        return;
+      }
+
+      phase2State.tasks = result.data.tasks || [];
+      renderTaskList();
+    }
+
+    /**
+     * タスク一覧をソート選択に従って描画する。
+     *
+     * ソートは毎回配列を slice してキャッシュを汚染しない。
+     */
+    function renderTaskList() {
+      const el       = document.getElementById('task-list');
+      const sortKey  = document.getElementById('task-sort').value;
+      const tasks    = [...phase2State.tasks];
+
+      // ソート: 期限順（空は末尾）または優先度順（高→中→低）
+      const priorityOrder = { '高': 0, '中': 1, '低': 2 };
+      tasks.sort((a, b) => {
+        if (sortKey === 'priority') {
+          return (priorityOrder[a.priority] ?? 1) - (priorityOrder[b.priority] ?? 1);
+        }
+        if (!a.due_date && !b.due_date) return 0;
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return a.due_date.localeCompare(b.due_date);
+      });
+
+      if (tasks.length === 0) {
+        el.innerHTML = '<div style="text-align:center;color:GrayText;padding:2rem;font-size:0.85rem">タスクがありません</div>';
+        return;
+      }
+
+      const statusColor = { '未着手': 'GrayText', '進行中': '#b45309', '完了': '#1a7f37' };
+      const priorityBadge = { '高': 'badge-rejected', '中': 'badge-pending', '低': 'badge-approved' };
+
+      el.innerHTML = tasks.map(t => `
+        <div class="ph2-card">
+          <div class="ph2-card-header">
+            <span class="ph2-card-title">${escHtml(t.title)}</span>
+            <span class="badge ${priorityBadge[t.priority] || 'badge-pending'}">${escHtml(t.priority)}</span>
+          </div>
+          <div class="ph2-card-meta">
+            <span style="color:${statusColor[t.status] || 'GrayText'};font-weight:600">
+              ${escHtml(t.status)}
+            </span>
+            ${t.due_date ? `<span>期限: ${escHtml(t.due_date)}</span>` : ''}
+            ${t.detail ? `<span>${escHtml(t.detail)}</span>` : ''}
+          </div>
+          <div class="ph2-card-actions">
+            <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
+              onclick="openTaskForm(${escJson(t)})">編集</button>
+            <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
+              onclick="cycleTaskStatus('${escHtml(t.id)}', '${escHtml(t.status)}')">
+              ステータス更新
+            </button>
+            ${t.status === '完了'
+              ? `<button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em;color:#c0392b"
+                  onclick="deleteTask('${escHtml(t.id)}')">削除</button>`
+              : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    /**
+     * タスクのステータスを 未着手→進行中→完了 の順に1段階進める。
+     *
+     * @param {string} taskId
+     * @param {string} currentStatus
+     */
+    async function cycleTaskStatus(taskId, currentStatus) {
+      const nextMap = { '未着手': '進行中', '進行中': '完了', '完了': '未着手' };
+      const next    = nextMap[currentStatus] || '進行中';
+
+      const task = phase2State.tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      const result = await callGAS('upsert_task', {
+        task_id     : taskId,
+        employee_id : state.employeeId,
+        name        : state.name,
+        title       : task.title,
+        detail      : task.detail,
+        priority    : task.priority,
+        status      : next,
+        due_date    : task.due_date,
+      });
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast(`ステータスを「${next}」に更新しました。`, 'success');
+      await loadTasks();
+    }
+
+    /**
+     * タスク追加・編集フォームを開く。
+     *
+     * @param {Object|null} task - null のとき新規追加モード
+     */
+    function openTaskForm(task) {
+      const isNew = !task || !task.id;
+
+      document.getElementById('task-form-title').textContent = isNew ? 'タスクを追加' : 'タスクを編集';
+      document.getElementById('task-form-id').value             = isNew ? '' : task.id;
+      document.getElementById('task-form-title-input').value    = isNew ? '' : (task.title || '');
+      document.getElementById('task-form-detail').value         = isNew ? '' : (task.detail || '');
+      document.getElementById('task-form-priority').value       = isNew ? '中' : (task.priority || '中');
+      document.getElementById('task-form-status').value         = isNew ? '未着手' : (task.status || '未着手');
+      document.getElementById('task-form-due').value            = isNew ? '' : (task.due_date || '');
+
+      document.getElementById('task-form-wrap').style.display = '';
+      document.getElementById('task-form-wrap').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    /** タスクフォームを閉じる */
+    function closeTaskForm() {
+      document.getElementById('task-form-wrap').style.display = 'none';
+    }
+
+    /**
+     * タスクを保存（新規追加 or 更新）する。
+     */
+    async function saveTask() {
+      const id     = document.getElementById('task-form-id').value;
+      const title  = document.getElementById('task-form-title-input').value.trim();
+
+      if (!title) {
+        showToast('タイトルは必須です。', 'warning');
+        return;
+      }
+
+      showLoading('保存中...');
+
+      const result = await callGAS('upsert_task', {
+        task_id     : id || undefined,
+        employee_id : state.employeeId,
+        name        : state.name,
+        title,
+        detail   : document.getElementById('task-form-detail').value.trim(),
+        priority : document.getElementById('task-form-priority').value,
+        status   : document.getElementById('task-form-status').value,
+        due_date : document.getElementById('task-form-due').value,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('タスクを保存しました。', 'success');
+      closeTaskForm();
+      await loadTasks();
+    }
+
+    /**
+     * タスクを削除する（完了タスクのみ）。
+     *
+     * @param {string} taskId
+     */
+    async function deleteTask(taskId) {
+      const ok = await confirm('このタスクを削除しますか？');
+      if (!ok) return;
+
+      showLoading('削除中...');
+
+      const result = await callGAS('delete_task', {
+        task_id     : taskId,
+        employee_id : state.employeeId,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('タスクを削除しました。', 'success');
+      await loadTasks();
+    }
+
+    // ============================================================
+    // Phase 2: 納期管理
+    // ============================================================
+
+    /**
+     * 本人の納期一覧を取得してキャッシュし、描画する。
+     */
+    async function loadDeadlines() {
+      const result = await callGAS('get_deadlines', { employee_id: state.employeeId, all: false });
+
+      if (!result.success) {
+        showToast('納期データの取得に失敗しました。', 'error');
+        return;
+      }
+
+      phase2State.deadlines = result.data.deadlines || [];
+      renderDeadlineList();
+    }
+
+    /**
+     * 納期一覧をソート選択に従って描画する。
+     *
+     * 納品日まで3日以内の案件を赤くハイライトする（仕様書要件）。
+     */
+    function renderDeadlineList() {
+      const el      = document.getElementById('deadline-list');
+      const sortKey = document.getElementById('deadline-sort').value;
+      const items   = [...phase2State.deadlines];
+      const today   = todayString();
+
+      // ソート: 納品日順 または 進捗順（昇順で未完成が上）
+      items.sort((a, b) => {
+        if (sortKey === 'progress') return a.progress - b.progress;
+        if (!a.due_date && !b.due_date) return 0;
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        return a.due_date.localeCompare(b.due_date);
+      });
+
+      if (items.length === 0) {
+        el.innerHTML = '<div style="text-align:center;color:GrayText;padding:2rem;font-size:0.85rem">案件がありません</div>';
+        return;
+      }
+
+      el.innerHTML = items.map(d => {
+        // 納品日まで3日以内かを判定してアラートクラスを付与する
+        const daysLeft  = d.due_date ? daysDiff(today, d.due_date) : null;
+        const alertCls  = daysLeft !== null && daysLeft <= 3 && d.progress < 100 ? 'deadline-alert' : '';
+        const daysLabel = daysLeft !== null
+          ? (daysLeft < 0 ? `<span style="color:#c0392b;font-weight:700">期限超過 ${Math.abs(daysLeft)}日</span>`
+            : daysLeft === 0 ? '<span style="color:#c0392b;font-weight:700">本日納期</span>'
+            : daysLeft <= 3 ? `<span style="color:#c0392b;font-weight:700">残${daysLeft}日</span>`
+            : `残${daysLeft}日`)
+          : '';
+
+        return `
+          <div class="ph2-card ${alertCls}">
+            <div class="ph2-card-header">
+              <span class="ph2-card-title">${escHtml(d.title)}</span>
+              ${daysLabel}
+            </div>
+            <div class="ph2-card-meta">
+              <span>納品日: ${escHtml(d.due_date || '未設定')}</span>
+              <span>進捗: ${d.progress}%</span>
+              ${d.memo ? `<span>${escHtml(d.memo)}</span>` : ''}
+            </div>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-fill" style="width:${d.progress}%"></div>
+            </div>
+            <div class="ph2-card-actions">
+              <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
+                onclick="openDeadlineForm(${escJson(d)})">編集</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    /**
+     * 2つの 'YYYY-MM-DD' 文字列の日数差を返す（to - from）。
+     *
+     * @param {string} from
+     * @param {string} to
+     * @returns {number}
+     */
+    function daysDiff(from, to) {
+      const f = new Date(from);
+      const t = new Date(to);
+      return Math.round((t - f) / (1000 * 60 * 60 * 24));
+    }
+
+    /**
+     * 案件フォームを開く。
+     *
+     * @param {Object|null} deadline - null のとき新規追加モード
+     */
+    function openDeadlineForm(deadline) {
+      const isNew = !deadline || !deadline.id;
+
+      document.getElementById('deadline-form-title').textContent      = isNew ? '案件を追加' : '案件を編集';
+      document.getElementById('deadline-form-id').value               = isNew ? '' : deadline.id;
+      document.getElementById('deadline-form-title-input').value      = isNew ? '' : (deadline.title || '');
+      document.getElementById('deadline-form-due').value              = isNew ? '' : (deadline.due_date || '');
+      document.getElementById('deadline-form-progress').value         = isNew ? '0' : (deadline.progress ?? 0);
+      document.getElementById('deadline-form-memo').value             = isNew ? '' : (deadline.memo || '');
+
+      document.getElementById('deadline-form-wrap').style.display = '';
+      document.getElementById('deadline-form-wrap').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    /** 案件フォームを閉じる */
+    function closeDeadlineForm() {
+      document.getElementById('deadline-form-wrap').style.display = 'none';
+    }
+
+    /**
+     * 案件を保存（新規追加 or 更新）する。
+     */
+    async function saveDeadline() {
+      const id       = document.getElementById('deadline-form-id').value;
+      const title    = document.getElementById('deadline-form-title-input').value.trim();
+      const due_date = document.getElementById('deadline-form-due').value;
+
+      if (!title)    { showToast('案件名は必須です。', 'warning'); return; }
+      if (!due_date) { showToast('納品日は必須です。', 'warning'); return; }
+
+      showLoading('保存中...');
+
+      const result = await callGAS('upsert_deadline', {
+        deadline_id : id || undefined,
+        employee_id : state.employeeId,
+        name        : state.name,
+        title,
+        due_date,
+        progress : Number(document.getElementById('deadline-form-progress').value) || 0,
+        memo     : document.getElementById('deadline-form-memo').value.trim(),
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('案件を保存しました。', 'success');
+      closeDeadlineForm();
+      await loadDeadlines();
+    }
+
+    // ============================================================
+    // Phase 2: 自分の状況
+    // ============================================================
+
+    /**
+     * 本人の勤怠実績・補填状況・申請履歴をまとめて取得して表示する。
+     */
+    async function loadMyStatus() {
+      const yearMonth = document.getElementById('mystatus-month').value;
+
+      if (!yearMonth) {
+        showToast('対象月を選択してください。', 'warning');
+        return;
+      }
+
+      showLoading('読み込み中...');
+
+      const result = await callGAS('get_my_status', {
+        employee_id : state.employeeId,
+        year_month  : yearMonth,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      const { attendance, requests, fillup } = result.data;
+
+      // 勤怠実績カードを更新する
+      const cards = document.getElementById('mystatus-cards');
+      cards.style.display = '';
+
+      const totalMin  = attendance?.total_work_minutes ?? 0;
+      const workDays  = attendance?.work_days ?? 0;
+      // 暫定残不足: 実働 - (出勤日数 × 所定時間)。Phase 3 で正確化する。
+      const schedMin  = workDays * 8 * 60;
+      const balanceMin = totalMin - schedMin;
+
+      document.getElementById('ms-work-days').textContent  = `${workDays}日`;
+      document.getElementById('ms-work-hours').textContent = formatMinutes(totalMin);
+      const balEl = document.getElementById('ms-balance');
+      balEl.textContent  = formatMinutes(balanceMin, true);
+      balEl.style.color  = balanceMin >= 0 ? '#1a7f37' : '#c0392b';
+
+      // 補填サマリーを更新する
+      if (fillup) {
+        document.getElementById('mystatus-fillup-wrap').style.display = '';
+        document.getElementById('ms-short').textContent  = formatMinutes(fillup.short_minutes);
+        document.getElementById('ms-done').textContent   = formatMinutes(fillup.done_minutes);
+        document.getElementById('ms-remain').textContent = formatMinutes(fillup.remain_minutes);
+      }
+
+      // 申請履歴を描画する
+      renderRequestHistory(requests || [], 'mystatus-request-list');
+    }
+
+    // ============================================================
+    // Phase 2: XSS対策ユーティリティ（admin.html と同じ実装）
+    // ============================================================
+
+    /**
+     * HTML 特殊文字をエスケープする。
+     * innerHTML に動的データを埋め込む際に必ず使う。
+     *
+     * @param {*} str
+     * @returns {string}
+     */
+    function escHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /**
+     * オブジェクトを onclick 属性に埋め込める JSON 文字列に変換する。
+     *
+     * @param {Object} obj
+     * @returns {string}
+     */
+    function escJson(obj) {
+      return escHtml(JSON.stringify(obj));
     }
   </script>
 </body>
