@@ -1758,6 +1758,21 @@ p:last-child { margin-bottom: 0; }
           <label class="sumioka-label" for="req-time">時間（例: 09:00 または 90分）</label>
           <input class="sumioka-input" type="text" id="req-time" placeholder="任意">
         </div>
+        <!-- 補填予定日：遅刻・早退・休みを選んだときだけ表示する -->
+        <div class="sumioka-form-group" id="req-fillup-wrap" style="display:none">
+          <label class="sumioka-label" for="req-fillup-date">
+            補填予定日
+            <span style="color:GrayText;font-weight:400;font-size:0.78rem">
+              （補填する予定がある場合のみ入力）
+            </span>
+          </label>
+          <input class="sumioka-input" type="date" id="req-fillup-date">
+          <div style="margin-top:0.4rem">
+            <label class="sumioka-label" for="req-fillup-time">補填予定時間数（例: 2時間 → 120）</label>
+            <input class="sumioka-input" type="number" id="req-fillup-time"
+              min="0" max="480" placeholder="分で入力（例: 120）" style="margin-top:0.3rem">
+          </div>
+        </div>
         <div class="sumioka-form-group">
           <label class="sumioka-label" for="req-reason">理由</label>
           <textarea class="sumioka-textarea" id="req-reason" rows="2"
@@ -2121,6 +2136,19 @@ p:last-child { margin-bottom: 0; }
       });
 
       document.getElementById('btn-submit-request').addEventListener('click', handleSubmitRequest);
+
+      // 種別が「遅刻・早退・休み」のとき補填予定日欄を表示する。
+      // 補填予定・補填完了を選んだときは不要なので非表示にする。
+      document.getElementById('req-type').addEventListener('change', () => {
+        const type = document.getElementById('req-type').value;
+        const showFillup = ['遅刻', '早退', '休み'].includes(type);
+        document.getElementById('req-fillup-wrap').style.display = showFillup ? '' : 'none';
+        // 非表示にしたときは値をクリアして送信データに混入しないようにする
+        if (!showFillup) {
+          document.getElementById('req-fillup-date').value = '';
+          document.getElementById('req-fillup-time').value = '';
+        }
+      });
 
       // ── Phase 2: タスク ────────────────────────────────────────
       document.getElementById('task-sort').addEventListener('change', renderTaskList);
@@ -2773,26 +2801,45 @@ p:last-child { margin-bottom: 0; }
      * バリデーション後に GAS へ送り、成功したらカレンダーと履歴を再描画する。
      */
     async function handleSubmitRequest() {
-      const type   = document.getElementById('req-type').value;
-      const date   = document.getElementById('req-date').value;
-      const time   = document.getElementById('req-time').value.trim();
-      const reason = document.getElementById('req-reason').value.trim();
+      const type        = document.getElementById('req-type').value;
+      const date        = document.getElementById('req-date').value;
+      const time        = document.getElementById('req-time').value.trim();
+      const reason      = document.getElementById('req-reason').value.trim();
+      const fillupDate  = document.getElementById('req-fillup-date').value;
+      const fillupTime  = document.getElementById('req-fillup-time').value.trim();
 
       if (!date) {
         showToast('対象日を選択してください。', 'warning');
         return;
       }
 
-      const ok = await confirm(`${type}の申請を送信しますか？\n対象日: ${date}`);
+      // 補填予定日が入力されている場合は確認メッセージに含める
+      const fillupMsg = fillupDate
+        ? `\n補填予定日: ${fillupDate}${fillupTime ? `（${fillupTime}分）` : ''}`
+        : '';
+      const ok = await confirm(`${type}の申請を送信しますか？\n対象日: ${date}${fillupMsg}`);
       if (!ok) return;
 
       showLoading('申請を送信中...');
 
+      // 理由フィールドに補填予定情報を付記して1つのフィールドに収める。
+      // GAS側のスキーマ変更なしに補填情報を保存するための実装。
+      let fullReason = reason;
+      if (fillupDate && ['遅刻', '早退', '休み'].includes(type)) {
+        const fillupNote = fillupTime
+          ? `【補填予定: ${fillupDate}（${fillupTime}分）】`
+          : `【補填予定: ${fillupDate}】`;
+        fullReason = fullReason ? `${fullReason} ${fillupNote}` : fillupNote;
+      }
+
       const result = await callGAS('submit_request', {
         employee_id : state.employeeId,
         name        : state.name,
-        type, date, time, reason,
+        type,
         target_date : date,
+        date,
+        time,
+        reason      : fullReason,
       });
 
       hideLoading();
@@ -2804,10 +2851,13 @@ p:last-child { margin-bottom: 0; }
 
       showToast('申請を送信しました。管理者の承認をお待ちください。', 'success');
 
-      // フォームをリセットする
-      document.getElementById('req-date').value   = '';
-      document.getElementById('req-time').value   = '';
-      document.getElementById('req-reason').value = '';
+      // フォームをリセットする（補填欄も含めて全クリア）
+      document.getElementById('req-date').value        = '';
+      document.getElementById('req-time').value        = '';
+      document.getElementById('req-reason').value      = '';
+      document.getElementById('req-fillup-date').value = '';
+      document.getElementById('req-fillup-time').value = '';
+      document.getElementById('req-fillup-wrap').style.display = 'none';
 
       // カレンダーと履歴を再描画して送信した申請を反映する
       await loadCalendar();
