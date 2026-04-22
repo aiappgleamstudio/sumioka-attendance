@@ -566,6 +566,8 @@
       <button class="admin-tab"        data-tab="staff"       role="tab">スタッフ管理</button>
       <button class="admin-tab"        data-tab="monthly"     role="tab">月次レポート</button>
       <button class="admin-tab"        data-tab="payroll"     role="tab">給与計算</button>
+      <!-- Phase 2 追加タブ -->
+      <button class="admin-tab"        data-tab="taskview"    role="tab">納期・タスク</button>
     </nav>
 
     <!-- ============================================================
@@ -727,7 +729,8 @@
               <option value="休み">休み</option>
               <option value="遅刻">遅刻</option>
               <option value="早退">早退</option>
-              <option value="補填">補填予定</option>
+              <option value="補填予定">補填予定</option>
+              <option value="補填完了">補填完了</option>
             </select>
           </div>
           <button class="sumioka-btn sumioka-btn-primary" id="btn-req-search"
@@ -854,6 +857,14 @@
             </tbody>
           </table>
         </div>
+
+        <!-- Phase 2: 補填消化グラフ -->
+        <!-- Chart.js の canvas 要素。既存テーブルの下に追加し、CSS競合を避けるため
+             canvas タグで描画する（既存の table/tbody スタイルに影響しない）。 -->
+        <p class="section-title" id="fillup-chart-title" style="display:none">補填消化グラフ</p>
+        <div style="position:relative;max-height:320px;display:none" id="fillup-chart-wrap">
+          <canvas id="fillup-chart"></canvas>
+        </div>
       </section>
 
       <!-- 給与計算 -->
@@ -939,6 +950,91 @@
             </thead>
             <tbody id="payroll-body">
               <tr><td colspan="14" class="empty-state">月を選択して給与計算を実行してください</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main><!-- /.admin-content -->
+
+      <!-- Phase 2: 納期・タスクビュー -->
+      <section class="tab-panel" id="panel-taskview">
+        <div class="tab-loading" id="loading-taskview">読み込み中...</div>
+
+        <!-- フィルター・ソート -->
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label">表示</span>
+            <select class="sumioka-input" id="taskview-mode" style="width:120px">
+              <option value="tasks">タスク</option>
+              <option value="deadlines">納期</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">ソート</span>
+            <select class="sumioka-input" id="taskview-sort" style="width:130px">
+              <option value="due_date">期限順</option>
+              <option value="name">担当者順</option>
+              <option value="status">ステータス順</option>
+            </select>
+          </div>
+          <button class="sumioka-btn sumioka-btn-primary" id="btn-taskview-load"
+            style="align-self:flex-end">表示</button>
+        </div>
+
+        <!-- タスク一覧テーブル -->
+        <div class="admin-table-wrap" id="taskview-task-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>
+                  <button class="sumioka-btn" style="font-size:0.72rem;padding:0.15em 0.5em"
+                    onclick="sortTaskView('name')">担当者</button>
+                </th>
+                <th>タイトル</th>
+                <th>
+                  <button class="sumioka-btn" style="font-size:0.72rem;padding:0.15em 0.5em"
+                    onclick="sortTaskView('priority')">優先度</button>
+                </th>
+                <th>
+                  <button class="sumioka-btn" style="font-size:0.72rem;padding:0.15em 0.5em"
+                    onclick="sortTaskView('due_date')">期限</button>
+                </th>
+                <th>
+                  <button class="sumioka-btn" style="font-size:0.72rem;padding:0.15em 0.5em"
+                    onclick="sortTaskView('status')">ステータス</button>
+                </th>
+              </tr>
+            </thead>
+            <tbody id="taskview-task-body">
+              <tr><td colspan="5" class="empty-state">「表示」を押してください</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 納期一覧テーブル -->
+        <div class="admin-table-wrap" id="taskview-deadline-wrap" style="display:none">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>
+                  <button class="sumioka-btn" style="font-size:0.72rem;padding:0.15em 0.5em"
+                    onclick="sortDeadlineView('name')">担当者</button>
+                </th>
+                <th>案件名</th>
+                <th>
+                  <button class="sumioka-btn" style="font-size:0.72rem;padding:0.15em 0.5em"
+                    onclick="sortDeadlineView('due_date')">納品日</button>
+                </th>
+                <th>
+                  <button class="sumioka-btn" style="font-size:0.72rem;padding:0.15em 0.5em"
+                    onclick="sortDeadlineView('progress')">進捗</button>
+                </th>
+                <th>メモ</th>
+              </tr>
+            </thead>
+            <tbody id="taskview-deadline-body">
+              <tr><td colspan="5" class="empty-state">「表示」を押してください</td></tr>
             </tbody>
           </table>
         </div>
@@ -1265,8 +1361,30 @@
 
 
   <!-- ============================================================
-       JavaScript
+       Phase 2: 却下理由入力モーダル（申請管理タブから呼び出す）
+       却下ボタン押下 → このモーダルで理由を入力 → 送信
        ============================================================ -->
+  <div class="modal-overlay hidden" id="modal-reject-reason">
+    <div class="modal" style="max-width:400px">
+      <p class="modal-title">申請を却下する</p>
+      <input type="hidden" id="modal-reject-request-id">
+
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="modal-reject-reason-input">
+          却下理由 <span style="color:#c0392b">*</span>
+          <span style="color:GrayText;font-weight:400">（申請者に表示されます）</span>
+        </label>
+        <textarea class="sumioka-textarea" id="modal-reject-reason-input" rows="3"
+          placeholder="例：当日は代替対応が困難なため"></textarea>
+      </div>
+
+      <div class="modal-footer">
+        <button class="sumioka-btn" id="modal-reject-cancel">キャンセル</button>
+        <button class="sumioka-btn" id="modal-reject-submit"
+          style="border-color:#c0392b;color:#c0392b;font-weight:600">却下する</button>
+      </div>
+    </div>
+  </div>
   <script>
     'use strict';
 
@@ -1305,11 +1423,15 @@
      * }}
      */
     const adminState = {
-      employeeId       : '',
-      name             : '',
-      staffList        : [],   // スタッフマスタ（フィルタ用プルダウン等で使う）
-      payrollData      : [],   // 給与計算結果（明細表示用）
-      payrollSettings  : null, // 給与設定キャッシュ
+      employeeId          : '',
+      name                : '',
+      staffList           : [],   // スタッフマスタ（フィルタ用プルダウン等で使う）
+      payrollData         : [],   // 給与計算結果（明細表示用）
+      payrollSettings     : null, // 給与設定キャッシュ
+      // Phase 2 追加フィールド
+      allTasks            : [],   // 管理者ビュー用タスクキャッシュ
+      allDeadlines        : [],   // 管理者ビュー用納期キャッシュ
+      fillupChartInstance : null, // Chart.js インスタンス（二重描画防止のため保持）
     };
 
     // ============================================================
@@ -1427,6 +1549,22 @@
           document.getElementById('modal-payroll-detail').classList.add('hidden');
         }
       });
+
+      // ── Phase 2: 却下理由モーダル ──────────────────────────────
+      document.getElementById('modal-reject-cancel').addEventListener('click', () => {
+        document.getElementById('modal-reject-reason').classList.add('hidden');
+      });
+      document.getElementById('modal-reject-reason').addEventListener('click', e => {
+        if (e.target === e.currentTarget) {
+          document.getElementById('modal-reject-reason').classList.add('hidden');
+        }
+      });
+      document.getElementById('modal-reject-submit').addEventListener('click',
+        submitRejectWithReason);
+
+      // ── Phase 2: 納期・タスクビュー ────────────────────────────
+      document.getElementById('btn-taskview-load').addEventListener('click', loadTaskView);
+      document.getElementById('taskview-mode').addEventListener('change', toggleTaskViewTable);
     }
 
     // ============================================================
@@ -1983,21 +2121,32 @@
 
     /**
      * 申請の承認 / 却下処理。
-     * 成功後に申請一覧と申請数バッジを更新する。
+     *
+     * 承認はそのまま GAS へ送信する。
+     * 却下は却下理由モーダルを開いて理由入力を必須にする。
+     * 理由なし却下を防ぐことで申請者への説明責任を担保する。
      *
      * @param {string} requestId
      * @param {'approve'|'reject'} action
      */
     async function handleRequestAction(requestId, action) {
-      const label = action === 'approve' ? '承認' : '却下';
-      const ok    = await confirm(`この申請を${label}しますか？`);
+      if (action === 'reject') {
+        // 却下は理由入力が必要なため、モーダルを開いて入力を促す
+        document.getElementById('modal-reject-request-id').value      = requestId;
+        document.getElementById('modal-reject-reason-input').value    = '';
+        document.getElementById('modal-reject-reason').classList.remove('hidden');
+        return;
+      }
+
+      // 承認はそのまま処理する
+      const ok = await confirm('この申請を承認しますか？');
       if (!ok) return;
 
-      showLoading(`${label}中...`);
+      showLoading('承認中...');
 
       const result = await callGAS('admin_update_request', {
         request_id : requestId,
-        action     : action,
+        action     : 'approve',
         admin_id   : adminState.employeeId,
       });
 
@@ -2008,9 +2157,46 @@
         return;
       }
 
-      showToast(`申請を${label}しました。`, 'success');
+      showToast('申請を承認しました。', 'success');
+      loadRequests();
+      setText('dash-pending', result.data?.pending_count ?? '―');
+    }
 
-      // 一覧と承認待ち件数を更新
+    /**
+     * 却下理由モーダルの「却下する」ボタン処理。
+     *
+     * 却下理由の入力を確認してから GAS へ送信する。
+     * 申請者の履歴画面に却下理由が表示されるため、
+     * 空欄での却下は受け付けない。
+     */
+    async function submitRejectWithReason() {
+      const requestId    = document.getElementById('modal-reject-request-id').value;
+      const rejectReason = document.getElementById('modal-reject-reason-input').value.trim();
+
+      if (!rejectReason) {
+        showToast('却下理由を入力してください。', 'warning');
+        return;
+      }
+
+      document.getElementById('modal-reject-reason').classList.add('hidden');
+
+      showLoading('却下処理中...');
+
+      const result = await callGAS('admin_update_request', {
+        request_id    : requestId,
+        action        : 'reject',
+        admin_id      : adminState.employeeId,
+        reject_reason : rejectReason,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('申請を却下しました。', 'success');
       loadRequests();
       setText('dash-pending', result.data?.pending_count ?? '―');
     }
@@ -2553,6 +2739,7 @@
 
     /**
      * 指定月の全スタッフ月次サマリーを取得してテーブルに描画する。
+     * Phase 2: 補填消化グラフも同時に取得して描画する。
      */
     async function loadMonthly() {
       const yearMonth = document.getElementById('monthly-filter-month').value;
@@ -2564,16 +2751,25 @@
 
       setTabLoading('monthly', true);
 
-      const result = await callGAS('monthly_report', { year_month: yearMonth });
+      // 月次レポートと補填グラフデータを並行取得してローディング時間を短縮する
+      const [monthlyResult, fillupResult] = await Promise.all([
+        callGAS('monthly_report',       { year_month: yearMonth }),
+        callGAS('admin_monthly_fillup', { year_month: yearMonth }),
+      ]);
 
       setTabLoading('monthly', false);
 
-      if (!result.success) {
+      if (!monthlyResult.success) {
         showToast('月次レポートの取得に失敗しました。', 'error');
         return;
       }
 
-      renderMonthlyTable(result.data.report || []);
+      renderMonthlyTable(monthlyResult.data.report || []);
+
+      // 補填グラフ（取得失敗してもレポートテーブルには影響させない）
+      if (fillupResult.success) {
+        renderFillupChart(fillupResult.data.fillup || []);
+      }
     }
 
     /**
@@ -2638,6 +2834,287 @@
           </tr>
         `;
       }).join('');
+    }
+
+    // ============================================================
+    // Phase 2: 補填消化グラフ
+    // ============================================================
+
+    /**
+     * 補填消化グラフを Chart.js で描画する。
+     *
+     * Chart.js は cdnjs から読み込む。
+     * 既存の CSS と競合しないよう <canvas> 要素で描画する。
+     * 二重描画を防ぐため、既存インスタンスがあれば先に破棄する。
+     *
+     * @param {Object[]} fillup - [{ name, short_minutes, filled_minutes, remain_minutes }]
+     */
+    function renderFillupChart(fillup) {
+      const wrap      = document.getElementById('fillup-chart-wrap');
+      const titleEl   = document.getElementById('fillup-chart-title');
+      const canvas    = document.getElementById('fillup-chart');
+
+      if (fillup.length === 0) {
+        wrap.style.display    = 'none';
+        titleEl.style.display = 'none';
+        return;
+      }
+
+      wrap.style.display    = '';
+      titleEl.style.display = '';
+
+      // 既存のチャートインスタンスを破棄する（同月で再集計した際の二重描画を防ぐ）
+      if (adminState.fillupChartInstance) {
+        adminState.fillupChartInstance.destroy();
+        adminState.fillupChartInstance = null;
+      }
+
+      const labels   = fillup.map(f => f.name);
+      const toHours  = min => Math.round(min / 6) / 10; // 分 → 時間（小数1桁）
+
+      adminState.fillupChartInstance = new Chart(canvas, {
+        type : 'bar',
+        data : {
+          labels,
+          datasets: [
+            {
+              label           : '不足時間(h)',
+              data            : fillup.map(f => toHours(f.short_minutes)),
+              backgroundColor : 'rgba(192, 57, 43, 0.6)',
+            },
+            {
+              label           : '補填完了(h)',
+              data            : fillup.map(f => toHours(f.filled_minutes)),
+              backgroundColor : 'rgba(26, 127, 55, 0.6)',
+            },
+            {
+              label           : '残不足(h)',
+              data            : fillup.map(f => toHours(f.remain_minutes)),
+              backgroundColor : 'rgba(180, 83, 9, 0.5)',
+            },
+          ],
+        },
+        options: {
+          responsive          : true,
+          maintainAspectRatio : false,
+          plugins : {
+            legend : { position: 'top' },
+          },
+          scales : {
+            x : { stacked: false },
+            y : {
+              beginAtZero : true,
+              title       : { display: true, text: '時間 (h)' },
+            },
+          },
+        },
+      });
+    }
+
+    // ============================================================
+    // Phase 2: 納期・タスクビュー
+    // ============================================================
+
+    /**
+     * 全スタッフのタスク・納期を取得して一覧に描画する。
+     *
+     * 管理者は閲覧専用。編集・削除は各担当者が kintai.html から行う。
+     */
+    async function loadTaskView() {
+      setTabLoading('taskview', true);
+
+      const result = await callGAS('admin_all_tasks', {
+        admin_id : adminState.employeeId,
+      });
+
+      setTabLoading('taskview', false);
+
+      if (!result.success) {
+        showToast('データの取得に失敗しました。', 'error');
+        return;
+      }
+
+      adminState.allTasks     = result.data.tasks     || [];
+      adminState.allDeadlines = result.data.deadlines || [];
+
+      toggleTaskViewTable(); // 選択中のモードに応じてテーブルを切り替える
+    }
+
+    /**
+     * taskview-mode の選択値に応じてタスク/納期テーブルを切り替える。
+     */
+    function toggleTaskViewTable() {
+      const mode         = document.getElementById('taskview-mode').value;
+      const taskWrap     = document.getElementById('taskview-task-wrap');
+      const deadlineWrap = document.getElementById('taskview-deadline-wrap');
+
+      if (mode === 'tasks') {
+        taskWrap.style.display     = '';
+        deadlineWrap.style.display = 'none';
+        renderAdminTaskTable(adminState.allTasks || []);
+      } else {
+        taskWrap.style.display     = 'none';
+        deadlineWrap.style.display = '';
+        renderAdminDeadlineTable(adminState.allDeadlines || []);
+      }
+    }
+
+    /**
+     * 管理者用タスク一覧テーブルを描画する。
+     *
+     * @param {Object[]} tasks
+     */
+    function renderAdminTaskTable(tasks) {
+      const tbody = document.getElementById('taskview-task-body');
+
+      if (tasks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">タスクがありません</td></tr>';
+        return;
+      }
+
+      const sortKey  = document.getElementById('taskview-sort').value;
+      const sorted   = sortAdminTasks(tasks, sortKey);
+
+      const priorityBadge = { '高': 'badge-red', '中': 'badge-yellow', '低': 'badge-gray' };
+      const statusBadge   = { '未着手': 'badge-gray', '進行中': 'badge-yellow', '完了': 'badge-green' };
+
+      tbody.innerHTML = sorted.map(t => `
+        <tr>
+          <td>${escHtml(t.name || '―')}</td>
+          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+            title="${escHtml(t.title)}">${escHtml(t.title)}</td>
+          <td><span class="badge ${priorityBadge[t.priority] || 'badge-gray'}">${escHtml(t.priority)}</span></td>
+          <td>${escHtml(t.due_date || '―')}</td>
+          <td><span class="badge ${statusBadge[t.status] || 'badge-gray'}">${escHtml(t.status)}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    /**
+     * 管理者用納期一覧テーブルを描画する。
+     *
+     * @param {Object[]} deadlines
+     */
+    function renderAdminDeadlineTable(deadlines) {
+      const tbody   = document.getElementById('taskview-deadline-body');
+      const today   = todayString();
+
+      if (deadlines.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">案件がありません</td></tr>';
+        return;
+      }
+
+      const sortKey = document.getElementById('taskview-sort').value;
+      const sorted  = sortAdminDeadlines(deadlines, sortKey);
+
+      tbody.innerHTML = sorted.map(d => {
+        // 納品日まで3日以内かつ未完成の案件を赤くハイライトする
+        const daysLeft   = d.due_date ? Math.round((new Date(d.due_date) - new Date(today)) / 86400000) : null;
+        const isAlert    = daysLeft !== null && daysLeft <= 3 && d.progress < 100;
+        const rowStyle   = isAlert ? 'background:#fff5f5' : '';
+        const daysLabel  = daysLeft !== null
+          ? (daysLeft < 0 ? `<span style="color:#c0392b;font-size:0.75rem">超過</span>`
+           : daysLeft <= 3 ? `<span style="color:#c0392b;font-size:0.75rem">残${daysLeft}日</span>`
+           : '')
+          : '';
+
+        return `
+          <tr style="${rowStyle}">
+            <td>${escHtml(d.name || '―')}</td>
+            <td>${escHtml(d.title)} ${daysLabel}</td>
+            <td>${escHtml(d.due_date || '―')}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:0.5rem">
+                <span>${d.progress}%</span>
+                <div style="flex:1;height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden">
+                  <div style="height:100%;width:${d.progress}%;background:Highlight;border-radius:3px"></div>
+                </div>
+              </div>
+            </td>
+            <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              title="${escHtml(d.memo || '')}">${escHtml(d.memo || '―')}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    /**
+     * タスク一覧をキーでソートして返す（元配列を変更しない）。
+     *
+     * @param {Object[]} tasks
+     * @param {string}   key - 'due_date'|'name'|'status'|'priority'
+     * @returns {Object[]}
+     */
+    function sortAdminTasks(tasks, key) {
+      const arr = [...tasks];
+      const priorityOrder = { '高': 0, '中': 1, '低': 2 };
+      const statusOrder   = { '未着手': 0, '進行中': 1, '完了': 2 };
+
+      arr.sort((a, b) => {
+        switch (key) {
+          case 'name':
+            return (a.name || '').localeCompare(b.name || '', 'ja');
+          case 'status':
+            return (statusOrder[a.status] ?? 0) - (statusOrder[b.status] ?? 0);
+          case 'priority':
+            return (priorityOrder[a.priority] ?? 1) - (priorityOrder[b.priority] ?? 1);
+          default: // due_date
+            if (!a.due_date && !b.due_date) return 0;
+            if (!a.due_date) return 1;
+            if (!b.due_date) return -1;
+            return a.due_date.localeCompare(b.due_date);
+        }
+      });
+
+      return arr;
+    }
+
+    /**
+     * 納期一覧をキーでソートして返す（元配列を変更しない）。
+     *
+     * @param {Object[]} deadlines
+     * @param {string}   key - 'due_date'|'name'|'progress'
+     * @returns {Object[]}
+     */
+    function sortAdminDeadlines(deadlines, key) {
+      const arr = [...deadlines];
+
+      arr.sort((a, b) => {
+        switch (key) {
+          case 'name':
+            return (a.name || '').localeCompare(b.name || '', 'ja');
+          case 'progress':
+            return a.progress - b.progress;
+          default: // due_date
+            if (!a.due_date && !b.due_date) return 0;
+            if (!a.due_date) return 1;
+            if (!b.due_date) return -1;
+            return a.due_date.localeCompare(b.due_date);
+        }
+      });
+
+      return arr;
+    }
+
+    /**
+     * タスクテーブルのヘッダーからソートキーを変更して再描画する。
+     * onclick から直接呼ばれるためグローバルスコープに置く。
+     *
+     * @param {string} key
+     */
+    function sortTaskView(key) {
+      document.getElementById('taskview-sort').value = key;
+      renderAdminTaskTable(adminState.allTasks || []);
+    }
+
+    /**
+     * 納期テーブルのヘッダーからソートキーを変更して再描画する。
+     *
+     * @param {string} key
+     */
+    function sortDeadlineView(key) {
+      document.getElementById('taskview-sort').value = key;
+      renderAdminDeadlineTable(adminState.allDeadlines || []);
     }
 
     // ============================================================
@@ -2750,10 +3227,15 @@
   <script src="common/api.js"></script>
   <script src="common/ui.js"></script>
   <script src="common/storage.js"></script>
+  <!-- Phase 2: 補填消化グラフ描画に使用。cdnjs 経由で読み込む。
+       既存の CSS と競合しないよう canvas 要素で描画するため干渉なし。 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
+    integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3oD+sCoJrzXJ+yKNtkEOKLZPd8d7/C05EAxit0h0B5bER6Ds9+B5w=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- バージョン番号は sumioka-uploader の v1.1.1 プレースホルダーで自動埋め込みされる -->
-  <div class="version-badge" id="app-version">v1.1.1</div>
+  <!-- バージョン番号は sumioka-uploader の v1.2.0 プレースホルダーで自動埋め込みされる -->
+  <div class="version-badge" id="app-version">v1.2.0</div>
 
 </body>
 </html>
