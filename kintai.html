@@ -849,6 +849,8 @@ p:last-child { margin-bottom: 0; }
   border-collapse: collapse;
   font-size: 0.82rem;
   margin-bottom: 1.25rem;
+  /* A-9: セル内容によって列幅が変わらないよう固定する */
+  table-layout: fixed;
 }
 
 .calendar-grid th {
@@ -857,6 +859,7 @@ p:last-child { margin-bottom: 0; }
   font-weight: 600;
   color: GrayText;
   font-size: 0.75rem;
+  width: calc(100% / 7); /* 7列均等 */
 }
 
 .calendar-grid td {
@@ -864,7 +867,7 @@ p:last-child { margin-bottom: 0; }
   border: 1px solid GrayText;
   padding: 0.3rem 0.25rem;
   min-height: 60px;
-  width: calc(100% / 7);
+  overflow: hidden; /* 内容がはみ出さないよう切り取る */
 }
 
 .calendar-day-num {
@@ -896,12 +899,13 @@ p:last-child { margin-bottom: 0; }
   cursor: default;
 }
 
-/* 仕様書: 休み=赤、遅刻・早退=黄、補填予定=緑、補填完了=青 */
-.ev-休み      { background: #fee2e2; color: #991b1b; }
-.ev-遅刻      { background: #fef9c3; color: #78350f; }
-.ev-早退      { background: #fef9c3; color: #78350f; }
-.ev-補填予定  { background: #d1fae5; color: #065f46; }
-.ev-補填完了  { background: #dbeafe; color: #1e40af; }
+/* A-5: 遅刻・早退を別色に分離する */
+.ev-休み      { background: #fee2e2; color: #991b1b; }  /* 赤 */
+.ev-遅刻      { background: #fef9c3; color: #78350f; }  /* 黄 */
+.ev-早退      { background: #ffedd5; color: #c2410c; }  /* オレンジ（遅刻と区別） */
+.ev-補填予定  { background: #d1fae5; color: #065f46; }  /* 緑 */
+.ev-補填完了  { background: #dbeafe; color: #1e40af; }  /* 青 */
+.ev-会社      { background: #f3e8ff; color: #7c3aed; }  /* 紫：会社カレンダー */
 
 /* ============================================================
    Phase 2: 申請フォーム（タブ2）
@@ -1048,6 +1052,290 @@ p:last-child { margin-bottom: 0; }
 .badge-pending  { background: #fef9c3; color: #92400e; }
 .badge-approved { background: #d1fae5; color: #065f46; }
 .badge-rejected { background: #fee2e2; color: #991b1b; }
+
+/* ============================================================
+   アクセス権バッジ
+   [自]=本人のみ  [管]=管理者のみ  [全]=全スタッフ
+   各セクション見出しの下に表示して権限範囲を一目で伝える
+   ============================================================ */
+.access-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1em 0.45em;
+  border-radius: 3px;
+  margin-right: 0.35rem;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  border: 1px solid currentColor;
+}
+/* [自] 本人のみ：青系 */
+.access-badge-self  { color: #1d4ed8; background: #eff6ff; }
+/* [管] 管理者のみ：赤系 */
+.access-badge-admin { color: #b91c1c; background: #fef2f2; }
+/* [全] 全スタッフ：緑系 */
+.access-badge-all   { color: #065f46; background: #f0fdf4; }
+
+.access-badge-row {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  margin-bottom: 0.85rem;
+  font-size: 0.72rem;
+  color: GrayText;
+}
+
+/* ============================================================
+   タスク拡張スタイル（プロジェクト管理）
+   ============================================================ */
+
+/* タスクカードの展開/折りたたみ */
+.task-card {
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  background: Canvas;
+  overflow: hidden;
+}
+
+.task-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.1s;
+}
+
+.task-card-header:hover {
+  background: ButtonFace;
+}
+
+.task-card-toggle {
+  font-size: 0.75rem;
+  color: GrayText;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.task-card-toggle.open {
+  transform: rotate(90deg);
+}
+
+.task-card-title-area {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-card-main-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-card-sub-title {
+  font-size: 0.78rem;
+  color: GrayText;
+  margin-top: 0.1rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-card-body {
+  display: none;
+  padding: 0 1rem 1rem;
+  border-top: 1px solid GrayText;
+}
+
+.task-card-body.open {
+  display: block;
+}
+
+.task-section {
+  margin-top: 0.85rem;
+}
+
+.task-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: GrayText;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+}
+
+.task-section-content {
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* 作業ログ・予定のアイテム */
+.log-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid GrayText;
+  font-size: 0.82rem;
+}
+
+.log-item:last-child { border-bottom: none; }
+
+.log-item-date {
+  font-size: 0.72rem;
+  color: GrayText;
+  white-space: nowrap;
+  min-width: 5.5em;
+}
+
+.log-item-text { flex: 1; word-break: break-all; }
+
+.log-item-actions {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.log-edit-btn, .log-del-btn {
+  font-size: 0.68rem;
+  background: none;
+  border: 1px solid GrayText;
+  border-radius: 3px;
+  padding: 0.1em 0.4em;
+  cursor: pointer;
+  color: GrayText;
+}
+
+.log-del-btn { border-color: #c0392b; color: #c0392b; }
+
+/* 残りやること チェックリスト */
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  font-size: 0.85rem;
+}
+
+.todo-item input[type="checkbox"] {
+  width: 1.1em;
+  height: 1.1em;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.todo-item-text {
+  flex: 1;
+  word-break: break-all;
+}
+
+.todo-item-text.done {
+  text-decoration: line-through;
+  color: GrayText;
+}
+
+/* ============================================================
+   納期フェーズスタイル
+   ============================================================ */
+
+.deadline-card {
+  border: 1px solid GrayText;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  background: Canvas;
+  overflow: hidden;
+}
+
+.deadline-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.deadline-card-header:hover { background: ButtonFace; }
+
+.deadline-type-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1em 0.45em;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.deadline-type-single   { background: #eff6ff; color: #1d4ed8; }
+.deadline-type-continue { background: #f0fdf4; color: #065f46; }
+
+.deadline-card-body {
+  display: none;
+  padding: 0 1rem 1rem;
+  border-top: 1px solid GrayText;
+}
+
+.deadline-card-body.open { display: block; }
+
+/* フェーズテーブル */
+.phase-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  margin-top: 0.75rem;
+}
+
+.phase-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  color: GrayText;
+  font-weight: 600;
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid GrayText;
+}
+
+.phase-table td {
+  padding: 0.4rem 0.4rem;
+  border-bottom: 1px solid GrayText;
+  vertical-align: middle;
+}
+
+.phase-table tr:last-child td { border-bottom: none; }
+
+.phase-done {
+  text-decoration: line-through;
+  color: GrayText;
+}
+
+.phase-complete-btn {
+  font-size: 0.68rem;
+  background: none;
+  border: 1px solid #1a7f37;
+  color: #1a7f37;
+  border-radius: 3px;
+  padding: 0.1em 0.45em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.phase-complete-btn.done {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #065f46;
+}
+
+/* インラインフォーム */
+.inline-form-card {
+  border: 1px solid Highlight;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  background: Canvas;
+}
   </style>
 
   <!-- api.js -->
@@ -1540,12 +1828,13 @@ p:last-child { margin-bottom: 0; }
         <label class="sumioka-label" for="input-pin">PIN（4桁）</label>
         <input
           class="sumioka-input"
-          type="tel"
+          type="text"
           id="input-pin"
           maxlength="4"
           inputmode="numeric"
           autocomplete="off"
           placeholder="0000"
+          pattern="\d{4}"
         >
       </div>
 
@@ -1595,13 +1884,21 @@ p:last-child { margin-bottom: 0; }
       <button class="kintai-tab" data-tab="calendar">カレンダー・申請</button>
       <button class="kintai-tab" data-tab="tasks">タスク</button>
       <button class="kintai-tab" data-tab="deadlines">納期</button>
-      <button class="kintai-tab" data-tab="mystatus">自分の状況</button>
+      <button class="kintai-tab" data-tab="mystatus">出勤状況</button>
     </nav>
 
     <!-- ============================================================
          タブ1: 打刻（既存コンテンツをそのまま包む）
          ============================================================ -->
     <div class="kintai-tab-panel active" id="panel-checkin">
+
+      <!-- アクセス権表示 -->
+      <div class="access-badge-row">
+        <span class="access-badge access-badge-self">[自]</span>
+        <span>打刻は本人が操作。</span>
+        <span class="access-badge access-badge-admin" style="margin-left:0.5rem">[管]</span>
+        <span>Adminはダッシュボード・勤怠一覧から全員分を確認・修正できます。</span>
+      </div>
 
       <!-- 残不足バナー -->
       <div class="balance-banner">
@@ -1621,6 +1918,15 @@ p:last-child { margin-bottom: 0; }
 
         <!-- 未打刻の場合はこちらを表示 -->
         <div id="checkin-form">
+          <!-- リロード時に「今日の日付」を一目で確認できるよう表示する。
+               打刻済み後は checkin-stamped が表示されるため、この表示は出勤前のみ見える。 -->
+          <div id="checkin-date-display" style="
+            text-align:center;
+            font-size:0.88rem;
+            color:GrayText;
+            margin-bottom:0.5rem;
+          " id="checkin-date-label">――</div>
+
           <!-- 現在時刻ライブ表示 -->
           <div class="live-clock" id="live-clock">--:--:--</div>
 
@@ -1707,6 +2013,14 @@ p:last-child { margin-bottom: 0; }
          ============================================================ -->
     <div class="kintai-tab-panel" id="panel-calendar">
 
+      <!-- アクセス権表示 -->
+      <div class="access-badge-row">
+        <span class="access-badge access-badge-all">[全]</span>
+        <span>欠勤・遅刻・早退は全スタッフのものが表示されます。</span>
+        <span class="access-badge access-badge-self" style="margin-left:0.5rem">[自]</span>
+        <span>補填申請・履歴は自分のもののみ。</span>
+      </div>
+
       <!-- 月カレンダー -->
       <div class="calendar-nav">
         <button class="sumioka-btn" id="btn-cal-prev">◀ 前月</button>
@@ -1726,61 +2040,74 @@ p:last-child { margin-bottom: 0; }
         </tbody>
       </table>
 
-      <!-- 凡例 -->
-      <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.25rem;font-size:0.75rem">
+      <!-- A-5: 遅刻・早退を別色で凡例表示（カレンダー内には種別テキストは入れない） -->
+      <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1.25rem;font-size:0.72rem">
         <span class="calendar-event ev-休み">休み</span>
-        <span class="calendar-event ev-遅刻">遅刻・早退</span>
+        <span class="calendar-event ev-遅刻">遅刻</span>
+        <span class="calendar-event ev-早退">早退</span>
         <span class="calendar-event ev-補填予定">補填予定</span>
         <span class="calendar-event ev-補填完了">補填完了</span>
+        <span class="calendar-event ev-会社">会社休日</span>
       </div>
 
-      <!-- 申請フォーム -->
+      <!-- A-7: 補填のみ申請フロー。遅刻・早退の申請欄は削除。 -->
       <p class="section-title" style="font-size:0.82rem;font-weight:600;color:GrayText;
         text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.85rem">
-        申請フォーム
+        補填申請フォーム
       </p>
       <div class="request-form-card">
+
+        <!-- A-7: 種別は「補填予定（事前）」「補填完了（事後）」の2択のみ -->
         <div class="sumioka-form-group">
           <label class="sumioka-label" for="req-type">種別</label>
           <select class="sumioka-input" id="req-type">
-            <option value="休み">休み</option>
-            <option value="遅刻">遅刻</option>
-            <option value="早退">早退</option>
             <option value="補填予定">補填予定（事前申請）</option>
             <option value="補填完了">補填完了（事後報告）</option>
           </select>
         </div>
-        <div class="sumioka-form-group">
-          <label class="sumioka-label" for="req-date">対象日</label>
-          <input class="sumioka-input" type="date" id="req-date">
-        </div>
-        <div class="sumioka-form-group">
-          <label class="sumioka-label" for="req-time">時間（例: 09:00 または 90分）</label>
-          <input class="sumioka-input" type="text" id="req-time" placeholder="任意">
-        </div>
-        <!-- 補填予定日：遅刻・早退・休みを選んだときだけ表示する -->
-        <div class="sumioka-form-group" id="req-fillup-wrap" style="display:none">
-          <label class="sumioka-label" for="req-fillup-date">
-            補填予定日
-            <span style="color:GrayText;font-weight:400;font-size:0.78rem">
-              （補填する予定がある場合のみ入力）
-            </span>
-          </label>
-          <input class="sumioka-input" type="date" id="req-fillup-date">
-        </div>
+
+        <!-- A-3: 理由を種別プルダウンの直下に配置 -->
         <div class="sumioka-form-group">
           <label class="sumioka-label" for="req-reason">理由</label>
           <textarea class="sumioka-textarea" id="req-reason" rows="2"
             placeholder="理由を入力してください"></textarea>
         </div>
+
+        <!-- A-8: 「いつの分を」= 不足が発生した日 -->
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="req-date">
+            不足が発生した日
+            <span style="font-size:0.75rem;color:GrayText;font-weight:400">（どの日の不足分か）</span>
+          </label>
+          <input class="sumioka-input" type="date" id="req-date">
+        </div>
+
+        <!-- A-2, A-4, A-8: 「いつ補填するか」= テキスト形式、複数日追加可能 -->
+        <div class="sumioka-form-group">
+          <label class="sumioka-label">
+            補填する日時
+            <span style="font-size:0.75rem;color:GrayText;font-weight:400">（複数日追加可）</span>
+          </label>
+          <div id="fillup-dates-wrap">
+            <div class="fillup-date-row" style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem">
+              <!-- A-4: placeholderに「お昼休みで補填します」を表示 -->
+              <input class="sumioka-input" type="text" style="flex:1"
+                placeholder="お昼休みで補填します">
+            </div>
+          </div>
+          <!-- A-2: 複数日を追加するボタン -->
+          <button class="sumioka-btn" id="btn-fillup-add-date"
+            style="font-size:0.78rem;margin-top:0.2rem">＋ 日程を追加</button>
+        </div>
+
         <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
           id="btn-submit-request">申請を送信</button>
       </div>
 
-      <!-- 申請履歴 -->
+      <!-- 申請履歴（補填のみ。自分のもの） -->
       <p class="section-title" style="font-size:0.82rem;font-weight:600;color:GrayText;
         text-transform:uppercase;letter-spacing:0.06em;margin:1.5rem 0 0.85rem">
-        申請履歴
+        補填申請履歴
       </p>
       <div id="request-history-list">
         <div style="text-align:center;color:GrayText;padding:1.5rem;font-size:0.85rem">
@@ -1791,15 +2118,22 @@ p:last-child { margin-bottom: 0; }
     </div><!-- /#panel-calendar -->
 
     <!-- ============================================================
-         タブ3: タスク管理
+         タブ3: タスク管理（個人用プロジェクト管理）
          ============================================================ -->
     <div class="kintai-tab-panel" id="panel-tasks">
+
+      <!-- アクセス権表示 -->
+      <div class="access-badge-row">
+        <span class="access-badge access-badge-self">[自]</span>
+        <span>自分だけが見れます。Adminからは見えません。</span>
+      </div>
 
       <!-- ソート・追加 -->
       <div class="ph2-filter-row">
         <select class="sumioka-input" id="task-sort" style="width:130px">
           <option value="due_date">期限順</option>
           <option value="priority">優先度順</option>
+          <option value="status">ステータス順</option>
         </select>
         <button class="sumioka-btn sumioka-btn-primary" id="btn-task-add"
           style="margin-left:auto">＋ タスク追加</button>
@@ -1813,19 +2147,65 @@ p:last-child { margin-bottom: 0; }
 
       <!-- タスク追加・編集フォーム（インライン表示） -->
       <div id="task-form-wrap" style="display:none">
-        <div class="request-form-card">
-          <p style="font-weight:700;margin-bottom:1rem" id="task-form-title">タスクを追加</p>
+        <div class="inline-form-card">
+          <p style="font-weight:700;margin-bottom:1rem;font-size:0.95rem" id="task-form-title">タスクを追加</p>
           <input type="hidden" id="task-form-id">
+
+          <!-- 大見出し（タスク名） -->
           <div class="sumioka-form-group">
             <label class="sumioka-label" for="task-form-title-input">
-              タイトル <span style="color:#c0392b">*</span>
+              タスク名（大見出し） <span style="color:#c0392b">*</span>
             </label>
-            <input class="sumioka-input" type="text" id="task-form-title-input">
+            <input class="sumioka-input" type="text" id="task-form-title-input"
+              placeholder="例：SNS運用改善プロジェクト">
           </div>
+
+          <!-- 小見出し -->
           <div class="sumioka-form-group">
-            <label class="sumioka-label" for="task-form-detail">詳細</label>
-            <textarea class="sumioka-textarea" id="task-form-detail" rows="2"></textarea>
+            <label class="sumioka-label" for="task-form-subtitle">小見出し</label>
+            <input class="sumioka-input" type="text" id="task-form-subtitle"
+              placeholder="例：Instagram投稿の自動化">
           </div>
+
+          <!-- 顧客名 -->
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="task-form-client">顧客名</label>
+            <input class="sumioka-input" type="text" id="task-form-client"
+              placeholder="例：株式会社△△">
+          </div>
+
+          <!-- 概要 -->
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="task-form-overview">概要</label>
+            <textarea class="sumioka-textarea" id="task-form-overview" rows="2"
+              placeholder="このタスクの目的・背景を書いてください"></textarea>
+          </div>
+
+          <!-- 現状 -->
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="task-form-current">現状</label>
+            <textarea class="sumioka-textarea" id="task-form-current" rows="2"
+              placeholder="いまどういう状況かを書いてください"></textarea>
+          </div>
+
+          <!-- 残りやること（改行区切りで入力） -->
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="task-form-todos">
+              残りやること
+              <span style="font-size:0.72rem;color:GrayText;font-weight:400">（1行1項目）</span>
+            </label>
+            <textarea class="sumioka-textarea" id="task-form-todos" rows="3"
+              placeholder="・ツールの調査&#10;・マニュアル作成&#10;・上長への報告"></textarea>
+          </div>
+
+          <!-- 備考 -->
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="task-form-notes">備考</label>
+            <textarea class="sumioka-textarea" id="task-form-notes" rows="2"
+              placeholder="参考URL・注意事項など"></textarea>
+          </div>
+
+          <!-- 優先度・ステータス・期限 -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem">
             <div class="sumioka-form-group">
               <label class="sumioka-label" for="task-form-priority">優先度</label>
@@ -1844,10 +2224,17 @@ p:last-child { margin-bottom: 0; }
               </select>
             </div>
           </div>
+
           <div class="sumioka-form-group">
-            <label class="sumioka-label" for="task-form-due">期限</label>
+            <label class="sumioka-label" for="task-form-due">
+              期限
+              <span style="font-size:0.72rem;color:GrayText;font-weight:400">
+                （設定すると納期タブにも表示されます）
+              </span>
+            </label>
             <input class="sumioka-input" type="date" id="task-form-due">
           </div>
+
           <div style="display:flex;gap:0.65rem;justify-content:flex-end">
             <button class="sumioka-btn" id="btn-task-form-cancel">キャンセル</button>
             <button class="sumioka-btn sumioka-btn-primary" id="btn-task-form-save">保存</button>
@@ -1858,17 +2245,50 @@ p:last-child { margin-bottom: 0; }
     </div><!-- /#panel-tasks -->
 
     <!-- ============================================================
-         タブ4: 納期管理
+         タブ4: 納期管理（フェーズ対応・継続案件対応）
          ============================================================ -->
     <div class="kintai-tab-panel" id="panel-deadlines">
 
+      <!-- アクセス権表示 -->
+      <div class="access-badge-row">
+        <span class="access-badge access-badge-self">[自]</span>
+        <span>自分とAdmin両方が見れます。</span>
+        <span class="access-badge access-badge-admin" style="margin-left:0.5rem">[管]</span>
+        <span>Adminの納期タブから全員分を閲覧できます。</span>
+      </div>
+
+      <!-- フィルター・ソート・切り替え・追加 -->
       <div class="ph2-filter-row">
-        <select class="sumioka-input" id="deadline-sort" style="width:130px">
-          <option value="due_date">納品日順</option>
-          <option value="progress">進捗順</option>
+        <!-- 一覧/カレンダー切り替え -->
+        <div style="display:flex;border:1px solid GrayText;border-radius:4px;overflow:hidden">
+          <button class="sumioka-btn active" id="btn-deadline-view-list"
+            style="border:none;border-radius:0;padding:0.4em 0.8em;font-size:0.82rem"
+            onclick="switchDeadlineView('list')">一覧</button>
+          <button class="sumioka-btn" id="btn-deadline-view-cal"
+            style="border:none;border-left:1px solid GrayText;border-radius:0;padding:0.4em 0.8em;font-size:0.82rem"
+            onclick="switchDeadlineView('calendar')">カレンダー</button>
+        </div>
+        <select class="sumioka-input" id="deadline-sort" style="width:120px">
+          <option value="next_date">次の期日順</option>
+          <option value="title">案件名順</option>
+          <option value="type">種別順</option>
+        </select>
+        <select class="sumioka-input" id="deadline-filter-type" style="width:100px">
+          <option value="all">すべて</option>
+          <option value="単発">単発</option>
+          <option value="継続">継続</option>
         </select>
         <button class="sumioka-btn sumioka-btn-primary" id="btn-deadline-add"
           style="margin-left:auto">＋ 案件追加</button>
+      </div>
+
+      <!-- カレンダーナビ（カレンダービュー時のみ表示） -->
+      <div id="deadline-cal-nav" style="display:none;margin-bottom:0.85rem">
+        <div class="calendar-nav">
+          <button class="sumioka-btn" id="btn-deadline-cal-prev">◀ 前月</button>
+          <span class="calendar-nav-title" id="deadline-cal-title">――</span>
+          <button class="sumioka-btn" id="btn-deadline-cal-next">翌月 ▶</button>
+        </div>
       </div>
 
       <div id="deadline-list">
@@ -1879,32 +2299,92 @@ p:last-child { margin-bottom: 0; }
 
       <!-- 案件追加・編集フォーム -->
       <div id="deadline-form-wrap" style="display:none">
-        <div class="request-form-card">
-          <p style="font-weight:700;margin-bottom:1rem" id="deadline-form-title">案件を追加</p>
+        <div class="inline-form-card">
+          <p style="font-weight:700;margin-bottom:1rem;font-size:0.95rem" id="deadline-form-title">案件を追加</p>
           <input type="hidden" id="deadline-form-id">
+
+          <!-- 案件名 -->
           <div class="sumioka-form-group">
             <label class="sumioka-label" for="deadline-form-title-input">
               案件名 <span style="color:#c0392b">*</span>
             </label>
-            <input class="sumioka-input" type="text" id="deadline-form-title-input">
+            <input class="sumioka-input" type="text" id="deadline-form-title-input"
+              placeholder="例：△△社 カタログ制作">
           </div>
+
+          <!-- 顧客名 -->
           <div class="sumioka-form-group">
-            <label class="sumioka-label" for="deadline-form-due">
-              納品日 <span style="color:#c0392b">*</span>
-            </label>
-            <input class="sumioka-input" type="date" id="deadline-form-due">
+            <label class="sumioka-label" for="deadline-form-client">顧客名</label>
+            <input class="sumioka-input" type="text" id="deadline-form-client"
+              placeholder="例：株式会社△△"></div>
+
+          <!-- 種別：単発 or 継続 -->
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="deadline-form-type">種別</label>
+            <select class="sumioka-input" id="deadline-form-type">
+              <option value="単発">単発（一回限り）</option>
+              <option value="継続">継続（毎月など繰り返し）</option>
+            </select>
           </div>
+
+          <!-- 継続案件の自動生成設定（継続選択時のみ表示） -->
+          <div id="deadline-form-recur-wrap" style="display:none">
+            <div class="sumioka-form-group">
+              <label class="sumioka-label" for="deadline-form-recur-mode">翌月分の生成</label>
+              <select class="sumioka-input" id="deadline-form-recur-mode">
+                <option value="auto">自動生成（月末に翌月分を自動作成）</option>
+                <option value="manual">手動更新（自分で更新する）</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- フェーズ設定 -->
+          <div class="sumioka-form-group">
+            <label class="sumioka-label">
+              フェーズ
+              <span style="font-size:0.72rem;color:GrayText;font-weight:400">
+                （追加・並び替え可。日付は後から記入できます）
+              </span>
+            </label>
+
+            <!-- プリセットボタン -->
+            <div style="display:flex;flex-wrap:wrap;gap:0.35rem;margin-bottom:0.65rem">
+              <span style="font-size:0.72rem;color:GrayText;align-self:center">プリセット：</span>
+              <button type="button" class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.6em"
+                onclick="addPhasePreset('受注')">受注</button>
+              <button type="button" class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.6em"
+                onclick="addPhasePreset('検品')">検品</button>
+              <button type="button" class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.6em"
+                onclick="addPhasePreset('納品')">納品</button>
+              <button type="button" class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.6em"
+                onclick="addPhasePreset('請求')">請求</button>
+              <button type="button" class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.6em"
+                onclick="addPhasePreset('入金')">入金</button>
+            </div>
+
+            <!-- フェーズ一覧（動的追加） -->
+            <div id="deadline-phases-wrap"></div>
+
+            <button type="button" class="sumioka-btn" id="btn-phase-add-custom"
+              style="font-size:0.78rem;margin-top:0.3rem">＋ 自由入力で追加</button>
+          </div>
+
+          <!-- 全体備考 -->
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="deadline-form-memo">全体備考</label>
+            <textarea class="sumioka-textarea" id="deadline-form-memo" rows="2"
+              placeholder="担当者・連絡先・注意事項など"></textarea>
+          </div>
+
+          <!-- 全体進捗（自動計算の補助値） -->
           <div class="sumioka-form-group">
             <label class="sumioka-label" for="deadline-form-progress">
-              進捗（0〜100）
+              全体進捗（0〜100）
             </label>
             <input class="sumioka-input" type="number" id="deadline-form-progress"
               min="0" max="100" value="0">
           </div>
-          <div class="sumioka-form-group">
-            <label class="sumioka-label" for="deadline-form-memo">メモ</label>
-            <textarea class="sumioka-textarea" id="deadline-form-memo" rows="2"></textarea>
-          </div>
+
           <div style="display:flex;gap:0.65rem;justify-content:flex-end">
             <button class="sumioka-btn" id="btn-deadline-form-cancel">キャンセル</button>
             <button class="sumioka-btn sumioka-btn-primary" id="btn-deadline-form-save">保存</button>
@@ -1915,9 +2395,17 @@ p:last-child { margin-bottom: 0; }
     </div><!-- /#panel-deadlines -->
 
     <!-- ============================================================
-         タブ5: 自分の状況
+         タブ5: 出勤状況
          ============================================================ -->
     <div class="kintai-tab-panel" id="panel-mystatus">
+
+      <!-- アクセス権表示 -->
+      <div class="access-badge-row">
+        <span class="access-badge access-badge-self">[自]</span>
+        <span>自分の出勤実績・補填状況・申請履歴を確認できます。</span>
+        <span class="access-badge access-badge-admin" style="margin-left:0.5rem">[管]</span>
+        <span>Adminは月次レポートで全員分を確認できます。</span>
+      </div>
 
       <div style="display:flex;align-items:flex-end;gap:0.65rem;margin-bottom:1rem">
         <div>
@@ -2038,16 +2526,6 @@ p:last-child { margin-bottom: 0; }
       // 定時通知チェックを1分ごとに実行
       setInterval(checkOvertimeNotice, 60 * 1000);
 
-      // 保存済みセッションがあれば自動ログイン
-      const session = SumiokaStorage.load('kintai_session');
-      if (session && session.employeeId) {
-        applySession(session);
-        loadTodayRecord();
-      }
-
-      // イベントリスナーを設定
-      bindEvents();
-
       // 今日の日付をヘッダーに表示
       document.getElementById('display-date').textContent = todayString();
 
@@ -2059,6 +2537,16 @@ p:last-child { margin-bottom: 0; }
       // Phase 2: カレンダーの表示月を今月に初期化する
       phase2State.calYear  = today.getFullYear();
       phase2State.calMonth = today.getMonth() + 1;
+
+      // イベントリスナーを設定（bindEventsより前に実行すると一部のイベントが効かないため先に設定）
+      bindEvents();
+
+      // 保存済みセッションがあれば自動ログイン
+      const session = SumiokaStorage.load('kintai_session');
+      if (session && session.employeeId) {
+        applySession(session);
+        loadTodayRecord();
+      }
     });
 
     // ============================================================
@@ -2115,46 +2603,77 @@ p:last-child { margin-bottom: 0; }
 
       // ── Phase 2: カレンダー・申請 ──────────────────────────────
       document.getElementById('btn-cal-prev').addEventListener('click', () => {
-        phase2State.calYear  = phase2State.calMonth === 1
-          ? phase2State.calYear - 1 : phase2State.calYear;
-        phase2State.calMonth = phase2State.calMonth === 1 ? 12
-          : phase2State.calMonth - 1;
+        phase2State.calMonth--;
+        if (phase2State.calMonth < 1) {
+          phase2State.calMonth = 12;
+          phase2State.calYear--;
+        }
         loadCalendar();
       });
 
       document.getElementById('btn-cal-next').addEventListener('click', () => {
-        phase2State.calYear  = phase2State.calMonth === 12
-          ? phase2State.calYear + 1 : phase2State.calYear;
-        phase2State.calMonth = phase2State.calMonth === 12 ? 1
-          : phase2State.calMonth + 1;
+        phase2State.calMonth++;
+        if (phase2State.calMonth > 12) {
+          phase2State.calMonth = 1;
+          phase2State.calYear++;
+        }
         loadCalendar();
       });
 
       document.getElementById('btn-submit-request').addEventListener('click', handleSubmitRequest);
 
-      // 種別が「遅刻・早退・休み」のとき補填予定日欄を表示する。
-      // 補填予定・補填完了を選んだときは不要なので非表示にする。
-      document.getElementById('req-type').addEventListener('change', () => {
-        const type = document.getElementById('req-type').value;
-        const showFillup = ['遅刻', '早退', '休み'].includes(type);
-        document.getElementById('req-fillup-wrap').style.display = showFillup ? '' : 'none';
-        // 非表示にしたときは値をクリアして送信データに混入しないようにする
-        if (!showFillup) {
-          document.getElementById('req-fillup-date').value = '';
-        }
+      // A-2: 補填日程を動的に追加するボタン
+      document.getElementById('btn-fillup-add-date').addEventListener('click', () => {
+        const wrap = document.getElementById('fillup-dates-wrap');
+        const row  = document.createElement('div');
+        row.className = 'fillup-date-row';
+        row.style.cssText = 'display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem';
+        row.innerHTML = `
+          <input class="sumioka-input" type="text" style="flex:1"
+            placeholder="お昼休みで補填します">
+          <button style="font-size:0.78rem;background:none;border:1px solid #c0392b;
+            color:#c0392b;border-radius:4px;padding:0.2em 0.5em;cursor:pointer"
+            onclick="this.parentElement.remove()">削除</button>
+        `;
+        wrap.appendChild(row);
       });
 
       // ── Phase 2: タスク ────────────────────────────────────────
       document.getElementById('task-sort').addEventListener('change', renderTaskList);
-      document.getElementById('btn-task-add').addEventListener('click', openTaskForm);
+      document.getElementById('btn-task-add').addEventListener('click', () => openTaskForm(null));
       document.getElementById('btn-task-form-cancel').addEventListener('click', closeTaskForm);
       document.getElementById('btn-task-form-save').addEventListener('click', saveTask);
 
       // ── Phase 2: 納期 ──────────────────────────────────────────
-      document.getElementById('deadline-sort').addEventListener('change', renderDeadlineList);
-      document.getElementById('btn-deadline-add').addEventListener('click', openDeadlineForm);
+      document.getElementById('deadline-sort').addEventListener('change', renderDeadlineView);
+      document.getElementById('deadline-filter-type').addEventListener('change', renderDeadlineView);
+      document.getElementById('btn-deadline-add').addEventListener('click', () => openDeadlineForm(null));
       document.getElementById('btn-deadline-form-cancel').addEventListener('click', closeDeadlineForm);
       document.getElementById('btn-deadline-form-save').addEventListener('click', saveDeadline);
+      document.getElementById('btn-phase-add-custom').addEventListener('click', () => addPhaseRow(''));
+
+      // 納期カレンダーナビ
+      document.getElementById('btn-deadline-cal-prev').addEventListener('click', () => {
+        deadlineViewState.calMonth--;
+        if (deadlineViewState.calMonth < 1) { deadlineViewState.calMonth = 12; deadlineViewState.calYear--; }
+        updateDeadlineCalTitle();
+        renderDeadlineCalendar();
+      });
+      document.getElementById('btn-deadline-cal-next').addEventListener('click', () => {
+        deadlineViewState.calMonth++;
+        if (deadlineViewState.calMonth > 12) { deadlineViewState.calMonth = 1; deadlineViewState.calYear++; }
+        updateDeadlineCalTitle();
+        renderDeadlineCalendar();
+      });
+
+      // 納期種別切り替え（フォーム内）
+      const deadlineTypeEl = document.getElementById('deadline-form-type');
+      if (deadlineTypeEl) {
+        deadlineTypeEl.addEventListener('change', () => {
+          const recurWrap = document.getElementById('deadline-form-recur-wrap');
+          if (recurWrap) recurWrap.style.display = deadlineTypeEl.value === '継続' ? '' : 'none';
+        });
+      }
 
       // ── Phase 2: 自分の状況 ────────────────────────────────────
       document.getElementById('btn-mystatus-load').addEventListener('click', loadMyStatus);
@@ -2208,6 +2727,13 @@ p:last-child { margin-bottom: 0; }
 
     /**
      * セッション情報を state に適用して打刻画面へ切り替える。
+     *
+     * リロード時のタブ復元:
+     *   localStorage に保存されたタブキーがあればそのタブに遷移する。
+     *   ない場合は打刻タブ（デフォルト）を表示する。
+     *
+     * リロード時の打刻フォーム初期値:
+     *   打刻前なら日付・現在時刻・弁当選択のみ表示する（業務報告・休憩は出勤後）。
      */
     function applySession(session) {
       state.employeeId   = session.employeeId;
@@ -2216,6 +2742,20 @@ p:last-child { margin-bottom: 0; }
 
       document.getElementById('display-name').textContent = session.name;
       showScreen('main');
+
+      // リロード時にlocalStorageから最後に見ていたタブに遷移する。
+      // ただし UI の state と画面の同期より前に実行するため、
+      // データロード（loadTodayRecord）が完了した後に正しいタブが表示される。
+      const savedTab = SumiokaStorage.load('kintai_active_tab') || 'checkin';
+      // タブのアクティブ状態のみ切り替え（データロードはしない: loadTodayRecord後に行う）
+      document.querySelectorAll('.kintai-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === savedTab);
+      });
+      document.querySelectorAll('.kintai-tab-panel').forEach(p => {
+        p.classList.toggle('active', p.id === `panel-${savedTab}`);
+      });
+      // 保存済みタブをグローバルに保持しておき、loadTodayRecord完了後にデータロードする
+      state._restoredTab = savedTab;
     }
 
     /**
@@ -2291,6 +2831,21 @@ p:last-child { margin-bottom: 0; }
 
       await loadBalance();
       renderState();
+
+      // タブ復元: applySession で保存したタブに対応するデータを、
+      // 打刻状態の読み込み完了後に改めてロードする。
+      // （打刻状態が確定した後でないとカレンダー等の表示が正しくならないため）
+      const restoredTab = state._restoredTab;
+      if (restoredTab && restoredTab !== 'checkin') {
+        if (restoredTab === 'calendar') {
+          loadCalendar();
+          loadMyRequests();
+        } else if (restoredTab === 'tasks') {
+          loadTasks();
+        } else if (restoredTab === 'deadlines') {
+          loadDeadlines();
+        }
+      }
     }
 
     /**
@@ -2544,6 +3099,7 @@ p:last-child { margin-bottom: 0; }
     /**
      * ライブ時計を1秒ごとに更新する。
      * 出勤済みの場合は非表示のため更新不要だが、処理コストが低いためそのまま動かす。
+     * K-2: 打刻フォーム上部の日付表示も同時に更新して「今日の日付」を常に最新にする。
      */
     function startLiveClock() {
       function tick() {
@@ -2553,6 +3109,16 @@ p:last-child { margin-bottom: 0; }
         const s   = String(now.getSeconds()).padStart(2, '0');
         const el  = document.getElementById('live-clock');
         if (el) el.textContent = `${h}:${m}:${s}`;
+
+        // 打刻フォーム上部の日付ラベルを更新する（未打刻時のみ表示されている）
+        const dateEl = document.getElementById('checkin-date-display');
+        if (dateEl) {
+          const y   = now.getFullYear();
+          const mo  = String(now.getMonth() + 1).padStart(2, '0');
+          const d   = String(now.getDate()).padStart(2, '0');
+          const dow = ['日', '月', '火', '水', '木', '金', '土'][now.getDay()];
+          dateEl.textContent = `${y}年${mo}月${d}日（${dow}）`;
+        }
       }
       tick();
       setInterval(tick, 1000);
@@ -2671,6 +3237,8 @@ p:last-child { margin-bottom: 0; }
      * タブ切り替えのたびに最新データをロードすることで、
      * 他ページでの変更がリアルタイムに反映される。
      *
+     * リロード時にタブを保持するため、切り替え時に localStorage に保存する。
+     *
      * @param {string} tabKey - 'checkin'|'calendar'|'tasks'|'deadlines'|'mystatus'
      */
     function switchKintaiTab(tabKey) {
@@ -2681,6 +3249,9 @@ p:last-child { margin-bottom: 0; }
       document.querySelectorAll('.kintai-tab-panel').forEach(p => {
         p.classList.toggle('active', p.id === `panel-${tabKey}`);
       });
+
+      // リロード時に同じタブを復元するため localStorage に保存する
+      SumiokaStorage.save('kintai_active_tab', tabKey, { withVersion: false });
 
       // タブごとにデータをロードする
       // 打刻タブは既存の loadTodayRecord で管理するため除外
@@ -2724,8 +3295,9 @@ p:last-child { margin-bottom: 0; }
     /**
      * 月カレンダーを純粋な JS + HTML テーブルで描画する。
      *
-     * 外部ライブラリを使わず自前実装することで、
-     * 追加の依存なくオフライン環境でも動作する。
+     * A-5: 遅刻・早退を別クラスで別色表示
+     * A-6: カレンダー内の名前は名字のみ（スペースで分割して先頭）
+     * A-10: 承認済み補填も events に含まれる想定（GAS側から取得）
      *
      * @param {number}   year
      * @param {number}   month  - 1〜12
@@ -2766,18 +3338,29 @@ p:last-child { margin-bottom: 0; }
             ? `<span class="calendar-day-num today">${dayCount}</span>`
             : `<span class="calendar-day-num">${dayCount}</span>`;
 
+          // A-5: 種別ごとにクラスを割り当てる（遅刻と早退を別色に）
+          const typeClassMap = {
+            '休み'   : 'ev-休み',
+            '欠勤'   : 'ev-休み',
+            '遅刻'   : 'ev-遅刻',
+            '早退'   : 'ev-早退',
+            '補填予定': 'ev-補填予定',
+            '補填完了': 'ev-補填完了',
+            '会社'   : 'ev-会社',
+          };
+
           // イベントを最大3件表示（多い場合は件数のみ表示）
           const evHtml = dayEvs.slice(0, 3).map(ev => {
-            // 遅刻・早退は同じ黄色クラスを使う
-            const cls = ev.type === '早退' ? 'ev-遅刻' : `ev-${ev.type}`;
-            const label = ev.employee_id === state.employeeId
-              ? `${ev.name}：${ev.type}`
-              : `${ev.name}：${ev.type}`;
-            return `<div class="calendar-event ${escHtml(cls)}" title="${escHtml(ev.name)}：${escHtml(ev.type)}">${escHtml(label)}</div>`;
+            const cls = typeClassMap[ev.type] || 'ev-休み';
+            // A-6: 名字のみ（スペース・全角スペースで分割して先頭）
+            const lastName = (ev.name || '').split(/[\s\u3000]/)[0];
+            return `<div class="calendar-event ${escHtml(cls)}"
+              title="${escHtml(ev.name)}：${escHtml(ev.type)}"
+              >${escHtml(lastName)}</div>`;
           }).join('');
 
           const moreHtml = dayEvs.length > 3
-            ? `<div style="font-size:0.65rem;color:GrayText">他${dayEvs.length - 3}件</div>`
+            ? `<div style="font-size:0.62rem;color:GrayText">他${dayEvs.length - 3}件</div>`
             : '';
 
           html += `<td>${dayNumHtml}${evHtml}${moreHtml}</td>`;
@@ -2790,44 +3373,52 @@ p:last-child { margin-bottom: 0; }
     }
 
     /**
-     * 申請フォームを送信する。
+     * 補填申請フォームを送信する。
+     *
+     * A-7: 補填のみ申請フロー（遅刻・早退の申請は廃止）
+     * A-8: 「不足が発生した日」と「補填する日時（複数可）」を明示して送信
+     * A-2: 複数の補填日時をまとめてreasonに含める
      *
      * バリデーション後に GAS へ送り、成功したらカレンダーと履歴を再描画する。
      */
     async function handleSubmitRequest() {
       const type        = document.getElementById('req-type').value;
-      const date        = document.getElementById('req-date').value;
-      const time        = document.getElementById('req-time').value.trim();
+      const shortageDate = document.getElementById('req-date').value;
       const reason      = document.getElementById('req-reason').value.trim();
-      const fillupDate  = document.getElementById('req-fillup-date').value;
 
-      if (!date) {
-        showToast('対象日を選択してください。', 'warning');
+      // A-2: 複数の補填日時テキストを収集する
+      const fillupDates = Array.from(
+        document.querySelectorAll('#fillup-dates-wrap input[type="text"]')
+      ).map(el => el.value.trim()).filter(Boolean);
+
+      if (!shortageDate) {
+        showToast('不足が発生した日を選択してください。', 'warning');
+        return;
+      }
+      if (fillupDates.length === 0) {
+        showToast('補填する日時を入力してください。', 'warning');
         return;
       }
 
-      // 補填予定日が入力されている場合は確認メッセージに含める
-      const fillupMsg = fillupDate ? `\n補填予定日: ${fillupDate}` : '';
-      const ok = await confirm(`${type}の申請を送信しますか？\n対象日: ${date}${fillupMsg}`);
+      // A-8: 補填日時を reason に含めることで事前・事後がわかるようにする
+      const fillupNote = `【補填日時: ${fillupDates.join(' / ')}】`;
+      const fullReason = reason ? `${reason} ${fillupNote}` : fillupNote;
+
+      const typeLabel = type === '補填予定' ? '事前申請' : '事後報告';
+      const ok = await confirm(
+        `補填申請（${typeLabel}）を送信しますか？\n` +
+        `不足日: ${shortageDate}\n補填日時: ${fillupDates.join(', ')}`
+      );
       if (!ok) return;
 
       showLoading('申請を送信中...');
-
-      // 補填予定日が入力されている場合は理由フィールドに付記する。
-      // GAS側のスキーマ変更なしに補填情報を保存するための実装。
-      let fullReason = reason;
-      if (fillupDate && ['遅刻', '早退', '休み'].includes(type)) {
-        const fillupNote = `【補填予定: ${fillupDate}】`;
-        fullReason = fullReason ? `${fullReason} ${fillupNote}` : fillupNote;
-      }
 
       const result = await callGAS('submit_request', {
         employee_id : state.employeeId,
         name        : state.name,
         type,
-        target_date : date,
-        date,
-        time,
+        target_date : shortageDate,
+        date        : shortageDate,
         reason      : fullReason,
       });
 
@@ -2840,12 +3431,15 @@ p:last-child { margin-bottom: 0; }
 
       showToast('申請を送信しました。管理者の承認をお待ちください。', 'success');
 
-      // フォームをリセットする（補填欄も含めて全クリア）
-      document.getElementById('req-date').value        = '';
-      document.getElementById('req-time').value        = '';
-      document.getElementById('req-reason').value      = '';
-      document.getElementById('req-fillup-date').value = '';
-      document.getElementById('req-fillup-wrap').style.display = 'none';
+      // フォームをリセットする
+      document.getElementById('req-date').value   = '';
+      document.getElementById('req-reason').value = '';
+      // 補填日付行を1つだけに戻す
+      const wrap = document.getElementById('fillup-dates-wrap');
+      wrap.innerHTML = `<div class="fillup-date-row" style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem">
+        <input class="sumioka-input" type="text" style="flex:1"
+          placeholder="お昼休みで補填します">
+      </div>`;
 
       // カレンダーと履歴を再描画して送信した申請を反映する
       await loadCalendar();
@@ -2908,7 +3502,7 @@ p:last-child { margin-bottom: 0; }
     }
 
     // ============================================================
-    // Phase 2: タスク管理
+    // タスク管理
     // ============================================================
 
     /**
@@ -2916,35 +3510,28 @@ p:last-child { margin-bottom: 0; }
      */
     async function loadTasks() {
       const result = await callGAS('get_tasks', { employee_id: state.employeeId, all: false });
-
-      if (!result.success) {
-        showToast('タスクの取得に失敗しました。', 'error');
-        return;
-      }
-
+      if (!result.success) { showToast('タスクの取得に失敗しました。', 'error'); return; }
       phase2State.tasks = result.data.tasks || [];
       renderTaskList();
     }
 
     /**
-     * タスク一覧をソート選択に従って描画する。
-     *
-     * ソートは毎回配列を slice してキャッシュを汚染しない。
+     * タスク一覧を描画する。
+     * 各カードはクリックで展開し、詳細・作業ログ・予定・残りやること・備考を表示する。
      */
     function renderTaskList() {
-      const el       = document.getElementById('task-list');
-      const sortKey  = document.getElementById('task-sort').value;
-      const tasks    = [...phase2State.tasks];
+      const el      = document.getElementById('task-list');
+      const sortKey = document.getElementById('task-sort').value;
+      const tasks   = [...phase2State.tasks];
 
-      // ソート: 期限順（空は末尾）または優先度順（高→中→低）
       const priorityOrder = { '高': 0, '中': 1, '低': 2 };
+      const statusOrder   = { '未着手': 0, '進行中': 1, '完了': 2 };
       tasks.sort((a, b) => {
-        if (sortKey === 'priority') {
-          return (priorityOrder[a.priority] ?? 1) - (priorityOrder[b.priority] ?? 1);
-        }
+        if (sortKey === 'priority') return (priorityOrder[a.priority] ?? 1) - (priorityOrder[b.priority] ?? 1);
+        if (sortKey === 'status')   return (statusOrder[a.status] ?? 0)     - (statusOrder[b.status] ?? 0);
+        // due_date順（空は末尾）
         if (!a.due_date && !b.due_date) return 0;
-        if (!a.due_date) return 1;
-        if (!b.due_date) return -1;
+        if (!a.due_date) return 1; if (!b.due_date) return -1;
         return a.due_date.localeCompare(b.due_date);
       });
 
@@ -2953,87 +3540,168 @@ p:last-child { margin-bottom: 0; }
         return;
       }
 
-      const statusColor = { '未着手': 'GrayText', '進行中': '#b45309', '完了': '#1a7f37' };
       const priorityBadge = { '高': 'badge-rejected', '中': 'badge-pending', '低': 'badge-approved' };
+      const statusColor   = { '未着手': 'GrayText', '進行中': '#b45309', '完了': '#1a7f37' };
 
-      el.innerHTML = tasks.map(t => `
-        <div class="ph2-card">
-          <div class="ph2-card-header">
-            <span class="ph2-card-title">${escHtml(t.title)}</span>
-            <span class="badge ${priorityBadge[t.priority] || 'badge-pending'}">${escHtml(t.priority)}</span>
-          </div>
-          <div class="ph2-card-meta">
-            <span style="color:${statusColor[t.status] || 'GrayText'};font-weight:600">
-              ${escHtml(t.status)}
+      el.innerHTML = tasks.map(t => {
+        const logs    = Array.isArray(t.logs)  ? t.logs  : [];
+        const plans   = Array.isArray(t.plans) ? t.plans : [];
+        const todos   = Array.isArray(t.todos) ? t.todos : [];
+
+        // 作業ログ行HTML
+        const logsHtml = logs.length ? logs.map((l, i) => `
+          <div class="log-item">
+            <span class="log-item-date">${escHtml(l.date || '')}</span>
+            <span class="log-item-text">${escHtml(l.text || '')}</span>
+            <span class="log-item-actions">
+              <button class="log-edit-btn"
+                onclick="editTaskLog(event,'${escHtml(t.id)}',${i})">編集</button>
+              <button class="log-del-btn"
+                onclick="deleteTaskLog(event,'${escHtml(t.id)}',${i})">削除</button>
             </span>
-            ${t.due_date ? `<span>期限: ${escHtml(t.due_date)}</span>` : ''}
-            ${t.detail ? `<span>${escHtml(t.detail)}</span>` : ''}
-          </div>
-          <div class="ph2-card-actions">
-            <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
-              onclick="openTaskForm(${escJson(t)})">編集</button>
-            <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
-              onclick="cycleTaskStatus('${escHtml(t.id)}', '${escHtml(t.status)}')">
-              ステータス更新
-            </button>
-            ${t.status === '完了'
-              ? `<button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em;color:#c0392b"
-                  onclick="deleteTask('${escHtml(t.id)}')">削除</button>`
-              : ''}
-          </div>
-        </div>
-      `).join('');
+          </div>`).join('')
+          : '<div style="color:GrayText;font-size:0.8rem">まだありません</div>';
+
+        // 予定行HTML
+        const plansHtml = plans.length ? plans.map((p, i) => `
+          <div class="log-item">
+            <span class="log-item-date">${escHtml(p.date || '')}</span>
+            <span class="log-item-text">${escHtml(p.text || '')}</span>
+            <span class="log-item-actions">
+              <button class="log-edit-btn"
+                onclick="editTaskPlan(event,'${escHtml(t.id)}',${i})">編集</button>
+              <button class="log-del-btn"
+                onclick="deleteTaskPlan(event,'${escHtml(t.id)}',${i})">削除</button>
+            </span>
+          </div>`).join('')
+          : '<div style="color:GrayText;font-size:0.8rem">まだありません</div>';
+
+        // 残りやることHTML
+        const todosHtml = todos.length ? todos.map((td, i) => `
+          <div class="todo-item">
+            <input type="checkbox" ${td.done ? 'checked' : ''}
+              onchange="toggleTaskTodo(event,'${escHtml(t.id)}',${i})">
+            <span class="todo-item-text ${td.done ? 'done' : ''}">${escHtml(td.text || '')}</span>
+            <button class="log-del-btn"
+              onclick="deleteTaskTodo(event,'${escHtml(t.id)}',${i})">削除</button>
+          </div>`).join('')
+          : '<div style="color:GrayText;font-size:0.8rem">まだありません</div>';
+
+        return `
+          <div class="task-card" id="task-card-${escHtml(t.id)}">
+            <div class="task-card-header" onclick="toggleTaskCard('${escHtml(t.id)}')">
+              <span class="task-card-toggle" id="task-toggle-${escHtml(t.id)}">▶</span>
+              <div class="task-card-title-area">
+                <div class="task-card-main-title">${escHtml(t.title)}</div>
+                ${t.subtitle ? `<div class="task-card-sub-title">${escHtml(t.subtitle)}</div>` : ''}
+              </div>
+              ${t.client ? `<span style="font-size:0.72rem;color:GrayText;flex-shrink:0">${escHtml(t.client)}</span>` : ''}
+              <span class="badge ${priorityBadge[t.priority] || 'badge-pending'}"
+                style="flex-shrink:0">${escHtml(t.priority)}</span>
+              <span style="font-size:0.78rem;color:${statusColor[t.status] || 'GrayText'};
+                font-weight:600;flex-shrink:0">${escHtml(t.status)}</span>
+            </div>
+            <div class="task-card-body" id="task-body-${escHtml(t.id)}">
+
+              ${t.due_date ? `<div style="margin-top:0.65rem;font-size:0.8rem;color:GrayText">
+                期限: <strong>${escHtml(t.due_date)}</strong>
+                ${t.client ? ` / 顧客: <strong>${escHtml(t.client)}</strong>` : ''}
+              </div>` : ''}
+
+              ${t.overview ? `<div class="task-section">
+                <div class="task-section-title">概要</div>
+                <div class="task-section-content">${escHtml(t.overview)}</div>
+              </div>` : ''}
+
+              ${t.current_status ? `<div class="task-section">
+                <div class="task-section-title">現状</div>
+                <div class="task-section-content">${escHtml(t.current_status)}</div>
+              </div>` : ''}
+
+              <!-- 残りやること -->
+              <div class="task-section">
+                <div class="task-section-title">残りやること</div>
+                ${todosHtml}
+                <div style="display:flex;gap:0.4rem;margin-top:0.4rem">
+                  <input class="sumioka-input" type="text" id="todo-input-${escHtml(t.id)}"
+                    placeholder="やること..." style="flex:1;font-size:0.82rem;padding:0.3em 0.5em">
+                  <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.6em;white-space:nowrap"
+                    onclick="addTaskTodo(event,'${escHtml(t.id)}')">追加</button>
+                </div>
+              </div>
+
+              <!-- 作業ログ（いつ何をしたか） -->
+              <div class="task-section">
+                <div class="task-section-title">作業ログ</div>
+                ${logsHtml}
+                <div style="display:flex;gap:0.4rem;margin-top:0.4rem;flex-wrap:wrap">
+                  <input class="sumioka-input" type="date" id="log-date-${escHtml(t.id)}"
+                    value="${todayString()}" style="width:140px;font-size:0.82rem;padding:0.3em 0.5em">
+                  <input class="sumioka-input" type="text" id="log-text-${escHtml(t.id)}"
+                    placeholder="作業内容..." style="flex:1;font-size:0.82rem;padding:0.3em 0.5em">
+                  <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.6em;white-space:nowrap"
+                    onclick="addTaskLog(event,'${escHtml(t.id)}')">追加</button>
+                </div>
+              </div>
+
+              <!-- 予定（いつ何をするか） -->
+              <div class="task-section">
+                <div class="task-section-title">予定</div>
+                ${plansHtml}
+                <div style="display:flex;gap:0.4rem;margin-top:0.4rem;flex-wrap:wrap">
+                  <input class="sumioka-input" type="date" id="plan-date-${escHtml(t.id)}"
+                    style="width:140px;font-size:0.82rem;padding:0.3em 0.5em">
+                  <input class="sumioka-input" type="text" id="plan-text-${escHtml(t.id)}"
+                    placeholder="予定内容..." style="flex:1;font-size:0.82rem;padding:0.3em 0.5em">
+                  <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.6em;white-space:nowrap"
+                    onclick="addTaskPlan(event,'${escHtml(t.id)}')">追加</button>
+                </div>
+              </div>
+
+              ${t.notes ? `<div class="task-section">
+                <div class="task-section-title">備考</div>
+                <div class="task-section-content">${escHtml(t.notes)}</div>
+              </div>` : ''}
+
+              <div class="ph2-card-actions" style="margin-top:0.85rem">
+                <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
+                  onclick="openTaskForm(${escJson(t)})">編集</button>
+                ${t.status === '完了'
+                  ? `<button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em;color:#c0392b;border-color:#c0392b"
+                      onclick="deleteTask('${escHtml(t.id)}')">削除</button>`
+                  : ''}
+              </div>
+            </div>
+          </div>`;
+      }).join('');
     }
 
-    /**
-     * タスクのステータスを 未着手→進行中→完了 の順に1段階進める。
-     *
-     * @param {string} taskId
-     * @param {string} currentStatus
-     */
-    async function cycleTaskStatus(taskId, currentStatus) {
-      const nextMap = { '未着手': '進行中', '進行中': '完了', '完了': '未着手' };
-      const next    = nextMap[currentStatus] || '進行中';
-
-      const task = phase2State.tasks.find(t => t.id === taskId);
-      if (!task) return;
-
-      const result = await callGAS('upsert_task', {
-        task_id     : taskId,
-        employee_id : state.employeeId,
-        name        : state.name,
-        title       : task.title,
-        detail      : task.detail,
-        priority    : task.priority,
-        status      : next,
-        due_date    : task.due_date,
-      });
-
-      if (!result.success) {
-        showError(result.error_message, result.error_detail);
-        return;
-      }
-
-      showToast(`ステータスを「${next}」に更新しました。`, 'success');
-      await loadTasks();
+    /** タスクカードを展開/折りたたみする */
+    function toggleTaskCard(id) {
+      const body   = document.getElementById(`task-body-${id}`);
+      const toggle = document.getElementById(`task-toggle-${id}`);
+      if (!body) return;
+      const isOpen = body.classList.toggle('open');
+      if (toggle) toggle.classList.toggle('open', isOpen);
     }
 
-    /**
-     * タスク追加・編集フォームを開く。
-     *
-     * @param {Object|null} task - null のとき新規追加モード
-     */
+    /** タスクフォームを開く（新規 or 編集） */
     function openTaskForm(task) {
       const isNew = !task || !task.id;
-
-      document.getElementById('task-form-title').textContent = isNew ? 'タスクを追加' : 'タスクを編集';
-      document.getElementById('task-form-id').value             = isNew ? '' : task.id;
-      document.getElementById('task-form-title-input').value    = isNew ? '' : (task.title || '');
-      document.getElementById('task-form-detail').value         = isNew ? '' : (task.detail || '');
-      document.getElementById('task-form-priority').value       = isNew ? '中' : (task.priority || '中');
-      document.getElementById('task-form-status').value         = isNew ? '未着手' : (task.status || '未着手');
-      document.getElementById('task-form-due').value            = isNew ? '' : (task.due_date || '');
-
+      document.getElementById('task-form-title').textContent         = isNew ? 'タスクを追加' : 'タスクを編集';
+      document.getElementById('task-form-id').value                  = isNew ? '' : task.id;
+      document.getElementById('task-form-title-input').value         = isNew ? '' : (task.title || '');
+      document.getElementById('task-form-subtitle').value            = isNew ? '' : (task.subtitle || '');
+      document.getElementById('task-form-overview').value            = isNew ? '' : (task.overview || '');
+      document.getElementById('task-form-current').value             = isNew ? '' : (task.current_status || '');
+      document.getElementById('task-form-todos').value               = isNew ? '' : (Array.isArray(task.todos) ? task.todos.map(td => td.text).join('\n') : '');
+      document.getElementById('task-form-notes').value               = isNew ? '' : (task.notes || '');
+      document.getElementById('task-form-priority').value            = isNew ? '中' : (task.priority || '中');
+      document.getElementById('task-form-status').value              = isNew ? '未着手' : (task.status || '未着手');
+      document.getElementById('task-form-due').value                 = isNew ? '' : (task.due_date || '');
+      // 顧客名（HTMLに追加済みの場合）
+      const clientEl = document.getElementById('task-form-client');
+      if (clientEl) clientEl.value = isNew ? '' : (task.client || '');
       document.getElementById('task-form-wrap').style.display = '';
       document.getElementById('task-form-wrap').scrollIntoView({ behavior: 'smooth' });
     }
@@ -3043,107 +3711,295 @@ p:last-child { margin-bottom: 0; }
       document.getElementById('task-form-wrap').style.display = 'none';
     }
 
-    /**
-     * タスクを保存（新規追加 or 更新）する。
-     */
+    /** タスクを保存（新規 or 更新）。todosは既存データとマージする。 */
     async function saveTask() {
-      const id     = document.getElementById('task-form-id').value;
-      const title  = document.getElementById('task-form-title-input').value.trim();
+      const id    = document.getElementById('task-form-id').value;
+      const title = document.getElementById('task-form-title-input').value.trim();
+      if (!title) { showToast('タスク名は必須です。', 'warning'); return; }
 
-      if (!title) {
-        showToast('タイトルは必須です。', 'warning');
-        return;
-      }
-
-      showLoading('保存中...');
-
-      const result = await callGAS('upsert_task', {
-        task_id     : id || undefined,
-        employee_id : state.employeeId,
-        name        : state.name,
-        title,
-        detail   : document.getElementById('task-form-detail').value.trim(),
-        priority : document.getElementById('task-form-priority').value,
-        status   : document.getElementById('task-form-status').value,
-        due_date : document.getElementById('task-form-due').value,
+      // todosテキストエリアを改行区切りで配列化。既存のdone状態を引き継ぐ。
+      const todosRaw  = document.getElementById('task-form-todos').value;
+      const todoTexts = todosRaw.split('\n').map(s => s.trim().replace(/^[・\-＊\*]?\s*/, '')).filter(Boolean);
+      const existTask = phase2State.tasks.find(t => t.id === id);
+      const existTodos = Array.isArray(existTask?.todos) ? existTask.todos : [];
+      const todos = todoTexts.map(text => {
+        const found = existTodos.find(td => td.text === text);
+        return { text, done: found ? !!found.done : false };
       });
 
+      const clientEl = document.getElementById('task-form-client');
+
+      showLoading('保存中...');
+      const result = await callGAS('upsert_task', {
+        task_id        : id || undefined,
+        employee_id    : state.employeeId,
+        name           : state.name,
+        title,
+        subtitle       : document.getElementById('task-form-subtitle').value.trim(),
+        overview       : document.getElementById('task-form-overview').value.trim(),
+        current_status : document.getElementById('task-form-current').value.trim(),
+        notes          : document.getElementById('task-form-notes').value.trim(),
+        priority       : document.getElementById('task-form-priority').value,
+        status         : document.getElementById('task-form-status').value,
+        due_date       : document.getElementById('task-form-due').value,
+        client         : clientEl ? clientEl.value.trim() : '',
+        todos,
+        // logsとplansは編集フォームでは変更しない（カードから直接追加）
+        logs  : existTask?.logs  || [],
+        plans : existTask?.plans || [],
+      });
       hideLoading();
 
-      if (!result.success) {
-        showError(result.error_message, result.error_detail);
-        return;
-      }
-
+      if (!result.success) { showError(result.error_message, result.error_detail); return; }
       showToast('タスクを保存しました。', 'success');
       closeTaskForm();
       await loadTasks();
     }
 
-    /**
-     * タスクを削除する（完了タスクのみ）。
-     *
-     * @param {string} taskId
-     */
+    /** タスクを削除する（完了タスクのみ）。 */
     async function deleteTask(taskId) {
       const ok = await confirm('このタスクを削除しますか？');
       if (!ok) return;
-
       showLoading('削除中...');
-
-      const result = await callGAS('delete_task', {
-        task_id     : taskId,
-        employee_id : state.employeeId,
-      });
-
+      const result = await callGAS('delete_task', { task_id: taskId, employee_id: state.employeeId });
       hideLoading();
-
-      if (!result.success) {
-        showError(result.error_message, result.error_detail);
-        return;
-      }
-
+      if (!result.success) { showError(result.error_message, result.error_detail); return; }
       showToast('タスクを削除しました。', 'success');
       await loadTasks();
     }
 
-    // ============================================================
-    // Phase 2: 納期管理
-    // ============================================================
-
     /**
-     * 本人の納期一覧を取得してキャッシュし、描画する。
+     * タスクの特定フィールドだけをGASに部分更新して再描画する。
+     * logs/plans/todosの追加・編集・削除すべてがここを通る。
+     *
+     * @param {string} taskId
+     * @param {Object} patch - 更新するフィールドだけのオブジェクト
      */
-    async function loadDeadlines() {
-      const result = await callGAS('get_deadlines', { employee_id: state.employeeId, all: false });
+    async function patchTask(taskId, patch) {
+      const task = phase2State.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      const merged = { ...task, ...patch };
+      const result = await callGAS('upsert_task', {
+        task_id        : taskId,
+        employee_id    : state.employeeId,
+        name           : state.name,
+        title          : merged.title,
+        subtitle       : merged.subtitle       || '',
+        overview       : merged.overview       || '',
+        current_status : merged.current_status || '',
+        notes          : merged.notes          || '',
+        priority       : merged.priority       || '中',
+        status         : merged.status         || '未着手',
+        due_date       : merged.due_date       || '',
+        client         : merged.client         || '',
+        todos          : merged.todos          || [],
+        logs           : merged.logs           || [],
+        plans          : merged.plans          || [],
+      });
+      if (!result.success) { showError(result.error_message, result.error_detail); return; }
+      // キャッシュをその場で更新して再描画（GAS通信を省く）
+      const idx = phase2State.tasks.findIndex(t => t.id === taskId);
+      if (idx >= 0) phase2State.tasks[idx] = merged;
+      renderTaskList();
+      // 編集していたカードを再展開する
+      setTimeout(() => {
+        const body = document.getElementById(`task-body-${taskId}`);
+        const toggle = document.getElementById(`task-toggle-${taskId}`);
+        if (body && !body.classList.contains('open')) {
+          body.classList.add('open');
+          if (toggle) toggle.classList.add('open');
+        }
+      }, 0);
+    }
 
-      if (!result.success) {
-        showToast('納期データの取得に失敗しました。', 'error');
-        return;
-      }
+    /** 作業ログを追加する */
+    function addTaskLog(e, taskId) {
+      e.stopPropagation();
+      const date = document.getElementById(`log-date-${taskId}`).value;
+      const text = document.getElementById(`log-text-${taskId}`).value.trim();
+      if (!text) { showToast('内容を入力してください。', 'warning'); return; }
+      const task   = phase2State.tasks.find(t => t.id === taskId);
+      const logs   = [...(task?.logs || []), { date, text }];
+      // 日付降順に並び替え
+      logs.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      patchTask(taskId, { logs });
+    }
 
-      phase2State.deadlines = result.data.deadlines || [];
-      renderDeadlineList();
+    /** 作業ログを編集する */
+    function editTaskLog(e, taskId, index) {
+      e.stopPropagation();
+      const task = phase2State.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      const item = task.logs[index];
+      if (!item) return;
+      const newText = window.prompt('作業内容を編集', item.text);
+      if (newText === null) return;
+      const newDate = window.prompt('日付を編集（YYYY-MM-DD）', item.date);
+      if (newDate === null) return;
+      const logs = task.logs.map((l, i) => i === index ? { date: newDate, text: newText } : l);
+      patchTask(taskId, { logs });
+    }
+
+    /** 作業ログを削除する */
+    function deleteTaskLog(e, taskId, index) {
+      e.stopPropagation();
+      const task = phase2State.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      const logs = task.logs.filter((_, i) => i !== index);
+      patchTask(taskId, { logs });
+    }
+
+    /** 予定を追加する */
+    function addTaskPlan(e, taskId) {
+      e.stopPropagation();
+      const date = document.getElementById(`plan-date-${taskId}`).value;
+      const text = document.getElementById(`plan-text-${taskId}`).value.trim();
+      if (!text) { showToast('内容を入力してください。', 'warning'); return; }
+      const task  = phase2State.tasks.find(t => t.id === taskId);
+      const plans = [...(task?.plans || []), { date, text }];
+      plans.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      patchTask(taskId, { plans });
+    }
+
+    /** 予定を編集する */
+    function editTaskPlan(e, taskId, index) {
+      e.stopPropagation();
+      const task = phase2State.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      const item = task.plans[index];
+      if (!item) return;
+      const newText = window.prompt('予定内容を編集', item.text);
+      if (newText === null) return;
+      const newDate = window.prompt('日付を編集（YYYY-MM-DD）', item.date);
+      if (newDate === null) return;
+      const plans = task.plans.map((p, i) => i === index ? { date: newDate, text: newText } : p);
+      patchTask(taskId, { plans });
+    }
+
+    /** 予定を削除する */
+    function deleteTaskPlan(e, taskId, index) {
+      e.stopPropagation();
+      const task = phase2State.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      const plans = task.plans.filter((_, i) => i !== index);
+      patchTask(taskId, { plans });
+    }
+
+    /** 残りやることにアイテムを追加する */
+    function addTaskTodo(e, taskId) {
+      e.stopPropagation();
+      const input = document.getElementById(`todo-input-${taskId}`);
+      const text  = input.value.trim();
+      if (!text) { showToast('内容を入力してください。', 'warning'); return; }
+      const task  = phase2State.tasks.find(t => t.id === taskId);
+      const todos = [...(task?.todos || []), { text, done: false }];
+      patchTask(taskId, { todos });
+    }
+
+    /** 残りやることのチェックを切り替える */
+    function toggleTaskTodo(e, taskId, index) {
+      e.stopPropagation();
+      const task  = phase2State.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      const todos = task.todos.map((td, i) => i === index ? { ...td, done: !td.done } : td);
+      patchTask(taskId, { todos });
+    }
+
+    /** 残りやることを削除する */
+    function deleteTaskTodo(e, taskId, index) {
+      e.stopPropagation();
+      const task  = phase2State.tasks.find(t => t.id === taskId);
+      if (!task) return;
+      const todos = task.todos.filter((_, i) => i !== index);
+      patchTask(taskId, { todos });
+    }
+
+    // ============================================================
+    // 納期管理（フェーズ対応・カレンダー/一覧切り替え）
+    // ============================================================
+
+    /** 納期ビューのモード: 'list' | 'calendar' */
+    const deadlineViewState = {
+      mode     : 'list',
+      calYear  : new Date().getFullYear(),
+      calMonth : new Date().getMonth() + 1,
+    };
+
+    /** 納期カレンダーのタイトルを現在の年月に更新する */
+    function updateDeadlineCalTitle() {
+      const el = document.getElementById('deadline-cal-title');
+      if (el) el.textContent = `${deadlineViewState.calYear}年${deadlineViewState.calMonth}月`;
     }
 
     /**
-     * 納期一覧をソート選択に従って描画する。
+     * 2つの 'YYYY-MM-DD' 文字列の日数差を返す（to - from）。
+     */
+    function daysDiff(from, to) {
+      return Math.round((new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24));
+    }
+
+    /** 本人の納期一覧を取得してキャッシュし、現在のビューで描画する */
+    async function loadDeadlines() {
+      const result = await callGAS('get_deadlines', { employee_id: state.employeeId, all: false });
+      if (!result.success) { showToast('納期データの取得に失敗しました。', 'error'); return; }
+      phase2State.deadlines = result.data.deadlines || [];
+      renderDeadlineView();
+    }
+
+    /**
+     * 現在のモード（一覧 or カレンダー）に応じて描画を切り替える。
+     * タブ内のビュー切り替えボタン（btn-deadline-view-toggle）から呼ぶ。
+     */
+    function renderDeadlineView() {
+      if (deadlineViewState.mode === 'calendar') {
+        renderDeadlineCalendar();
+      } else {
+        renderDeadlineList();
+      }
+    }
+
+    /** 一覧/カレンダーを切り替える */
+    function switchDeadlineView(mode) {
+      deadlineViewState.mode = mode;
+      // ボタンのactive状態を更新する
+      document.getElementById('btn-deadline-view-list').classList.toggle('active', mode === 'list');
+      document.getElementById('btn-deadline-view-cal').classList.toggle('active', mode === 'calendar');
+      // カレンダーナビの表示切り替え
+      const calNav = document.getElementById('deadline-cal-nav');
+      if (calNav) calNav.style.display = mode === 'calendar' ? '' : 'none';
+      renderDeadlineView();
+    }
+
+    /**
+     * 納期一覧を描画する（フェーズテーブル付き展開カード）。
      *
-     * 納品日まで3日以内の案件を赤くハイライトする（仕様書要件）。
+     * フェーズステータス: 未着手/進行中/先方確認中/修正中/納品済/（自由記述補足欄あり）
      */
     function renderDeadlineList() {
       const el      = document.getElementById('deadline-list');
       const sortKey = document.getElementById('deadline-sort').value;
-      const items   = [...phase2State.deadlines];
+      const filter  = document.getElementById('deadline-filter-type')?.value || 'all';
+      let   items   = [...phase2State.deadlines];
       const today   = todayString();
 
-      // ソート: 納品日順 または 進捗順（昇順で未完成が上）
+      if (filter !== 'all') items = items.filter(d => d.type === filter);
+
+      // 「次の期日」= フェーズの中で最も近い未完了の予定日
+      function nextDate(d) {
+        const phases = Array.isArray(d.phases) ? d.phases : [];
+        const upcoming = phases
+          .filter(p => !p.done && p.planned_date)
+          .map(p => p.planned_date)
+          .sort();
+        return upcoming[0] || d.due_date || '';
+      }
+
       items.sort((a, b) => {
-        if (sortKey === 'progress') return a.progress - b.progress;
-        if (!a.due_date && !b.due_date) return 0;
-        if (!a.due_date) return 1;
-        if (!b.due_date) return -1;
-        return a.due_date.localeCompare(b.due_date);
+        if (sortKey === 'title') return (a.title || '').localeCompare(b.title || '', 'ja');
+        if (sortKey === 'type')  return (a.type  || '').localeCompare(b.type  || '');
+        const na = nextDate(a), nb = nextDate(b);
+        if (!na && !nb) return 0; if (!na) return 1; if (!nb) return -1;
+        return na.localeCompare(nb);
       });
 
       if (items.length === 0) {
@@ -3151,67 +4007,317 @@ p:last-child { margin-bottom: 0; }
         return;
       }
 
+      const phaseStatusList = ['未着手', '進行中', '先方確認中', '修正中', '納品済'];
+      const phaseStatusColor = {
+        '未着手': 'GrayText', '進行中': '#b45309', '先方確認中': '#1d4ed8',
+        '修正中': '#c0392b', '納品済': '#1a7f37',
+      };
+
       el.innerHTML = items.map(d => {
-        // 納品日まで3日以内かを判定してアラートクラスを付与する
-        const daysLeft  = d.due_date ? daysDiff(today, d.due_date) : null;
-        const alertCls  = daysLeft !== null && daysLeft <= 3 && d.progress < 100 ? 'deadline-alert' : '';
+        const phases  = Array.isArray(d.phases) ? d.phases : [];
+        const nd      = nextDate(d);
+        const daysLeft = nd ? daysDiff(today, nd) : null;
+        const alertCls = daysLeft !== null && daysLeft <= 3 && !phases.every(p => p.done)
+          ? 'deadline-alert' : '';
+
         const daysLabel = daysLeft !== null
-          ? (daysLeft < 0 ? `<span style="color:#c0392b;font-weight:700">期限超過 ${Math.abs(daysLeft)}日</span>`
-            : daysLeft === 0 ? '<span style="color:#c0392b;font-weight:700">本日納期</span>'
-            : daysLeft <= 3 ? `<span style="color:#c0392b;font-weight:700">残${daysLeft}日</span>`
-            : `残${daysLeft}日`)
+          ? (daysLeft < 0  ? `<span style="color:#c0392b;font-weight:700">期限超過${Math.abs(daysLeft)}日</span>`
+           : daysLeft === 0 ? `<span style="color:#c0392b;font-weight:700">本日期日</span>`
+           : daysLeft <= 3  ? `<span style="color:#c0392b;font-weight:700">残${daysLeft}日</span>`
+           : `<span style="color:GrayText;font-size:0.78rem">残${daysLeft}日</span>`)
           : '';
 
+        // フェーズテーブル
+        const phasesHtml = phases.length ? `
+          <table class="phase-table">
+            <thead><tr>
+              <th>フェーズ</th><th>予定日</th><th>完了日</th><th>ステータス</th><th>補足</th><th></th>
+            </tr></thead>
+            <tbody>${phases.map((p, pi) => `
+              <tr class="${p.done ? 'phase-done-row' : ''}">
+                <td style="${p.done ? 'color:GrayText;text-decoration:line-through' : 'font-weight:600'}">${escHtml(p.name || '')}</td>
+                <td style="font-size:0.78rem">${escHtml(p.planned_date || '―')}</td>
+                <td style="font-size:0.78rem">${escHtml(p.done_date || '―')}</td>
+                <td>
+                  <select class="sumioka-input" style="font-size:0.75rem;padding:0.15em 0.3em;width:auto"
+                    onchange="updatePhaseStatus(event,'${escHtml(d.id)}',${pi},this.value)">
+                    ${phaseStatusList.map(s =>
+                      `<option value="${s}" ${p.status === s ? 'selected' : ''}>${s}</option>`
+                    ).join('')}
+                  </select>
+                </td>
+                <td style="font-size:0.78rem;color:GrayText;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                  title="${escHtml(p.note || '')}">${escHtml(p.note || '')}</td>
+                <td>
+                  <button class="phase-complete-btn ${p.done ? 'done' : ''}"
+                    onclick="togglePhaseDone(event,'${escHtml(d.id)}',${pi})">
+                    ${p.done ? '完了済' : '完了'}
+                  </button>
+                </td>
+              </tr>`).join('')}
+            </tbody>
+          </table>` : '<div style="color:GrayText;font-size:0.8rem;margin-top:0.5rem">フェーズがありません</div>';
+
+        const typeBadgeCls = d.type === '継続' ? 'deadline-type-continue' : 'deadline-type-single';
+
         return `
-          <div class="ph2-card ${alertCls}">
-            <div class="ph2-card-header">
-              <span class="ph2-card-title">${escHtml(d.title)}</span>
+          <div class="deadline-card ${alertCls}" id="dl-card-${escHtml(d.id)}">
+            <div class="deadline-card-header" onclick="toggleDeadlineCard('${escHtml(d.id)}')">
+              <span class="task-card-toggle" id="dl-toggle-${escHtml(d.id)}">▶</span>
+              <div class="task-card-title-area">
+                <div class="task-card-main-title">${escHtml(d.title)}</div>
+                ${d.client ? `<div class="task-card-sub-title">顧客: ${escHtml(d.client)}</div>` : ''}
+              </div>
+              <span class="deadline-type-badge ${typeBadgeCls}">${escHtml(d.type || '単発')}</span>
               ${daysLabel}
             </div>
-            <div class="ph2-card-meta">
-              <span>納品日: ${escHtml(d.due_date || '未設定')}</span>
-              <span>進捗: ${d.progress}%</span>
-              ${d.memo ? `<span>${escHtml(d.memo)}</span>` : ''}
+            <div class="deadline-card-body" id="dl-body-${escHtml(d.id)}">
+              ${d.memo ? `<div style="font-size:0.82rem;color:GrayText;margin-top:0.65rem">${escHtml(d.memo)}</div>` : ''}
+              ${phasesHtml}
+              <div class="ph2-card-actions" style="margin-top:0.85rem">
+                <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
+                  onclick="openDeadlineForm(${escJson(d)})">編集</button>
+                <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em;color:#c0392b;border-color:#c0392b"
+                  onclick="deleteDeadline('${escHtml(d.id)}')">削除</button>
+              </div>
             </div>
-            <div class="progress-bar-wrap">
-              <div class="progress-bar-fill" style="width:${d.progress}%"></div>
-            </div>
-            <div class="ph2-card-actions">
-              <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
-                onclick="openDeadlineForm(${escJson(d)})">編集</button>
-            </div>
-          </div>
-        `;
+          </div>`;
       }).join('');
     }
 
-    /**
-     * 2つの 'YYYY-MM-DD' 文字列の日数差を返す（to - from）。
-     *
-     * @param {string} from
-     * @param {string} to
-     * @returns {number}
-     */
-    function daysDiff(from, to) {
-      const f = new Date(from);
-      const t = new Date(to);
-      return Math.round((t - f) / (1000 * 60 * 60 * 24));
+    /** 納期カードを展開/折りたたみする */
+    function toggleDeadlineCard(id) {
+      const body   = document.getElementById(`dl-body-${id}`);
+      const toggle = document.getElementById(`dl-toggle-${id}`);
+      if (!body) return;
+      const isOpen = body.classList.toggle('open');
+      if (toggle) toggle.classList.toggle('open', isOpen);
     }
 
     /**
-     * 案件フォームを開く。
-     *
-     * @param {Object|null} deadline - null のとき新規追加モード
+     * フェーズのステータスを変更する。
+     * selectのchangeイベントから直接呼ばれる。
      */
+    function updatePhaseStatus(e, deadlineId, phaseIndex, newStatus) {
+      e.stopPropagation();
+      const dl = phase2State.deadlines.find(d => d.id === deadlineId);
+      if (!dl) return;
+      const phases = dl.phases.map((p, i) =>
+        i === phaseIndex ? { ...p, status: newStatus } : p
+      );
+      patchDeadline(deadlineId, { phases });
+    }
+
+    /**
+     * フェーズの完了/未完了をトグルする。完了時は今日の日付を done_date にセットする。
+     */
+    function togglePhaseDone(e, deadlineId, phaseIndex) {
+      e.stopPropagation();
+      const dl = phase2State.deadlines.find(d => d.id === deadlineId);
+      if (!dl) return;
+      const phases = dl.phases.map((p, i) => {
+        if (i !== phaseIndex) return p;
+        const isDone = !p.done;
+        return { ...p, done: isDone, done_date: isDone ? todayString() : '', status: isDone ? '納品済' : p.status };
+      });
+      patchDeadline(deadlineId, { phases });
+    }
+
+    /**
+     * 納期の特定フィールドだけをGASに部分更新して再描画する。
+     */
+    async function patchDeadline(deadlineId, patch) {
+      const dl     = phase2State.deadlines.find(d => d.id === deadlineId);
+      if (!dl) return;
+      const merged = { ...dl, ...patch };
+      const result = await callGAS('upsert_deadline', {
+        deadline_id  : deadlineId,
+        employee_id  : state.employeeId,
+        name         : state.name,
+        title        : merged.title,
+        client       : merged.client  || '',
+        type         : merged.type    || '単発',
+        recur_mode   : merged.recur_mode || 'manual',
+        phases       : merged.phases  || [],
+        memo         : merged.memo    || '',
+        progress     : merged.progress ?? 0,
+      });
+      if (!result.success) { showError(result.error_message, result.error_detail); return; }
+      const idx = phase2State.deadlines.findIndex(d => d.id === deadlineId);
+      if (idx >= 0) phase2State.deadlines[idx] = merged;
+      renderDeadlineView();
+      // 展開状態を維持する
+      setTimeout(() => {
+        const body   = document.getElementById(`dl-body-${deadlineId}`);
+        const toggle = document.getElementById(`dl-toggle-${deadlineId}`);
+        if (body && !body.classList.contains('open')) {
+          body.classList.add('open');
+          if (toggle) toggle.classList.add('open');
+        }
+      }, 0);
+    }
+
+    /**
+     * 納期カレンダーを描画する。
+     * 本人の案件フェーズごとの予定日を表示する（全フェーズ）。
+     * Admin側・全員表示は納品日のみ（admin.html側で実装）。
+     */
+    function renderDeadlineCalendar() {
+      const el       = document.getElementById('deadline-list');
+      const year     = deadlineViewState.calYear;
+      const month    = deadlineViewState.calMonth;
+      const today    = todayString();
+      const firstDay = new Date(year, month - 1, 1).getDay();
+      const lastDate = new Date(year, month, 0).getDate();
+
+      // フェーズの予定日をカレンダー用マップに変換する
+      // key: 'YYYY-MM-DD', value: [{title, phaseName, client, done}]
+      const eventMap = {};
+      phase2State.deadlines.forEach(d => {
+        const phases = Array.isArray(d.phases) ? d.phases : [];
+        phases.forEach(p => {
+          if (!p.planned_date) return;
+          if (!eventMap[p.planned_date]) eventMap[p.planned_date] = [];
+          eventMap[p.planned_date].push({
+            title     : d.title,
+            phaseName : p.name,
+            client    : d.client || '',
+            done      : !!p.done,
+            status    : p.status || '未着手',
+          });
+        });
+      });
+
+      const phaseStatusColor = {
+        '未着手': '#6b7280', '進行中': '#b45309', '先方確認中': '#1d4ed8',
+        '修正中': '#c0392b', '納品済': '#1a7f37',
+      };
+
+      let html = `
+        <table class="calendar-grid" style="margin-bottom:0.75rem">
+          <thead><tr>
+            <th>日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th>
+          </tr></thead>
+          <tbody>`;
+
+      let dayCount = 1;
+      const totalCells = Math.ceil((firstDay + lastDate) / 7) * 7;
+
+      for (let i = 0; i < totalCells; i += 7) {
+        html += '<tr>';
+        for (let j = 0; j < 7; j++) {
+          const cell = i + j;
+          if (cell < firstDay || dayCount > lastDate) { html += '<td></td>'; continue; }
+
+          const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(dayCount).padStart(2,'0')}`;
+          const isToday = dateStr === today;
+          const evs     = eventMap[dateStr] || [];
+
+          const dayNumHtml = isToday
+            ? `<span class="calendar-day-num today">${dayCount}</span>`
+            : `<span class="calendar-day-num">${dayCount}</span>`;
+
+          const evsHtml = evs.slice(0, 3).map(ev => {
+            const color = phaseStatusColor[ev.status] || '#6b7280';
+            const label = (ev.title.split(/[\s\u3000]/)[0]) + (ev.phaseName ? `・${ev.phaseName}` : '');
+            return `<div class="calendar-event"
+              style="background:${ev.done ? '#f3f4f6' : '#dbeafe'};
+                color:${ev.done ? 'GrayText' : color};
+                text-decoration:${ev.done ? 'line-through' : 'none'}"
+              title="${escHtml(ev.title)}（${escHtml(ev.phaseName)}）${ev.client ? ' - ' + ev.client : ''}"
+              >${escHtml(label)}</div>`;
+          }).join('');
+
+          const moreHtml = evs.length > 3
+            ? `<div style="font-size:0.62rem;color:GrayText">他${evs.length - 3}件</div>`
+            : '';
+
+          html += `<td>${dayNumHtml}${evsHtml}${moreHtml}</td>`;
+          dayCount++;
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+
+      // 凡例
+      html += `<div style="display:flex;flex-wrap:wrap;gap:0.35rem;font-size:0.7rem;margin-bottom:1rem">
+        ${Object.entries(phaseStatusColor).map(([s, c]) =>
+          `<span style="background:#dbeafe;color:${c};padding:0.1em 0.4em;border-radius:3px">${s}</span>`
+        ).join('')}
+        <span style="background:#f3f4f6;color:GrayText;padding:0.1em 0.4em;border-radius:3px">完了済</span>
+      </div>`;
+
+      el.innerHTML = html;
+    }
+
+    /** フォームのフェーズ欄にプリセット名を追加する */
+    function addPhasePreset(name) {
+      addPhaseRow(name);
+    }
+
+    /** フォームのフェーズ欄に1行追加する */
+    function addPhaseRow(name = '') {
+      const wrap     = document.getElementById('deadline-phases-wrap');
+      const phaseIdx = wrap.children.length;
+      const div      = document.createElement('div');
+      div.style.cssText = 'display:flex;gap:0.4rem;margin-bottom:0.4rem;flex-wrap:wrap;align-items:center';
+      div.innerHTML = `
+        <input class="sumioka-input phase-name-input" type="text" placeholder="フェーズ名"
+          value="${escHtml(name)}" style="flex:1;min-width:80px;font-size:0.82rem;padding:0.3em 0.5em">
+        <input class="sumioka-input phase-date-input" type="date"
+          style="width:140px;font-size:0.82rem;padding:0.3em 0.5em">
+        <input class="sumioka-input phase-note-input" type="text" placeholder="補足"
+          style="flex:1;min-width:60px;font-size:0.82rem;padding:0.3em 0.5em">
+        <button type="button" style="font-size:0.72rem;background:none;border:1px solid #c0392b;
+          color:#c0392b;border-radius:3px;padding:0.15em 0.45em;cursor:pointer"
+          onclick="this.parentElement.remove()">削除</button>
+      `;
+      wrap.appendChild(div);
+    }
+
+    /** 案件フォームを開く（新規 or 編集） */
     function openDeadlineForm(deadline) {
       const isNew = !deadline || !deadline.id;
-
       document.getElementById('deadline-form-title').textContent      = isNew ? '案件を追加' : '案件を編集';
       document.getElementById('deadline-form-id').value               = isNew ? '' : deadline.id;
       document.getElementById('deadline-form-title-input').value      = isNew ? '' : (deadline.title || '');
-      document.getElementById('deadline-form-due').value              = isNew ? '' : (deadline.due_date || '');
+      document.getElementById('deadline-form-memo').value             = isNew ? '' : (deadline.memo  || '');
       document.getElementById('deadline-form-progress').value         = isNew ? '0' : (deadline.progress ?? 0);
-      document.getElementById('deadline-form-memo').value             = isNew ? '' : (deadline.memo || '');
+
+      // 顧客名
+      const clientEl = document.getElementById('deadline-form-client');
+      if (clientEl) clientEl.value = isNew ? '' : (deadline.client || '');
+
+      // 種別
+      const typeEl = document.getElementById('deadline-form-type');
+      if (typeEl) typeEl.value = isNew ? '単発' : (deadline.type || '単発');
+      const recurWrap = document.getElementById('deadline-form-recur-wrap');
+      if (recurWrap) recurWrap.style.display = (typeEl?.value === '継続') ? '' : 'none';
+
+      const recurEl = document.getElementById('deadline-form-recur-mode');
+      if (recurEl) recurEl.value = isNew ? 'manual' : (deadline.recur_mode || 'manual');
+
+      // フェーズ欄を再構築する
+      const wrap = document.getElementById('deadline-phases-wrap');
+      wrap.innerHTML = '';
+      const phases = isNew ? [] : (Array.isArray(deadline.phases) ? deadline.phases : []);
+      phases.forEach(p => {
+        const div = document.createElement('div');
+        div.style.cssText = 'display:flex;gap:0.4rem;margin-bottom:0.4rem;flex-wrap:wrap;align-items:center';
+        div.innerHTML = `
+          <input class="sumioka-input phase-name-input" type="text" placeholder="フェーズ名"
+            value="${escHtml(p.name || '')}" style="flex:1;min-width:80px;font-size:0.82rem;padding:0.3em 0.5em">
+          <input class="sumioka-input phase-date-input" type="date"
+            value="${escHtml(p.planned_date || '')}"
+            style="width:140px;font-size:0.82rem;padding:0.3em 0.5em">
+          <input class="sumioka-input phase-note-input" type="text" placeholder="補足"
+            value="${escHtml(p.note || '')}" style="flex:1;min-width:60px;font-size:0.82rem;padding:0.3em 0.5em">
+          <button type="button" style="font-size:0.72rem;background:none;border:1px solid #c0392b;
+            color:#c0392b;border-radius:3px;padding:0.15em 0.45em;cursor:pointer"
+            onclick="this.parentElement.remove()">削除</button>
+        `;
+        wrap.appendChild(div);
+      });
 
       document.getElementById('deadline-form-wrap').style.display = '';
       document.getElementById('deadline-form-wrap').scrollIntoView({ behavior: 'smooth' });
@@ -3222,38 +4328,69 @@ p:last-child { margin-bottom: 0; }
       document.getElementById('deadline-form-wrap').style.display = 'none';
     }
 
-    /**
-     * 案件を保存（新規追加 or 更新）する。
-     */
+    /** 案件を保存（新規 or 更新）する */
     async function saveDeadline() {
-      const id       = document.getElementById('deadline-form-id').value;
-      const title    = document.getElementById('deadline-form-title-input').value.trim();
-      const due_date = document.getElementById('deadline-form-due').value;
+      const id    = document.getElementById('deadline-form-id').value;
+      const title = document.getElementById('deadline-form-title-input').value.trim();
+      if (!title) { showToast('案件名は必須です。', 'warning'); return; }
 
-      if (!title)    { showToast('案件名は必須です。', 'warning'); return; }
-      if (!due_date) { showToast('納品日は必須です。', 'warning'); return; }
+      // フェーズ欄からデータを収集する
+      const wrap   = document.getElementById('deadline-phases-wrap');
+      const rows   = Array.from(wrap.children);
+      // 既存の案件があれば done/done_date/status を引き継ぐ（フォームには表示しないため）
+      const existDL = phase2State.deadlines.find(d => d.id === id);
+      const existPhases = Array.isArray(existDL?.phases) ? existDL.phases : [];
+
+      const phases = rows.map((row, ri) => {
+        const nameEl = row.querySelector('.phase-name-input');
+        const dateEl = row.querySelector('.phase-date-input');
+        const noteEl = row.querySelector('.phase-note-input');
+        const name   = nameEl?.value.trim() || '';
+        const exist  = existPhases[ri];
+        return {
+          name,
+          planned_date : dateEl?.value || '',
+          note         : noteEl?.value.trim() || '',
+          done         : exist?.done      || false,
+          done_date    : exist?.done_date || '',
+          status       : exist?.status   || '未着手',
+        };
+      }).filter(p => p.name);
+
+      const typeEl   = document.getElementById('deadline-form-type');
+      const recurEl  = document.getElementById('deadline-form-recur-mode');
+      const clientEl = document.getElementById('deadline-form-client');
 
       showLoading('保存中...');
-
       const result = await callGAS('upsert_deadline', {
-        deadline_id : id || undefined,
-        employee_id : state.employeeId,
-        name        : state.name,
+        deadline_id  : id || undefined,
+        employee_id  : state.employeeId,
+        name         : state.name,
         title,
-        due_date,
-        progress : Number(document.getElementById('deadline-form-progress').value) || 0,
-        memo     : document.getElementById('deadline-form-memo').value.trim(),
+        client       : clientEl?.value.trim() || '',
+        type         : typeEl?.value  || '単発',
+        recur_mode   : recurEl?.value || 'manual',
+        phases,
+        memo         : document.getElementById('deadline-form-memo').value.trim(),
+        progress     : Number(document.getElementById('deadline-form-progress').value) || 0,
       });
-
       hideLoading();
 
-      if (!result.success) {
-        showError(result.error_message, result.error_detail);
-        return;
-      }
-
+      if (!result.success) { showError(result.error_message, result.error_detail); return; }
       showToast('案件を保存しました。', 'success');
       closeDeadlineForm();
+      await loadDeadlines();
+    }
+
+    /** 案件を削除する */
+    async function deleteDeadline(deadlineId) {
+      const ok = await confirm('この案件を削除しますか？');
+      if (!ok) return;
+      showLoading('削除中...');
+      const result = await callGAS('delete_deadline', { deadline_id: deadlineId, employee_id: state.employeeId });
+      hideLoading();
+      if (!result.success) { showError(result.error_message, result.error_detail); return; }
+      showToast('案件を削除しました。', 'success');
       await loadDeadlines();
     }
 
