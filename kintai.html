@@ -3189,7 +3189,9 @@ p:last-child { margin-bottom: 0; }
       if (state.checkedOut) {
         stamped.classList.remove('sumioka-hidden');
         form.classList.add('sumioka-hidden');
-        document.getElementById('display-checkout-time').textContent = state.checkoutTime;
+        // time_out も ISO 文字列になる場合があるため formatTimeDisplay で正規化する
+        document.getElementById('display-checkout-time').textContent =
+          formatTimeDisplay(state.checkoutTime);
       } else {
         stamped.classList.add('sumioka-hidden');
         form.classList.remove('sumioka-hidden');
