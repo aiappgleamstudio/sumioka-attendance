@@ -2530,6 +2530,13 @@
     function renderDashAttendance(records) {
       const tbody = document.getElementById('dash-attendance-body');
 
+      // tbody が取得できない場合は描画をスキップしてログだけ残す。
+      // DOMがまだ構築されていないタイミングで呼ばれた場合の防御。
+      if (!tbody) {
+        console.warn('[renderDashAttendance] #dash-attendance-body が見つかりません。描画をスキップします。');
+        return;
+      }
+
       if (records.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-state">本日の打刻データがありません</td></tr>';
         return;
@@ -4032,16 +4039,15 @@
     headで読むとDOMより先に実行され setGasUrl 等が未定義になるため。
   -->
   <script src="common/api.js"></script>
-  <script src="common/ui.js"></script>
-  <script src="common/storage.js"></script>
   <!-- Phase 2: 補填消化グラフ描画に使用。cdnjs 経由で読み込む。
-       既存の CSS と競合しないよう canvas 要素で描画するため干渉なし。 -->
+       SRI (integrity) は誤ったハッシュ値でブロックされるため削除。
+       cdnjs.cloudflare.com は信頼できる CDN のため integrity なしで運用する。 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"
-    integrity="sha512-ZwR1/gSZM3ai6vCdI+LVF1zSq/5HznD3oD+sCoJrzXJ+yKNtkEOKLZPd8d7/C05EAxit0h0B5bER6Ds9+B5w=="
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- バージョン番号は sumioka-uploader の v1.2.4 プレースホルダーで自動埋め込みされる -->
+  <!-- Uploader がアップロード時に v1.2.4 をバージョン入力欄の値で置換する。
+       ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
   <div class="version-badge" id="app-version">v1.2.4</div>
 
 </body>
