@@ -483,6 +483,21 @@ p:last-child { margin-bottom: 0; }
   word-break: break-all;
 }
 
+/* エラー詳細を <details> なしで常時表示する（トースト改善）。
+   .sumioka-error-detail は旧クラス名で残すが、
+   新しい常時表示には .sumioka-error-detail-text を使う。 */
+.sumioka-error-detail-text {
+  font-size: 0.8rem;
+  color: #c0392b;
+  background: #fff5f5;
+  border-left: 3px solid #c0392b;
+  padding: 0.4rem 0.65rem;
+  border-radius: 0 4px 4px 0;
+  margin-bottom: 1rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
 .sumioka-error-actions {
   display: flex;
   gap: 0.5rem;
@@ -1354,7 +1369,9 @@ p:last-child { margin-bottom: 0; }
 (function (global) {
   'use strict';
 
-  const DEFAULT_TIMEOUT_SEC = 10;
+  // GAS はコールドスタート時に 15〜20 秒かかることがある。
+  // 10秒では頻繁にタイムアウトするため 30 秒に延長する。
+  const DEFAULT_TIMEOUT_SEC = 30;
   const APP_ID = 'attendance';
 
   let _gasUrl = '';
@@ -1550,8 +1567,10 @@ p:last-child { margin-bottom: 0; }
     const ov  = document.createElement('div');
     ov.className = 'sumioka-error-overlay';
 
+    // エラー詳細は <details> で隠さず常時表示する。
+    // 理由: 詳細タブを開かないとエラー原因が分からないという UX 問題を解消するため。
     const detailHtml = errorDetail
-      ? `<details class="sumioka-error-detail"><summary>詳細</summary><pre>${_escapeHtml(errorDetail)}</pre></details>`
+      ? `<p class="sumioka-error-detail-text">${_escapeHtml(errorDetail)}</p>`
       : '';
 
     const retryHtml = onRetry
@@ -1886,6 +1905,7 @@ p:last-child { margin-bottom: 0; }
       <button class="kintai-tab" data-tab="tasks">タスク</button>
       <button class="kintai-tab" data-tab="deadlines">納期</button>
       <button class="kintai-tab" data-tab="mystatus">出勤状況</button>
+      <button class="kintai-tab" data-tab="howto">使い方</button>
     </nav>
 
     <!-- ============================================================
@@ -2062,42 +2082,39 @@ p:last-child { margin-bottom: 0; }
 
     <!-- ============================================================
          タブ3: 申請
-         カレンダーと分離。補填申請・休み遅刻早退登録・申請履歴を管理する。
+         休み・遅刻・早退・補填・有給をひとつのフォームで申請できる。
+         承認フローは廃止。申請即カレンダー反映。
          ============================================================ -->
     <div class="kintai-tab-panel" id="panel-requests">
 
-      <!-- アクセス権表示 -->
-      <div class="access-badge-row">
-        <span class="access-badge access-badge-self">[自]</span>
-        <span>補填申請は承認フロー（Admin承認が必要）。</span>
-        <span class="access-badge access-badge-admin" style="margin-left:0.5rem">[管]</span>
-        <span>休み/遅刻/早退はAdminが確認できます。</span>
-      </div>
-
-      <!-- ── 休み・遅刻・早退の申請フォーム ── -->
-      <p class="section-title" style="font-size:0.82rem;font-weight:600;color:GrayText;
-        text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.85rem">
-        休み・遅刻・早退の申請
-      </p>
+      <!-- 申請フォーム（1枚のカードに統合） -->
       <div class="request-form-card">
+
+        <!-- ① 種別選択 -->
         <div class="sumioka-form-group">
-          <label class="sumioka-label" for="absence-type">種別</label>
+          <label class="sumioka-label" for="absence-type">申請の種別</label>
           <select class="sumioka-input" id="absence-type">
             <option value="休み">休み</option>
             <option value="遅刻">遅刻</option>
             <option value="早退">早退</option>
           </select>
         </div>
-        <div class="sumioka-form-group">
-          <label class="sumioka-label" for="absence-reason">理由</label>
-          <textarea class="sumioka-textarea" id="absence-reason" rows="2"
-            placeholder="理由を入力してください"></textarea>
-        </div>
+
+        <!-- ② 対象日（全種別共通） -->
         <div class="sumioka-form-group">
           <label class="sumioka-label" for="absence-date">対象日</label>
           <input class="sumioka-input" type="date" id="absence-date">
         </div>
-        <div class="sumioka-form-group" id="absence-time-wrap">
+
+        <!-- ③ 理由（全種別共通） -->
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="absence-reason">理由</label>
+          <textarea class="sumioka-textarea" id="absence-reason" rows="2"
+            placeholder="理由を入力してください（任意）"></textarea>
+        </div>
+
+        <!-- ④ 時刻（遅刻・早退のときのみ表示） -->
+        <div class="sumioka-form-group" id="absence-time-wrap" style="display:none">
           <label class="sumioka-label" for="absence-time">
             時刻
             <span style="font-size:0.75rem;color:GrayText;font-weight:400">
@@ -2106,81 +2123,67 @@ p:last-child { margin-bottom: 0; }
           </label>
           <input class="sumioka-input" type="time" id="absence-time">
         </div>
+
+        <!-- ⑤ 補填・有給選択（全種別で表示） -->
+        <div class="sumioka-form-group" id="compensation-wrap">
+          <label class="sumioka-label">補填・有給消化</label>
+          <div style="display:flex;gap:1rem;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer">
+              <input type="radio" name="compensation-type" value="none" checked id="comp-none">
+              <span>しない</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer">
+              <input type="radio" name="compensation-type" value="fillup" id="comp-fillup">
+              <span>補填する</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer" id="comp-paid-label">
+              <input type="radio" name="compensation-type" value="paid" id="comp-paid">
+              <span>有給消化する</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- ⑥ 残有給日数表示（有給を選んだときのみ表示） -->
+        <div id="paid-leave-info" style="display:none;background:#f0f7ff;border-radius:6px;
+          padding:0.6rem 0.85rem;font-size:0.82rem;color:#1a6bbf;margin-bottom:0.75rem">
+          残有給日数：<strong id="paid-leave-remaining">―</strong> 日
+        </div>
+
+        <!-- ⑦ 補填日時入力（「補填する」を選んだときのみ表示） -->
+        <div id="fillup-wrap" style="display:none">
+          <div class="sumioka-form-group">
+            <label class="sumioka-label">
+              補填する日時
+              <span style="font-size:0.75rem;color:GrayText;font-weight:400">（複数追加可）</span>
+            </label>
+            <div id="fillup-dates-wrap">
+              <!-- 1行目（JS側で生成する buildFillupRow() を参照） -->
+              <div class="fillup-date-row" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;align-items:center">
+                <input class="sumioka-input fillup-date-input" type="date" style="width:145px;font-size:0.85rem">
+                <input class="sumioka-input fillup-time-input" type="time" style="width:115px;font-size:0.85rem">
+                <select class="sumioka-input fillup-duration-input" style="width:110px;font-size:0.85rem">
+                  <option value="">時間数</option>
+                  <option value="0.25">15分</option><option value="0.5">30分</option>
+                  <option value="0.75">45分</option><option value="1">1時間</option>
+                  <option value="1.25">1時間15分</option><option value="1.5">1時間30分</option>
+                  <option value="1.75">1時間45分</option><option value="2">2時間</option>
+                  <option value="2.5">2時間30分</option><option value="3">3時間</option>
+                  <option value="4">4時間</option>
+                </select>
+              </div>
+            </div>
+            <button class="sumioka-btn" id="btn-fillup-add-date"
+              style="font-size:0.78rem;margin-top:0.2rem">＋ 日程を追加</button>
+          </div>
+        </div>
+
         <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
           id="btn-submit-absence">申請を送信</button>
-      </div>
 
-      <!-- ── 補填申請フォーム ── -->
-      <p class="section-title" style="font-size:0.82rem;font-weight:600;color:GrayText;
-        text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.85rem;margin-top:1.5rem">
-        補填申請（承認フロー）
-      </p>
-      <div class="request-form-card">
-        <!-- 種別 -->
-        <div class="sumioka-form-group">
-          <label class="sumioka-label" for="req-type">種別</label>
-          <select class="sumioka-input" id="req-type">
-            <option value="補填予定">補填予定（事前申請）</option>
-            <option value="補填完了">補填完了（事後報告）</option>
-          </select>
-        </div>
-
-        <!-- 理由（種別の直下） -->
-        <div class="sumioka-form-group">
-          <label class="sumioka-label" for="req-reason">理由</label>
-          <textarea class="sumioka-textarea" id="req-reason" rows="2"
-            placeholder="理由を入力してください"></textarea>
-        </div>
-
-        <!-- いつの不足分か -->
-        <div class="sumioka-form-group">
-          <label class="sumioka-label" for="req-date">
-            不足が発生した日
-            <span style="font-size:0.75rem;color:GrayText;font-weight:400">（どの日の不足分か）</span>
-          </label>
-          <input class="sumioka-input" type="date" id="req-date">
-        </div>
-
-        <!-- いつ補填するか：日付＋時間帯＋時間数(15分単位)、複数日追加可 -->
-        <div class="sumioka-form-group">
-          <label class="sumioka-label">
-            補填する日時
-            <span style="font-size:0.75rem;color:GrayText;font-weight:400">（複数追加可）</span>
-          </label>
-          <div id="fillup-dates-wrap">
-            <!-- 1行目（削除ボタンなし） -->
-            <div class="fillup-date-row" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;align-items:center">
-              <input class="sumioka-input fillup-date-input" type="date"
-                style="width:145px;font-size:0.85rem">
-              <input class="sumioka-input fillup-time-input" type="time"
-                style="width:115px;font-size:0.85rem" placeholder="開始時刻">
-              <select class="sumioka-input fillup-duration-input"
-                style="width:110px;font-size:0.85rem">
-                <option value="">時間数</option>
-                <option value="0.25">15分</option>
-                <option value="0.5">30分</option>
-                <option value="0.75">45分</option>
-                <option value="1">1時間</option>
-                <option value="1.25">1時間15分</option>
-                <option value="1.5">1時間30分</option>
-                <option value="1.75">1時間45分</option>
-                <option value="2">2時間</option>
-                <option value="2.5">2時間30分</option>
-                <option value="3">3時間</option>
-                <option value="4">4時間</option>
-              </select>
-            </div>
-          </div>
-          <button class="sumioka-btn" id="btn-fillup-add-date"
-            style="font-size:0.78rem;margin-top:0.2rem">＋ 日程を追加</button>
-        </div>
-
-        <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
-          id="btn-submit-request">補填申請を送信</button>
-      </div>
+      </div><!-- /.request-form-card -->
 
       <!-- 申請履歴 -->
-      <p class="section-title" style="font-size:0.82rem;font-weight:600;color:GrayText;
+      <p style="font-size:0.82rem;font-weight:600;color:GrayText;
         text-transform:uppercase;letter-spacing:0.06em;margin:1.5rem 0 0.85rem">
         申請履歴
       </p>
@@ -2541,10 +2544,100 @@ p:last-child { margin-bottom: 0; }
 
     </div><!-- /#panel-mystatus -->
 
-  </div><!-- /#screen-main -->
+    <!-- ============================================================
+         タブ7: 使い方
+         このアプリの操作手順を説明するヘルプページ。
+         ============================================================ -->
+    <div class="kintai-tab-panel" id="panel-howto">
+      <div style="max-width:560px;margin:0 auto;line-height:1.75;color:#333">
 
-  <!-- バージョン表示（左下固定） -->
-  <div class="version-badge" id="app-version">v1.2.1</div>
+        <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;
+          border-bottom:2px solid #e8ecf0;padding-bottom:0.5rem">
+          ■ はじめに
+        </h2>
+        <p style="margin-bottom:0.75rem">
+          このアプリは、出勤・退勤の記録や勤務状況の確認を行うためのツールです。
+        </p>
+        <p style="margin-bottom:1.5rem">基本の流れはこの3つです：</p>
+        <ol style="padding-left:1.4rem;margin-bottom:1.5rem;font-size:0.92rem">
+          <li style="margin-bottom:0.4rem">来たら「<strong>出勤</strong>」を押す</li>
+          <li style="margin-bottom:0.4rem">帰るときに「<strong>退勤</strong>」を押す</li>
+          <li style="margin-bottom:0.4rem">足りない時間があれば「<strong>申請</strong>」をする</li>
+        </ol>
+
+        <h2 style="font-size:1rem;font-weight:700;margin:1.5rem 0 0.75rem;
+          border-bottom:2px solid #e8ecf0;padding-bottom:0.5rem">
+          ■ 打刻
+        </h2>
+        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 出勤</p>
+        <p style="margin-bottom:0.5rem;font-size:0.9rem">
+          施設に来たらすぐ「出勤」を押してください。お弁当の有無もここで選びます。
+        </p>
+        <p style="margin-bottom:1rem;font-size:0.82rem;color:#c0392b">
+          ※ 押し忘れると勤務時間が記録されません
+        </p>
+        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 退勤</p>
+        <p style="margin-bottom:0.5rem;font-size:0.9rem">
+          帰る前に「退勤」を押してください。業務報告（一言でOK）を入力して完了です。
+        </p>
+        <p style="margin-bottom:1rem;font-size:0.82rem;color:#c0392b">
+          ※ 押し忘れると勤務時間が不足になります
+        </p>
+        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 残不足時間</p>
+        <p style="margin-bottom:1.5rem;font-size:0.9rem">
+          今月の目標時間に対して、「あとどれくらい必要か」が表示されます。
+        </p>
+
+        <h2 style="font-size:1rem;font-weight:700;margin:1.5rem 0 0.75rem;
+          border-bottom:2px solid #e8ecf0;padding-bottom:0.5rem">
+          ■ カレンダー
+        </h2>
+        <p style="margin-bottom:0.75rem;font-size:0.9rem">
+          自分の勤務状況を確認できます。出勤記録・欠勤・遅刻・早退・補填予定が表示されます。
+          自分の働き方の振り返りに使ってください。
+        </p>
+
+        <h2 style="font-size:1rem;font-weight:700;margin:1.5rem 0 0.75rem;
+          border-bottom:2px solid #e8ecf0;padding-bottom:0.5rem">
+          ■ 申請
+        </h2>
+        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 休みの申請</p>
+        <p style="margin-bottom:1rem;font-size:0.9rem">
+          種別で「休み」を選び、対象日・理由を入力します。
+          補填する場合は「補填する」、有給消化する場合は「有給消化する」を選んでください。
+          補填日時は複数入力可能です。補填・有給消化はしなくても申請できます。
+        </p>
+        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 遅刻・早退の申請</p>
+        <p style="margin-bottom:1rem;font-size:0.9rem">
+          種別で「遅刻」または「早退」を選ぶと、時刻入力欄が表示されます。
+          対象日・時刻・理由を入力し、必要に応じて補填日時を入力して申請してください。
+        </p>
+        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 申請するとどうなる？</p>
+        <p style="margin-bottom:1.5rem;font-size:0.9rem">
+          申請するとすぐカレンダーに反映されます（承認待ちはありません）。
+          申請履歴はこのタブの下部から確認できます。
+        </p>
+
+        <h2 style="font-size:1rem;font-weight:700;margin:1.5rem 0 0.75rem;
+          border-bottom:2px solid #e8ecf0;padding-bottom:0.5rem">
+          ■ 出勤状況
+        </h2>
+        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 当月の実績</p>
+        <p style="margin-bottom:0.5rem;font-size:0.9rem">
+          総労働時間・お弁当の注文数が確認できます。
+        </p>
+        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 補填状況</p>
+        <p style="margin-bottom:1.5rem;font-size:0.9rem">
+          補填できる時間数を確認できます。
+        </p>
+
+      </div>
+    </div><!-- /#panel-howto -->
+
+  <!-- バージョン表示（左下固定）-->
+  <!-- Uploader がアップロード時に v1.2.2 をバージョン入力欄の値で置換する。
+       ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
+  <div class="version-badge" id="app-version">v1.2.2</div>
 
 
   <script>
@@ -2689,39 +2782,51 @@ p:last-child { margin-bottom: 0; }
       });
 
       // ── Phase 2: 申請タブ ──────────────────────────────────────
-      // 休み・遅刻・早退：種別変更で時刻欄の表示切り替え
-      document.getElementById('absence-type').addEventListener('change', () => {
-        const type    = document.getElementById('absence-type').value;
-        const timeWrap = document.getElementById('absence-time-wrap');
-        // 休みのときは時刻不要
-        if (timeWrap) timeWrap.style.display = type === '休み' ? 'none' : '';
-      });
-      document.getElementById('btn-submit-absence').addEventListener('click', handleSubmitAbsence);
 
-      // 補填申請
-      document.getElementById('btn-submit-request').addEventListener('click', handleSubmitRequest);
+      // 種別変更で「時刻」欄と「補填ラベル内の有給オプション」の表示を切り替える。
+      // 休み：有給消化オプションあり・時刻非表示
+      // 遅刻・早退：有給消化オプションなし・時刻表示
+      document.getElementById('absence-type').addEventListener('change', () => {
+        const type       = document.getElementById('absence-type').value;
+        const timeWrap   = document.getElementById('absence-time-wrap');
+        const paidLabel  = document.getElementById('comp-paid-label');
+
+        // 時刻欄：遅刻・早退のみ表示
+        if (timeWrap) timeWrap.style.display = type === '休み' ? 'none' : '';
+
+        // 有給消化ラジオボタン：休みのときのみ表示
+        // 遅刻・早退で有給消化は運用上想定しないため非表示にする
+        if (paidLabel) paidLabel.style.display = type === '休み' ? '' : 'none';
+
+        // 遅刻・早退で有給を選んでいた場合は「しない」に戻す
+        if (type !== '休み') {
+          const noneRadio = document.getElementById('comp-none');
+          if (noneRadio) noneRadio.checked = true;
+          updateCompensationUI('none');
+        }
+      });
+
+      // 補填・有給ラジオボタン変更で補填入力欄・有給残日数表示を切り替える
+      document.querySelectorAll('input[name="compensation-type"]').forEach(radio => {
+        radio.addEventListener('change', () => updateCompensationUI(radio.value));
+      });
+
+      // 補填日程の追加ボタン
       document.getElementById('btn-fillup-add-date').addEventListener('click', () => {
         const wrap = document.getElementById('fillup-dates-wrap');
         const row  = document.createElement('div');
         row.className = 'fillup-date-row';
         row.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;align-items:center';
         row.innerHTML = `
-          <input class="sumioka-input fillup-date-input" type="date"
-            style="width:145px;font-size:0.85rem">
-          <input class="sumioka-input fillup-time-input" type="time"
-            style="width:115px;font-size:0.85rem">
+          <input class="sumioka-input fillup-date-input" type="date" style="width:145px;font-size:0.85rem">
+          <input class="sumioka-input fillup-time-input" type="time" style="width:115px;font-size:0.85rem">
           <select class="sumioka-input fillup-duration-input" style="width:110px;font-size:0.85rem">
             <option value="">時間数</option>
-            <option value="0.25">15分</option>
-            <option value="0.5">30分</option>
-            <option value="0.75">45分</option>
-            <option value="1">1時間</option>
-            <option value="1.25">1時間15分</option>
-            <option value="1.5">1時間30分</option>
-            <option value="1.75">1時間45分</option>
-            <option value="2">2時間</option>
-            <option value="2.5">2時間30分</option>
-            <option value="3">3時間</option>
+            <option value="0.25">15分</option><option value="0.5">30分</option>
+            <option value="0.75">45分</option><option value="1">1時間</option>
+            <option value="1.25">1時間15分</option><option value="1.5">1時間30分</option>
+            <option value="1.75">1時間45分</option><option value="2">2時間</option>
+            <option value="2.5">2時間30分</option><option value="3">3時間</option>
             <option value="4">4時間</option>
           </select>
           <button style="font-size:0.72rem;background:none;border:1px solid #c0392b;
@@ -2730,6 +2835,9 @@ p:last-child { margin-bottom: 0; }
         `;
         wrap.appendChild(row);
       });
+
+      // 申請送信ボタン（統合フォーム）
+      document.getElementById('btn-submit-absence').addEventListener('click', handleSubmitAbsence);
 
       // ── Phase 2: タスク ────────────────────────────────────────
       document.getElementById('task-sort').addEventListener('change', renderTaskList);
@@ -2792,7 +2900,7 @@ p:last-child { margin-bottom: 0; }
       }
 
       showLoading('認証中...');
-      const result = await callGAS('authenticate', { pin, password }, { button: btn });
+      const result = await callGAS('kintai_authenticate', { pin, password }, { button: btn });
       hideLoading();
 
       if (!result.success) {
@@ -3542,121 +3650,132 @@ p:last-child { margin-bottom: 0; }
     }
 
     /**
-     * 休み・遅刻・早退の申請を送信する。
-     * 承認フローなし（Adminが確認できる記録として送信）。
+     * 補填・有給ラジオ変更に応じて補填入力欄・有給残日数表示を切り替える。
+     *
+     * @param {'none'|'fillup'|'paid'} value
+     */
+    function updateCompensationUI(value) {
+      const fillupWrap   = document.getElementById('fillup-wrap');
+      const paidInfo     = document.getElementById('paid-leave-info');
+
+      // 補填入力欄：「補填する」のときのみ表示
+      if (fillupWrap) fillupWrap.style.display = value === 'fillup' ? '' : 'none';
+
+      // 有給残日数バナー：「有給消化する」のときのみ表示
+      if (paidInfo) paidInfo.style.display = value === 'paid' ? '' : 'none';
+    }
+
+    /**
+     * 休み・遅刻・早退・補填・有給消化の申請を統合して送信する。
+     *
+     * 旧: 休み/遅刻/早退フォームと補填申請フォームが別々だった
+     * 新: 1フォームに統合。種別に応じて送信データを組み立てる。
+     * 承認フロー廃止：GAS側で approved として即登録されるためカレンダーに即反映。
      */
     async function handleSubmitAbsence() {
-      const type   = document.getElementById('absence-type').value;
-      const reason = document.getElementById('absence-reason').value.trim();
-      const date   = document.getElementById('absence-date').value;
-      const time   = document.getElementById('absence-time').value;
+      const type      = document.getElementById('absence-type').value;
+      const date      = document.getElementById('absence-date').value;
+      const reason    = document.getElementById('absence-reason').value.trim();
+      const time      = document.getElementById('absence-time')?.value || '';
+      const compValue = document.querySelector('input[name="compensation-type"]:checked')?.value || 'none';
 
+      // バリデーション
       if (!date) { showToast('対象日を選択してください。', 'warning'); return; }
 
-      const timeMsg = type !== '休み' && time ? ` ${time}` : '';
-      const ok = await confirm(`${type}の申請を送信しますか？\n対象日: ${date}${timeMsg}`);
+      // 補填日時の収集（「補填する」を選んだときのみ）
+      let fillupItems = [];
+      if (compValue === 'fillup') {
+        const rows = Array.from(document.querySelectorAll('#fillup-dates-wrap .fillup-date-row'));
+        fillupItems = rows.map(row => ({
+          date     : row.querySelector('.fillup-date-input')?.value     || '',
+          time     : row.querySelector('.fillup-time-input')?.value     || '',
+          duration : row.querySelector('.fillup-duration-input')?.value || '',
+        })).filter(item => item.date);
+
+        if (fillupItems.length === 0) {
+          showToast('補填する日付を入力してください。', 'warning');
+          return;
+        }
+      }
+
+      // 送信データの組み立て
+      // type で「休み」「遅刻」「早退」を区別し、
+      // compValue で補填・有給消化の有無を付加する
+      const fillupNote = fillupItems.map(item =>
+        `${item.date}${item.time ? ' '+item.time : ''}${item.duration ? ' '+Math.round(Number(item.duration)*60)+'分' : ''}`
+      ).join(' / ');
+
+      const reasonFull = [
+        reason,
+        compValue === 'fillup' && fillupNote ? `【補填日時: ${fillupNote}】` : '',
+        compValue === 'paid'                 ? '【有給消化】' : '',
+      ].filter(Boolean).join(' ');
+
+      // 確認ダイアログ
+      const timeMsg   = type !== '休み' && time ? ` ${time}` : '';
+      const compLabel = compValue === 'fillup' ? '（補填あり）' : compValue === 'paid' ? '（有給消化）' : '';
+      const ok = await confirm(`${type}の申請を送信しますか？\n対象日: ${date}${timeMsg}${compLabel}`);
       if (!ok) return;
 
       showLoading('申請を送信中...');
+
+      // GAS へ送信（承認フロー廃止のため needs_approval は常に false）
       const result = await callGAS('submit_request', {
-        employee_id : state.employeeId,
-        name        : state.name,
+        employee_id   : state.employeeId,
+        name          : state.name,
         type,
-        target_date : date,
+        target_date   : date,
         date,
-        time        : time || '',
-        reason,
-        needs_approval: false, // 休み/遅刻/早退は承認フロー不要
+        time          : time || '',
+        reason        : reasonFull,
+        compensation  : compValue,         // 'none' | 'fillup' | 'paid'
+        fillup_items  : fillupItems,       // 補填日時の構造化データ
+        needs_approval: false,             // 承認フロー廃止
       });
       hideLoading();
 
       if (!result.success) { showError(result.error_message, result.error_detail); return; }
-      showToast('申請を送信しました。', 'success');
+      showToast('申請しました。カレンダーに反映されます。', 'success');
 
       // フォームリセット
       document.getElementById('absence-reason').value = '';
       document.getElementById('absence-date').value   = '';
-      document.getElementById('absence-time').value   = '';
+      if (document.getElementById('absence-time')) {
+        document.getElementById('absence-time').value = '';
+      }
+      const noneRadio = document.getElementById('comp-none');
+      if (noneRadio) { noneRadio.checked = true; updateCompensationUI('none'); }
+
+      // 補填行リセット（1行目だけ残す）
+      const wrap = document.getElementById('fillup-dates-wrap');
+      if (wrap) wrap.innerHTML = `
+        <div class="fillup-date-row" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;align-items:center">
+          <input class="sumioka-input fillup-date-input" type="date" style="width:145px;font-size:0.85rem">
+          <input class="sumioka-input fillup-time-input" type="time" style="width:115px;font-size:0.85rem">
+          <select class="sumioka-input fillup-duration-input" style="width:110px;font-size:0.85rem">
+            <option value="">時間数</option>
+            <option value="0.25">15分</option><option value="0.5">30分</option>
+            <option value="0.75">45分</option><option value="1">1時間</option>
+            <option value="1.25">1時間15分</option><option value="1.5">1時間30分</option>
+            <option value="1.75">1時間45分</option><option value="2">2時間</option>
+            <option value="2.5">2時間30分</option><option value="3">3時間</option>
+            <option value="4">4時間</option>
+          </select>
+        </div>`;
 
       await loadMyRequests();
-      loadCalendar(); // カレンダーにも反映
+      loadCalendar(); // 即反映
     }
 
     /**
-     * 補填申請フォームを送信する。
-     * 日付＋時間帯＋時間数（15分単位）の組み合わせで複数追加可能。
+     * 補填申請フォームを送信する（旧関数・後方互換のため残す）。
+     * 新UIでは handleSubmitAbsence に統合されたため実質未使用。
+     * @deprecated handleSubmitAbsence で代替。
      */
     async function handleSubmitRequest() {
-      const type         = document.getElementById('req-type').value;
-      const shortageDate = document.getElementById('req-date').value;
-      const reason       = document.getElementById('req-reason').value.trim();
-
-      // 各補填行から日付・時間・時間数を収集する
-      const rows = Array.from(document.querySelectorAll('#fillup-dates-wrap .fillup-date-row'));
-      const fillupItems = rows.map(row => {
-        const dateVal     = row.querySelector('.fillup-date-input')?.value     || '';
-        const timeVal     = row.querySelector('.fillup-time-input')?.value     || '';
-        const durationVal = row.querySelector('.fillup-duration-input')?.value || '';
-        return { date: dateVal, time: timeVal, duration: durationVal };
-      }).filter(item => item.date); // 日付が入っているものだけ
-
-      if (!shortageDate) { showToast('不足が発生した日を選択してください。', 'warning'); return; }
-      if (fillupItems.length === 0) { showToast('補填する日付を入力してください。', 'warning'); return; }
-
-      // 補填日時を人が読める形式でまとめてreasonに付記する
-      const fillupNote = fillupItems.map(item => {
-        const durLabel = item.duration
-          ? `${Number(item.duration) * 60}分`
-          : '';
-        return `${item.date}${item.time ? ' ' + item.time : ''}${durLabel ? ' ' + durLabel : ''}`;
-      }).join(' / ');
-
-      const fullReason = reason
-        ? `${reason} 【補填日時: ${fillupNote}】`
-        : `【補填日時: ${fillupNote}】`;
-
-      const typeLabel = type === '補填予定' ? '事前申請' : '事後報告';
-      const ok = await confirm(
-        `補填申請（${typeLabel}）を送信しますか？\n不足日: ${shortageDate}\n補填: ${fillupNote}`
-      );
-      if (!ok) return;
-
-      showLoading('申請を送信中...');
-      const result = await callGAS('submit_request', {
-        employee_id    : state.employeeId,
-        name           : state.name,
-        type,
-        target_date    : shortageDate,
-        date           : shortageDate,
-        reason         : fullReason,
-        fillup_items   : fillupItems, // GAS側で詳細管理できるよう構造化データも送る
-        needs_approval : true,
-      });
-      hideLoading();
-
-      if (!result.success) { showError(result.error_message, result.error_detail); return; }
-      showToast('補填申請を送信しました。管理者の承認をお待ちください。', 'success');
-
-      // フォームリセット
-      document.getElementById('req-date').value   = '';
-      document.getElementById('req-reason').value = '';
-      const wrap = document.getElementById('fillup-dates-wrap');
-      wrap.innerHTML = `<div class="fillup-date-row" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;align-items:center">
-        <input class="sumioka-input fillup-date-input" type="date" style="width:145px;font-size:0.85rem">
-        <input class="sumioka-input fillup-time-input" type="time" style="width:115px;font-size:0.85rem">
-        <select class="sumioka-input fillup-duration-input" style="width:110px;font-size:0.85rem">
-          <option value="">時間数</option>
-          <option value="0.25">15分</option><option value="0.5">30分</option>
-          <option value="0.75">45分</option><option value="1">1時間</option>
-          <option value="1.25">1時間15分</option><option value="1.5">1時間30分</option>
-          <option value="1.75">1時間45分</option><option value="2">2時間</option>
-          <option value="2.5">2時間30分</option><option value="3">3時間</option>
-          <option value="4">4時間</option>
-        </select>
-      </div>`;
-
-      await loadMyRequests();
-      loadCalendar();
+      // 統合フォームに移行したため、この関数は呼ばれない。
+      // 旧HTMLに btn-submit-request が残っていた場合の安全網として定義する。
+      handleSubmitAbsence();
     }
 
     /**
