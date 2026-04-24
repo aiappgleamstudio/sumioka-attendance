@@ -2635,9 +2635,9 @@ p:last-child { margin-bottom: 0; }
     </div><!-- /#panel-howto -->
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.2 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.4 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.2</div>
+  <div class="version-badge" id="app-version">v1.2.4</div>
 
 
   <script>
@@ -2944,19 +2944,17 @@ p:last-child { margin-bottom: 0; }
       document.getElementById('display-name').textContent = session.name;
       showScreen('main');
 
-      // リロード時にlocalStorageから最後に見ていたタブに遷移する。
-      // ただし UI の state と画面の同期より前に実行するため、
-      // データロード（loadTodayRecord）が完了した後に正しいタブが表示される。
-      const savedTab = SumiokaStorage.load('kintai_active_tab') || 'checkin';
-      // タブのアクティブ状態のみ切り替え（データロードはしない: loadTodayRecord後に行う）
+      // ログイン後は常に打刻タブから始める。
+      // 理由: 出勤・退勤の打刻が最も重要な操作のため、
+      //       リロードや自動ログイン後も迷わず打刻できるようにする。
+      const initialTab = 'checkin';
       document.querySelectorAll('.kintai-tab').forEach(t => {
-        t.classList.toggle('active', t.dataset.tab === savedTab);
+        t.classList.toggle('active', t.dataset.tab === initialTab);
       });
       document.querySelectorAll('.kintai-tab-panel').forEach(p => {
-        p.classList.toggle('active', p.id === `panel-${savedTab}`);
+        p.classList.toggle('active', p.id === `panel-${initialTab}`);
       });
-      // 保存済みタブをグローバルに保持しておき、loadTodayRecord完了後にデータロードする
-      state._restoredTab = savedTab;
+      state._restoredTab = initialTab;
     }
 
     /**
