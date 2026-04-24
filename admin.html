@@ -1010,6 +1010,7 @@
           </div>
           <div class="filter-group">
             <span class="filter-label">種別</span>
+            <!-- 補填のみ承認フロー。休み/遅刻/早退はAdmin確認用として引き続き表示する。 -->
             <select class="sumioka-input" id="req-filter-type" style="width:120px">
               <option value="">すべて</option>
               <option value="休み">休み</option>
@@ -1040,6 +1041,9 @@
             <tbody id="req-body">
               <tr><td colspan="8" class="empty-state">読み込み中...</td></tr>
             </tbody>
+          </table>
+        </div>
+      </section>
           </table>
         </div>
       </section>
@@ -1669,14 +1673,13 @@
 
     /**
      * 管理者専用 GAS デプロイ URL。
-     * kintai.html とは別の GAS デプロイを使う方針（管理者アクションを分離）。
-     * URL は変えない運用。変更が必要な場合はこの1行だけ書き換える。
-     */
-    /**
+     * kintai.html と同じ GAS デプロイを使用する（アクションで振り分け）。
      * https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec は sumioka-uploader の Vault から自動注入される。
-     * URL を直接書かないことでセキュリティと保守性を向上させる。
+     * ローカルテスト時は直接URLを記述してください。
      */
-    const GAS_URL_ADMIN = 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec';
+    const GAS_URL_ADMIN = typeof 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec' !== 'undefined' && 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec'.startsWith('http')
+      ? 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec'
+      : 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec';
 
     /**
      * 管理者セッション保存キー（kintai.html のセッションと名前空間を分ける）。
@@ -2190,11 +2193,14 @@
           const dayEvs  = eventMap[dateStr] || [];
           const compTitles = compMap[dateStr] || [];
 
-          // A-6: 名字のみ（スペース区切りの先頭 or 全体）
-          function lastNameOnly(name) {
+          // 苗字＋名前1文字で表示する（苗字が同じ人を区別できる）
+          // スペース・全角スペースで分割し、先頭が苗字、次が名前
+          function nameLabel(name) {
             if (!name) return '';
-            // 全角スペース・半角スペースで分割して先頭のみ
-            return name.split(/[\s\u3000]/)[0];
+            const parts = name.split(/[\s\u3000]/);
+            const lastName = parts[0] || '';
+            const firstInitial = parts[1] ? parts[1].charAt(0) : '';
+            return lastName + firstInitial;
           }
 
           const dayNumClass = isToday ? 'today' : (compTitles.length ? 'holiday-company' : '');
@@ -2208,20 +2214,22 @@
           ).join('');
 
           // A-5: 欠勤=赤、遅刻=黄、早退=オレンジ、補填予定=緑、補填完了=青
-          // A-6: 名字のみ
+          // バッジ幅はテキスト幅に合わせて可変（display:inline-block）
           const evHtml = dayEvs.slice(0, 3).map(ev => {
             const typeClassMap = {
-              '欠勤'  : 'admin-ev-欠勤',
-              '遅刻'  : 'admin-ev-遅刻',
-              '早退'  : 'admin-ev-早退',
+              '欠勤'    : 'admin-ev-欠勤',
+              '休み'    : 'admin-ev-欠勤',
+              '遅刻'    : 'admin-ev-遅刻',
+              '早退'    : 'admin-ev-早退',
               '補填予定': 'admin-ev-補填予定',
               '補填完了': 'admin-ev-補填完了',
             };
-            const cls = typeClassMap[ev.type] || 'admin-ev-欠勤';
-            const lname = lastNameOnly(ev.name);
+            const cls   = typeClassMap[ev.type] || 'admin-ev-欠勤';
+            const label = nameLabel(ev.name);
             return `<span class="admin-cal-event ${escHtml(cls)}"
+              style="display:inline-block;width:auto"
               title="${escHtml(ev.name)}：${escHtml(ev.type)}"
-              >${escHtml(lname)}</span>`;
+              >${escHtml(label)}</span>`;
           }).join('');
 
           const moreHtml = dayEvs.length > 3
@@ -2857,8 +2865,9 @@
         const statusClass = badgeMap[req.status] || 'badge-gray';
         const statusLabel = labelMap[req.status] || req.status || '―';
 
-        // 承認待ちのみ操作ボタンを表示
-        const actionHtml = req.status === 'pending'
+        // 承認フローは補填のみ。休み/遅刻/早退は記録のみで操作ボタンなし。
+        const isFillup = req.type === '補填予定' || req.type === '補填完了';
+        const actionHtml = (req.status === 'pending' && isFillup)
           ? `<div class="action-btn-group">
                <button class="btn-approve" onclick="handleRequestAction('${escHtml(req.id)}', 'approve')">承認</button>
                <button class="btn-reject"  onclick="handleRequestAction('${escHtml(req.id)}', 'reject')">却下</button>
@@ -4035,8 +4044,8 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- バージョン番号は sumioka-uploader の v1.2.3 プレースホルダーで自動埋め込みされる -->
-  <div class="version-badge" id="app-version">v1.2.3</div>
+  <!-- バージョン番号は sumioka-uploader の v1.2.4 プレースホルダーで自動埋め込みされる -->
+  <div class="version-badge" id="app-version">v1.2.4</div>
 
 </body>
 </html>
