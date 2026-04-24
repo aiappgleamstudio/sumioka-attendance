@@ -4039,6 +4039,12 @@
     headで読むとDOMより先に実行され setGasUrl 等が未定義になるため。
   -->
   <script src="common/api.js"></script>
+  <!-- SumiokaUI (showToast / showLoading / confirm 等) を提供する。
+       admin.html 内の全UI操作がここに依存するため必ず先に読み込む。 -->
+  <script src="common/ui.js"></script>
+  <!-- SumiokaStorage (load / save / remove) を提供する。
+       セッション保持・タブ状態の記憶に使用。ui.js より後に読み込む。 -->
+  <script src="common/storage.js"></script>
   <!-- Phase 2: 補填消化グラフ描画に使用。cdnjs 経由で読み込む。
        SRI (integrity) は誤ったハッシュ値でブロックされるため削除。
        cdnjs.cloudflare.com は信頼できる CDN のため integrity なしで運用する。 -->
