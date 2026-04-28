@@ -1354,7 +1354,13 @@
 
       <!-- 編集モード用の隠しフィールド -->
       <input type="hidden" id="modal-edit-employee-id">
-      <input type="hidden" id="modal-edit-date">
+      <!-- 【修正3】編集モードで日付が表示・変更できなかった（hidden のため）。
+           編集モード時は表示欄として出す。新規モード時は modal-edit-date-input-wrap が使われるため
+           このラッパーは編集モード時のみ visible にする（JS で切り替える）。 -->
+      <div id="modal-edit-date-wrap" class="sumioka-form-group" style="display:none">
+        <label class="sumioka-label" for="modal-edit-date">日付 <span style="color:#c0392b">*</span></label>
+        <input class="sumioka-input" type="date" id="modal-edit-date">
+      </div>
       <!-- 新規/編集モードを判定するフラグ -->
       <input type="hidden" id="modal-edit-mode"> <!-- 'edit' | 'add' -->
 
@@ -1430,17 +1436,9 @@
       <!-- 新規/編集を判定するための隠しフィールド -->
       <input type="hidden" id="modal-staff-id">
 
-      <!-- 【修正3】氏名を姓・名の2フィールドに分割する。
-           GASには「姓 名」（半角スペース区切り）として結合して送信する。
-           カレンダーの「苗字のみ表示」はスペース分割で取得しているため互換性あり。 -->
       <div class="sumioka-form-group">
-        <label class="sumioka-label">氏名 <span style="color:#c0392b">*</span></label>
-        <div style="display:flex;gap:0.5rem">
-          <input class="sumioka-input" type="text" id="modal-staff-last-name"
-            placeholder="姓（例: 住岡）" style="flex:1">
-          <input class="sumioka-input" type="text" id="modal-staff-first-name"
-            placeholder="名（例: 太郎）" style="flex:1">
-        </div>
+        <label class="sumioka-label" for="modal-staff-name">氏名 <span style="color:#c0392b">*</span></label>
+        <input class="sumioka-input" type="text" id="modal-staff-name">
       </div>
 
       <div class="sumioka-form-group">
@@ -2740,6 +2738,8 @@
       document.getElementById('modal-edit-staff-select-wrap').style.display  = isNew ? '' : 'none';
       document.getElementById('modal-edit-date-input-wrap').style.display    = isNew ? '' : 'none';
       document.getElementById('modal-edit-target-display').style.display     = isNew ? 'none' : '';
+      // 【修正3】編集モード時のみ日付入力欄を表示する（新規モードは date-input-wrap 側を使う）
+      document.getElementById('modal-edit-date-wrap').style.display          = isNew ? 'none' : '';
 
       if (isNew) {
         // 新規モード：最新のスタッフ一覧を GAS から取得してプルダウンを生成する。
@@ -2769,7 +2769,10 @@
         document.getElementById('modal-edit-timein').value  = '';
         document.getElementById('modal-edit-timeout').value = '';
         document.getElementById('modal-edit-break').value   = '';
-        document.getElementById('modal-edit-lunch').value   = 'false';
+        // 【修正2】弁当のデフォルトを「要（true）」に変更する。
+        // 運用上、弁当が必要なスタッフが大半のため「不要」を初期値にすると
+        // 入力漏れが発生しやすい。新規登録時は「要」を起点にして都度変更する運用とする。
+        document.getElementById('modal-edit-lunch').value   = 'true';
         document.getElementById('modal-edit-memo').value    = '';
         document.getElementById('modal-edit-reason').value  = '';
 
@@ -2821,6 +2824,8 @@
       } else {
         employeeId = document.getElementById('modal-edit-employee-id').value;
         date       = document.getElementById('modal-edit-date').value;
+        // 【修正3】編集モードでも日付が空の場合は送信をブロックする
+        if (!date) { showToast('日付を選択してください。', 'warning'); return; }
       }
 
       const status = document.getElementById('modal-edit-status').value;
@@ -3154,11 +3159,7 @@
         isNew ? '（必須）' : '（空欄＝変更なし）';
 
       document.getElementById('modal-staff-id').value              = isNew ? '' : (staff.id              || '');
-      // 【修正3】既存の「姓 名」形式の name を分割して各フィールドにセットする。
-      // スペース（半角・全角）で分割し、先頭が姓、次が名とする。
-      const nameParts = isNew ? ['', ''] : (staff.name || '').split(/[\s\u3000]/);
-      document.getElementById('modal-staff-last-name').value  = nameParts[0] || '';
-      document.getElementById('modal-staff-first-name').value = nameParts.slice(1).join(' ') || '';
+      document.getElementById('modal-staff-name').value            = isNew ? '' : (staff.name            || '');
       document.getElementById('modal-staff-pin').value             = isNew ? '' : (staff.pin             || '');
       document.getElementById('modal-staff-password').value        = ''; // 常に空で開く
       // K-3: 雇用形態は職員/利用者の2択。既存データが他の値なら空に倒す
@@ -3186,11 +3187,7 @@
      */
     async function saveStaffModal() {
       const id             = document.getElementById('modal-staff-id').value;
-      // 【修正3】姓・名を別フィールドから取得して「姓 名」形式に結合する。
-      // カレンダー表示（苗字のみ）はスペース分割で取得するため、この形式で問題ない。
-      const lastName       = document.getElementById('modal-staff-last-name').value.trim();
-      const firstName      = document.getElementById('modal-staff-first-name').value.trim();
-      const name           = lastName && firstName ? lastName + ' ' + firstName : (lastName || firstName);
+      const name           = document.getElementById('modal-staff-name').value.trim();
       const pin            = document.getElementById('modal-staff-pin').value.trim();
       const password       = document.getElementById('modal-staff-password').value.trim();
       const employment     = document.getElementById('modal-staff-employment').value;
