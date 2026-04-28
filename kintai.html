@@ -1913,13 +1913,8 @@ p:last-child { margin-bottom: 0; }
          ============================================================ -->
     <div class="kintai-tab-panel active" id="panel-checkin">
 
-      <!-- アクセス権表示 -->
-      <div class="access-badge-row">
-        <span class="access-badge access-badge-self">[自]</span>
-        <span>打刻は本人が操作。</span>
-        <span class="access-badge access-badge-admin" style="margin-left:0.5rem">[管]</span>
-        <span>Adminはダッシュボード・勤怠一覧から全員分を確認・修正できます。</span>
-      </div>
+      <!-- A-④: 打刻タブは説明を最小化し、ボタン操作に集中できるUIにする。
+           アクセス権バッジは削除。残不足バナーのみ残す。 -->
 
       <!-- 残不足バナー -->
       <div class="balance-banner">
@@ -2114,6 +2109,7 @@ p:last-child { margin-bottom: 0; }
         </div>
 
         <!-- ④ 時刻（遅刻・早退のときのみ表示） -->
+        <!-- A-②: input[type="time"] は禁止。15分単位 select で代替する。 -->
         <div class="sumioka-form-group" id="absence-time-wrap" style="display:none">
           <label class="sumioka-label" for="absence-time">
             時刻
@@ -2121,7 +2117,81 @@ p:last-child { margin-bottom: 0; }
               （遅刻：出勤予定時刻 / 早退：退勤予定時刻）
             </span>
           </label>
-          <input class="sumioka-input" type="time" id="absence-time">
+          <select class="sumioka-input" id="absence-time">
+            <option value="">--:--</option>
+            <!-- 00:00〜23:45 を 15分刻みで JS で動的に生成してもよいが、
+                 この箇所はHTML初期値として静的に記述する。
+                 動的生成が必要な場合は buildTimeSelect() を使うこと。 -->
+            <option value="05:00">05:00</option>
+            <option value="05:15">05:15</option>
+            <option value="05:30">05:30</option>
+            <option value="05:45">05:45</option>
+            <option value="06:00">06:00</option>
+            <option value="06:15">06:15</option>
+            <option value="06:30">06:30</option>
+            <option value="06:45">06:45</option>
+            <option value="07:00">07:00</option>
+            <option value="07:15">07:15</option>
+            <option value="07:30">07:30</option>
+            <option value="07:45">07:45</option>
+            <option value="08:00">08:00</option>
+            <option value="08:15">08:15</option>
+            <option value="08:30">08:30</option>
+            <option value="08:45">08:45</option>
+            <option value="09:00">09:00</option>
+            <option value="09:15">09:15</option>
+            <option value="09:30">09:30</option>
+            <option value="09:45">09:45</option>
+            <option value="10:00">10:00</option>
+            <option value="10:15">10:15</option>
+            <option value="10:30">10:30</option>
+            <option value="10:45">10:45</option>
+            <option value="11:00">11:00</option>
+            <option value="11:15">11:15</option>
+            <option value="11:30">11:30</option>
+            <option value="11:45">11:45</option>
+            <option value="12:00">12:00</option>
+            <option value="12:15">12:15</option>
+            <option value="12:30">12:30</option>
+            <option value="12:45">12:45</option>
+            <option value="13:00">13:00</option>
+            <option value="13:15">13:15</option>
+            <option value="13:30">13:30</option>
+            <option value="13:45">13:45</option>
+            <option value="14:00">14:00</option>
+            <option value="14:15">14:15</option>
+            <option value="14:30">14:30</option>
+            <option value="14:45">14:45</option>
+            <option value="15:00">15:00</option>
+            <option value="15:15">15:15</option>
+            <option value="15:30">15:30</option>
+            <option value="15:45">15:45</option>
+            <option value="16:00">16:00</option>
+            <option value="16:15">16:15</option>
+            <option value="16:30">16:30</option>
+            <option value="16:45">16:45</option>
+            <option value="17:00">17:00</option>
+            <option value="17:15">17:15</option>
+            <option value="17:30">17:30</option>
+            <option value="17:45">17:45</option>
+            <option value="18:00">18:00</option>
+            <option value="18:15">18:15</option>
+            <option value="18:30">18:30</option>
+            <option value="18:45">18:45</option>
+            <option value="19:00">19:00</option>
+            <option value="19:15">19:15</option>
+            <option value="19:30">19:30</option>
+            <option value="19:45">19:45</option>
+            <option value="20:00">20:00</option>
+            <option value="20:15">20:15</option>
+            <option value="20:30">20:30</option>
+            <option value="20:45">20:45</option>
+            <option value="21:00">21:00</option>
+            <option value="21:15">21:15</option>
+            <option value="21:30">21:30</option>
+            <option value="21:45">21:45</option>
+            <option value="22:00">22:00</option>
+          </select>
         </div>
 
         <!-- ⑤ 補填・有給選択（全種別で表示） -->
@@ -2157,10 +2227,46 @@ p:last-child { margin-bottom: 0; }
               <span style="font-size:0.75rem;color:GrayText;font-weight:400">（複数追加可）</span>
             </label>
             <div id="fillup-dates-wrap">
-              <!-- 1行目（JS側で生成する buildFillupRow() を参照） -->
+              <!-- 1行目（JS側で生成する buildFillupTimeSelect() を参照） -->
+              <!-- A-②: fillup-time-input も select で統一する。JSで動的に生成する。 -->
               <div class="fillup-date-row" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;align-items:center">
                 <input class="sumioka-input fillup-date-input" type="date" style="width:145px;font-size:0.85rem">
-                <input class="sumioka-input fillup-time-input" type="time" style="width:115px;font-size:0.85rem">
+                <select class="sumioka-input fillup-time-input" style="width:115px;font-size:0.85rem">
+                  <option value="">--:--</option>
+                  <option value="06:00">06:00</option><option value="06:15">06:15</option>
+                  <option value="06:30">06:30</option><option value="06:45">06:45</option>
+                  <option value="07:00">07:00</option><option value="07:15">07:15</option>
+                  <option value="07:30">07:30</option><option value="07:45">07:45</option>
+                  <option value="08:00">08:00</option><option value="08:15">08:15</option>
+                  <option value="08:30">08:30</option><option value="08:45">08:45</option>
+                  <option value="09:00">09:00</option><option value="09:15">09:15</option>
+                  <option value="09:30">09:30</option><option value="09:45">09:45</option>
+                  <option value="10:00">10:00</option><option value="10:15">10:15</option>
+                  <option value="10:30">10:30</option><option value="10:45">10:45</option>
+                  <option value="11:00">11:00</option><option value="11:15">11:15</option>
+                  <option value="11:30">11:30</option><option value="11:45">11:45</option>
+                  <option value="12:00">12:00</option><option value="12:15">12:15</option>
+                  <option value="12:30">12:30</option><option value="12:45">12:45</option>
+                  <option value="13:00">13:00</option><option value="13:15">13:15</option>
+                  <option value="13:30">13:30</option><option value="13:45">13:45</option>
+                  <option value="14:00">14:00</option><option value="14:15">14:15</option>
+                  <option value="14:30">14:30</option><option value="14:45">14:45</option>
+                  <option value="15:00">15:00</option><option value="15:15">15:15</option>
+                  <option value="15:30">15:30</option><option value="15:45">15:45</option>
+                  <option value="16:00">16:00</option><option value="16:15">16:15</option>
+                  <option value="16:30">16:30</option><option value="16:45">16:45</option>
+                  <option value="17:00">17:00</option><option value="17:15">17:15</option>
+                  <option value="17:30">17:30</option><option value="17:45">17:45</option>
+                  <option value="18:00">18:00</option><option value="18:15">18:15</option>
+                  <option value="18:30">18:30</option><option value="18:45">18:45</option>
+                  <option value="19:00">19:00</option><option value="19:15">19:15</option>
+                  <option value="19:30">19:30</option><option value="19:45">19:45</option>
+                  <option value="20:00">20:00</option><option value="20:15">20:15</option>
+                  <option value="20:30">20:30</option><option value="20:45">20:45</option>
+                  <option value="21:00">21:00</option><option value="21:15">21:15</option>
+                  <option value="21:30">21:30</option><option value="21:45">21:45</option>
+                  <option value="22:00">22:00</option>
+                </select>
                 <select class="sumioka-input fillup-duration-input" style="width:110px;font-size:0.85rem">
                   <option value="">時間数</option>
                   <option value="0.25">15分</option><option value="0.5">30分</option>
@@ -2546,98 +2652,69 @@ p:last-child { margin-bottom: 0; }
 
     <!-- ============================================================
          タブ7: 使い方
-         このアプリの操作手順を説明するヘルプページ。
+         A-③: 指示書の仕様に合わせて内容をシンプルに整理する。
          ============================================================ -->
     <div class="kintai-tab-panel" id="panel-howto">
-      <div style="max-width:560px;margin:0 auto;line-height:1.75;color:#333">
+      <div style="max-width:480px;margin:0 auto;line-height:1.9">
 
-        <h2 style="font-size:1rem;font-weight:700;margin-bottom:1rem;
-          border-bottom:2px solid #e8ecf0;padding-bottom:0.5rem">
-          ■ はじめに
-        </h2>
-        <p style="margin-bottom:0.75rem">
-          このアプリは、出勤・退勤の記録や勤務状況の確認を行うためのツールです。
+        <!-- 基本操作 -->
+        <p style="font-size:0.82rem;font-weight:700;color:GrayText;
+          text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem">
+          使い方
         </p>
-        <p style="margin-bottom:1.5rem">基本の流れはこの3つです：</p>
-        <ol style="padding-left:1.4rem;margin-bottom:1.5rem;font-size:0.92rem">
-          <li style="margin-bottom:0.4rem">来たら「<strong>出勤</strong>」を押す</li>
-          <li style="margin-bottom:0.4rem">帰るときに「<strong>退勤</strong>」を押す</li>
-          <li style="margin-bottom:0.4rem">足りない時間があれば「<strong>申請</strong>」をする</li>
-        </ol>
+        <div style="border:1px solid GrayText;border-radius:8px;padding:1rem;
+          margin-bottom:1.25rem;background:Canvas;font-size:0.92rem">
+          <div style="display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:0.75rem">
+            <span style="font-size:1.2rem">🕘</span>
+            <div>
+              <strong>出勤</strong><br>
+              <span style="color:GrayText;font-size:0.85rem">来たら押す</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:0.75rem">
+            <span style="font-size:1.2rem">🕔</span>
+            <div>
+              <strong>退勤</strong><br>
+              <span style="color:GrayText;font-size:0.85rem">帰る前に押す</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:0.75rem">
+            <span style="font-size:1.2rem">📋</span>
+            <div>
+              <strong>補填</strong><br>
+              <span style="color:GrayText;font-size:0.85rem">足りない時間を別日で補う</span>
+            </div>
+          </div>
+        </div>
 
-        <h2 style="font-size:1rem;font-weight:700;margin:1.5rem 0 0.75rem;
-          border-bottom:2px solid #e8ecf0;padding-bottom:0.5rem">
-          ■ 打刻
-        </h2>
-        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 出勤</p>
-        <p style="margin-bottom:0.5rem;font-size:0.9rem">
-          施設に来たらすぐ「出勤」を押してください。お弁当の有無もここで選びます。
+        <!-- アクセス権 -->
+        <p style="font-size:0.82rem;font-weight:700;color:GrayText;
+          text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem">
+          アクセス権
         </p>
-        <p style="margin-bottom:1rem;font-size:0.82rem;color:#c0392b">
-          ※ 押し忘れると勤務時間が記録されません
-        </p>
-        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 退勤</p>
-        <p style="margin-bottom:0.5rem;font-size:0.9rem">
-          帰る前に「退勤」を押してください。業務報告（一言でOK）を入力して完了です。
-        </p>
-        <p style="margin-bottom:1rem;font-size:0.82rem;color:#c0392b">
-          ※ 押し忘れると勤務時間が不足になります
-        </p>
-        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 残不足時間</p>
-        <p style="margin-bottom:1.5rem;font-size:0.9rem">
-          今月の目標時間に対して、「あとどれくらい必要か」が表示されます。
-        </p>
-
-        <h2 style="font-size:1rem;font-weight:700;margin:1.5rem 0 0.75rem;
-          border-bottom:2px solid #e8ecf0;padding-bottom:0.5rem">
-          ■ カレンダー
-        </h2>
-        <p style="margin-bottom:0.75rem;font-size:0.9rem">
-          自分の勤務状況を確認できます。出勤記録・欠勤・遅刻・早退・補填予定が表示されます。
-          自分の働き方の振り返りに使ってください。
-        </p>
-
-        <h2 style="font-size:1rem;font-weight:700;margin:1.5rem 0 0.75rem;
-          border-bottom:2px solid #e8ecf0;padding-bottom:0.5rem">
-          ■ 申請
-        </h2>
-        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 休みの申請</p>
-        <p style="margin-bottom:1rem;font-size:0.9rem">
-          種別で「休み」を選び、対象日・理由を入力します。
-          補填する場合は「補填する」、有給消化する場合は「有給消化する」を選んでください。
-          補填日時は複数入力可能です。補填・有給消化はしなくても申請できます。
-        </p>
-        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 遅刻・早退の申請</p>
-        <p style="margin-bottom:1rem;font-size:0.9rem">
-          種別で「遅刻」または「早退」を選ぶと、時刻入力欄が表示されます。
-          対象日・時刻・理由を入力し、必要に応じて補填日時を入力して申請してください。
-        </p>
-        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 申請するとどうなる？</p>
-        <p style="margin-bottom:1.5rem;font-size:0.9rem">
-          申請するとすぐカレンダーに反映されます（承認待ちはありません）。
-          申請履歴はこのタブの下部から確認できます。
-        </p>
-
-        <h2 style="font-size:1rem;font-weight:700;margin:1.5rem 0 0.75rem;
-          border-bottom:2px solid #e8ecf0;padding-bottom:0.5rem">
-          ■ 出勤状況
-        </h2>
-        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 当月の実績</p>
-        <p style="margin-bottom:0.5rem;font-size:0.9rem">
-          総労働時間・お弁当の注文数が確認できます。
-        </p>
-        <p style="margin-bottom:0.5rem;font-size:0.85rem;color:GrayText;font-weight:600">▼ 補填状況</p>
-        <p style="margin-bottom:1.5rem;font-size:0.9rem">
-          補填できる時間数を確認できます。
-        </p>
+        <div style="border:1px solid GrayText;border-radius:8px;padding:1rem;
+          background:Canvas;font-size:0.88rem">
+          <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:0.65rem">
+            <span class="access-badge access-badge-self">[自]</span>
+            <span>自分のみ閲覧・操作できる</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:0.65rem">
+            <span class="access-badge access-badge-all">[全]</span>
+            <span>全員が閲覧できる</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:0.65rem">
+            <span class="access-badge access-badge-admin">[管]</span>
+            <span>管理者のみ操作できる</span>
+          </div>
+        </div>
 
       </div>
     </div><!-- /#panel-howto -->
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.4 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.5 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.4</div>
+  <div class="version-badge" id="app-version">v1.2.5</div>
 
 
   <script>
@@ -2819,7 +2896,42 @@ p:last-child { margin-bottom: 0; }
         row.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;align-items:center';
         row.innerHTML = `
           <input class="sumioka-input fillup-date-input" type="date" style="width:145px;font-size:0.85rem">
-          <input class="sumioka-input fillup-time-input" type="time" style="width:115px;font-size:0.85rem">
+          <select class="sumioka-input fillup-time-input" style="width:115px;font-size:0.85rem">
+            <option value="">--:--</option>
+            <option value="06:00">06:00</option><option value="06:15">06:15</option>
+            <option value="06:30">06:30</option><option value="06:45">06:45</option>
+            <option value="07:00">07:00</option><option value="07:15">07:15</option>
+            <option value="07:30">07:30</option><option value="07:45">07:45</option>
+            <option value="08:00">08:00</option><option value="08:15">08:15</option>
+            <option value="08:30">08:30</option><option value="08:45">08:45</option>
+            <option value="09:00">09:00</option><option value="09:15">09:15</option>
+            <option value="09:30">09:30</option><option value="09:45">09:45</option>
+            <option value="10:00">10:00</option><option value="10:15">10:15</option>
+            <option value="10:30">10:30</option><option value="10:45">10:45</option>
+            <option value="11:00">11:00</option><option value="11:15">11:15</option>
+            <option value="11:30">11:30</option><option value="11:45">11:45</option>
+            <option value="12:00">12:00</option><option value="12:15">12:15</option>
+            <option value="12:30">12:30</option><option value="12:45">12:45</option>
+            <option value="13:00">13:00</option><option value="13:15">13:15</option>
+            <option value="13:30">13:30</option><option value="13:45">13:45</option>
+            <option value="14:00">14:00</option><option value="14:15">14:15</option>
+            <option value="14:30">14:30</option><option value="14:45">14:45</option>
+            <option value="15:00">15:00</option><option value="15:15">15:15</option>
+            <option value="15:30">15:30</option><option value="15:45">15:45</option>
+            <option value="16:00">16:00</option><option value="16:15">16:15</option>
+            <option value="16:30">16:30</option><option value="16:45">16:45</option>
+            <option value="17:00">17:00</option><option value="17:15">17:15</option>
+            <option value="17:30">17:30</option><option value="17:45">17:45</option>
+            <option value="18:00">18:00</option><option value="18:15">18:15</option>
+            <option value="18:30">18:30</option><option value="18:45">18:45</option>
+            <option value="19:00">19:00</option><option value="19:15">19:15</option>
+            <option value="19:30">19:30</option><option value="19:45">19:45</option>
+            <option value="20:00">20:00</option><option value="20:15">20:15</option>
+            <option value="20:30">20:30</option><option value="20:45">20:45</option>
+            <option value="21:00">21:00</option><option value="21:15">21:15</option>
+            <option value="21:30">21:30</option><option value="21:45">21:45</option>
+            <option value="22:00">22:00</option>
+          </select>
           <select class="sumioka-input fillup-duration-input" style="width:110px;font-size:0.85rem">
             <option value="">時間数</option>
             <option value="0.25">15分</option><option value="0.5">30分</option>
@@ -3425,6 +3537,41 @@ p:last-child { margin-bottom: 0; }
     // ユーティリティ
     // ============================================================
 
+    /**
+     * A-②: 15分単位の時刻選択 <select> の option 文字列を生成する。
+     *
+     * input[type="time"] はモバイルブラウザによって挙動が異なるため禁止とし、
+     * 00:00〜23:45 を 15分刻みで列挙した select で統一する。
+     *
+     * @param {string} [selectedValue=''] - 初期選択値（'HH:MM' 形式）
+     * @param {string} [id='']           - select 要素の id 属性
+     * @param {string} [cls='']          - 追加するCSSクラス名
+     * @param {Object} [style={}]        - インラインスタイル（key: value）
+     * @returns {string} <select> HTML 文字列
+     */
+    function buildTimeSelect(selectedValue = '', id = '', cls = '', style = {}) {
+      // style オブジェクトを CSS 文字列に変換する
+      const styleStr = Object.entries(style)
+        .map(([k, v]) => `${k}:${v}`)
+        .join(';');
+
+      let options = '<option value="">--:--</option>';
+      // 00:00 から 23:45 まで 15分刻みで option を生成する
+      for (let totalMin = 0; totalMin < 24 * 60; totalMin += 15) {
+        const h   = String(Math.floor(totalMin / 60)).padStart(2, '0');
+        const m   = String(totalMin % 60).padStart(2, '0');
+        const val = `${h}:${m}`;
+        const sel = val === selectedValue ? ' selected' : '';
+        options  += `<option value="${val}"${sel}>${val}</option>`;
+      }
+
+      const idAttr    = id    ? ` id="${escHtml(id)}"` : '';
+      const clsAttr   = `class="sumioka-input${cls ? ' ' + escHtml(cls) : ''}"`;
+      const styleAttr = styleStr ? ` style="${escHtml(styleStr)}"` : '';
+
+      return `<select${idAttr} ${clsAttr}${styleAttr}>${options}</select>`;
+    }
+
     /** 今日の日付を 'YYYY-MM-DD' 形式で返す */
     function todayString() {
       const d   = new Date();
@@ -3605,32 +3752,42 @@ p:last-child { margin-bottom: 0; }
             ? `<span class="calendar-day-num today">${dayCount}</span>`
             : `<span class="calendar-day-num">${dayCount}</span>`;
 
-          // A-5: 種別ごとにクラスを割り当てる（遅刻と早退を別色に）
+          // A-5 / A-①: 種別ごとにCSSクラスを割り当てる
+          // 「会社休日」は employee_id が空のため専用クラスを設ける。
+          // GASから返ってくる type 文字列と完全一致させること。
           const typeClassMap = {
-            '休み'   : 'ev-休み',
-            '欠勤'   : 'ev-休み',
-            '遅刻'   : 'ev-遅刻',
-            '早退'   : 'ev-早退',
-            '補填予定': 'ev-補填予定',
-            '補填完了': 'ev-補填完了',
-            '会社'   : 'ev-会社',
+            '休み'    : 'ev-休み',
+            '欠勤'    : 'ev-休み',
+            '遅刻'    : 'ev-遅刻',
+            '早退'    : 'ev-早退',
+            '補填予定' : 'ev-補填予定',
+            '補填完了' : 'ev-補填完了',
+            '会社'    : 'ev-会社',      // 旧フォーマット互換
+            '会社休日' : 'ev-会社',     // GASが返す正式なtype値
           };
 
           // イベントを最大3件表示（多い場合は件数のみ表示）
           const evHtml = dayEvs.slice(0, 3).map(ev => {
             const cls = typeClassMap[ev.type] || 'ev-休み';
 
-            // A-6: 名字のみ（スペース・全角スペースで分割して先頭）
-            // 苗字が同じ人を区別するため、名前の1文字目も付加する
-            const parts    = (ev.name || '').split(/[\s\u3000]/);
-            const lastName = parts[0] || '';
-            const firstInitial = parts[1] ? parts[1].charAt(0) : '';
-            // 苗字＋名前1文字（例: 田中沙→「田中沙」、田中花→「田中花」）
-            const label = lastName + firstInitial;
+            // A-①: 会社休日は employee_id が空でも name（=会社休日名）を表示する。
+            //       個人イベントは「苗字＋名前頭文字」で表示（A-6 の挙動を維持）。
+            let label;
+            if (ev.type === '会社休日' || ev.type === '会社') {
+              // 会社カレンダーは name に「会社休日」や行事名が入っている
+              label = ev.name || '会社休日';
+            } else {
+              // A-6: 名字のみ（スペース・全角スペースで分割して先頭）
+              // 苗字が同じ人を区別するため、名前の1文字目も付加する
+              const parts       = (ev.name || '').split(/[\s\u3000]/);
+              const lastName    = parts[0] || '';
+              const firstInitial = parts[1] ? parts[1].charAt(0) : '';
+              label = lastName + firstInitial;
+            }
 
             return `<div class="calendar-event ${escHtml(cls)}"
               style="display:inline-block;width:auto;max-width:100%"
-              title="${escHtml(ev.name)}：${escHtml(ev.type)}"
+              title="${escHtml(ev.name || '')}：${escHtml(ev.type)}"
               >${escHtml(label)}</div>`;
           }).join('');
 
@@ -3738,18 +3895,54 @@ p:last-child { margin-bottom: 0; }
       // フォームリセット
       document.getElementById('absence-reason').value = '';
       document.getElementById('absence-date').value   = '';
-      if (document.getElementById('absence-time')) {
-        document.getElementById('absence-time').value = '';
-      }
+      // A-②: absence-time は select に変更済みのため value リセットで対応
+      const absenceTimeEl = document.getElementById('absence-time');
+      if (absenceTimeEl) absenceTimeEl.value = '';
       const noneRadio = document.getElementById('comp-none');
       if (noneRadio) { noneRadio.checked = true; updateCompensationUI('none'); }
 
-      // 補填行リセット（1行目だけ残す）
+      // 補填行リセット（1行目だけ残す）。
+      // A-②: fillup-time-input が select に変わったため、innerHTML も select で再生成する。
       const wrap = document.getElementById('fillup-dates-wrap');
       if (wrap) wrap.innerHTML = `
         <div class="fillup-date-row" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;align-items:center">
           <input class="sumioka-input fillup-date-input" type="date" style="width:145px;font-size:0.85rem">
-          <input class="sumioka-input fillup-time-input" type="time" style="width:115px;font-size:0.85rem">
+          <select class="sumioka-input fillup-time-input" style="width:115px;font-size:0.85rem">
+            <option value="">--:--</option>
+            <option value="06:00">06:00</option><option value="06:15">06:15</option>
+            <option value="06:30">06:30</option><option value="06:45">06:45</option>
+            <option value="07:00">07:00</option><option value="07:15">07:15</option>
+            <option value="07:30">07:30</option><option value="07:45">07:45</option>
+            <option value="08:00">08:00</option><option value="08:15">08:15</option>
+            <option value="08:30">08:30</option><option value="08:45">08:45</option>
+            <option value="09:00">09:00</option><option value="09:15">09:15</option>
+            <option value="09:30">09:30</option><option value="09:45">09:45</option>
+            <option value="10:00">10:00</option><option value="10:15">10:15</option>
+            <option value="10:30">10:30</option><option value="10:45">10:45</option>
+            <option value="11:00">11:00</option><option value="11:15">11:15</option>
+            <option value="11:30">11:30</option><option value="11:45">11:45</option>
+            <option value="12:00">12:00</option><option value="12:15">12:15</option>
+            <option value="12:30">12:30</option><option value="12:45">12:45</option>
+            <option value="13:00">13:00</option><option value="13:15">13:15</option>
+            <option value="13:30">13:30</option><option value="13:45">13:45</option>
+            <option value="14:00">14:00</option><option value="14:15">14:15</option>
+            <option value="14:30">14:30</option><option value="14:45">14:45</option>
+            <option value="15:00">15:00</option><option value="15:15">15:15</option>
+            <option value="15:30">15:30</option><option value="15:45">15:45</option>
+            <option value="16:00">16:00</option><option value="16:15">16:15</option>
+            <option value="16:30">16:30</option><option value="16:45">16:45</option>
+            <option value="17:00">17:00</option><option value="17:15">17:15</option>
+            <option value="17:30">17:30</option><option value="17:45">17:45</option>
+            <option value="18:00">18:00</option><option value="18:15">18:15</option>
+            <option value="18:30">18:30</option><option value="18:45">18:45</option>
+            <option value="19:00">19:00</option><option value="19:15">19:15</option>
+            <option value="19:30">19:30</option><option value="19:45">19:45</option>
+            <option value="20:00">20:00</option><option value="20:15">20:15</option>
+            <option value="20:30">20:30</option><option value="20:45">20:45</option>
+            <option value="21:00">21:00</option><option value="21:15">21:15</option>
+            <option value="21:30">21:30</option><option value="21:45">21:45</option>
+            <option value="22:00">22:00</option>
+          </select>
           <select class="sumioka-input fillup-duration-input" style="width:110px;font-size:0.85rem">
             <option value="">時間数</option>
             <option value="0.25">15分</option><option value="0.5">30分</option>
