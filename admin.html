@@ -1430,9 +1430,17 @@
       <!-- 新規/編集を判定するための隠しフィールド -->
       <input type="hidden" id="modal-staff-id">
 
+      <!-- 【修正3】氏名を姓・名の2フィールドに分割する。
+           GASには「姓 名」（半角スペース区切り）として結合して送信する。
+           カレンダーの「苗字のみ表示」はスペース分割で取得しているため互換性あり。 -->
       <div class="sumioka-form-group">
-        <label class="sumioka-label" for="modal-staff-name">氏名 <span style="color:#c0392b">*</span></label>
-        <input class="sumioka-input" type="text" id="modal-staff-name">
+        <label class="sumioka-label">氏名 <span style="color:#c0392b">*</span></label>
+        <div style="display:flex;gap:0.5rem">
+          <input class="sumioka-input" type="text" id="modal-staff-last-name"
+            placeholder="姓（例: 住岡）" style="flex:1">
+          <input class="sumioka-input" type="text" id="modal-staff-first-name"
+            placeholder="名（例: 太郎）" style="flex:1">
+        </div>
       </div>
 
       <div class="sumioka-form-group">
@@ -3146,7 +3154,11 @@
         isNew ? '（必須）' : '（空欄＝変更なし）';
 
       document.getElementById('modal-staff-id').value              = isNew ? '' : (staff.id              || '');
-      document.getElementById('modal-staff-name').value            = isNew ? '' : (staff.name            || '');
+      // 【修正3】既存の「姓 名」形式の name を分割して各フィールドにセットする。
+      // スペース（半角・全角）で分割し、先頭が姓、次が名とする。
+      const nameParts = isNew ? ['', ''] : (staff.name || '').split(/[\s\u3000]/);
+      document.getElementById('modal-staff-last-name').value  = nameParts[0] || '';
+      document.getElementById('modal-staff-first-name').value = nameParts.slice(1).join(' ') || '';
       document.getElementById('modal-staff-pin').value             = isNew ? '' : (staff.pin             || '');
       document.getElementById('modal-staff-password').value        = ''; // 常に空で開く
       // K-3: 雇用形態は職員/利用者の2択。既存データが他の値なら空に倒す
@@ -3174,7 +3186,11 @@
      */
     async function saveStaffModal() {
       const id             = document.getElementById('modal-staff-id').value;
-      const name           = document.getElementById('modal-staff-name').value.trim();
+      // 【修正3】姓・名を別フィールドから取得して「姓 名」形式に結合する。
+      // カレンダー表示（苗字のみ）はスペース分割で取得するため、この形式で問題ない。
+      const lastName       = document.getElementById('modal-staff-last-name').value.trim();
+      const firstName      = document.getElementById('modal-staff-first-name').value.trim();
+      const name           = lastName && firstName ? lastName + ' ' + firstName : (lastName || firstName);
       const pin            = document.getElementById('modal-staff-pin').value.trim();
       const password       = document.getElementById('modal-staff-password').value.trim();
       const employment     = document.getElementById('modal-staff-employment').value;
