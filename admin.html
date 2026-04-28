@@ -714,8 +714,8 @@
 
     <!-- タブナビゲーション -->
     <nav class="admin-tabs" id="admin-tabs" role="tablist">
-      <button class="admin-tab active" data-tab="dashboard"   role="tab">ダッシュボード</button>
-      <button class="admin-tab"        data-tab="attendance"  role="tab">勤怠一覧</button>
+      <button class="admin-tab"        data-tab="dashboard"   role="tab">ダッシュボード</button>
+      <button class="admin-tab active" data-tab="attendance"  role="tab">勤怠一覧</button>
       <!-- A-2〜A-12: カレンダー・申請タブを管理者側にも追加 -->
       <button class="admin-tab"        data-tab="calendar"    role="tab">カレンダー・申請</button>
       <button class="admin-tab"        data-tab="requests"    role="tab">申請管理</button>
@@ -724,8 +724,6 @@
       <button class="admin-tab"        data-tab="payroll"     role="tab">給与計算</button>
       <!-- 納期ビュー（管理者は全スタッフの納期を閲覧。タスクはkintai.html側で個人管理） -->
       <button class="admin-tab"        data-tab="taskview"    role="tab">納期</button>
-      <!-- 【D】有給管理タブを新規追加 -->
-      <button class="admin-tab"        data-tab="paidleave"   role="tab">有給管理</button>
     </nav>
 
     <!-- ============================================================
@@ -734,7 +732,7 @@
     <main class="admin-content">
 
       <!-- ①ダッシュボード -->
-      <section class="tab-panel active" id="panel-dashboard">
+      <section class="tab-panel" id="panel-dashboard">
         <div class="tab-loading" id="loading-dashboard">読み込み中...</div>
 
         <p class="section-title">本日のサマリー</p>
@@ -950,7 +948,7 @@
       </section><!-- /#panel-calendar -->
 
       <!-- ②勤怠一覧 -->
-      <section class="tab-panel" id="panel-attendance">
+      <section class="tab-panel active" id="panel-attendance">
         <div class="tab-loading" id="loading-attendance">読み込み中...</div>
 
         <!-- フィルター -->
@@ -1316,105 +1314,6 @@
               <tr><td colspan="7" style="text-align:center;color:GrayText;padding:1rem">読み込み中...</td></tr>
             </tbody>
           </table>
-        </div>
-
-      </section>
-
-      <!-- ============================================================
-           【D】有給管理タブ
-           全スタッフの有給付与・消化・残日数を管理する。
-           単位は 0.5日（2時間相当）。
-           ============================================================ -->
-      <section class="tab-panel" id="panel-paidleave">
-        <div class="tab-loading" id="loading-paidleave">読み込み中...</div>
-
-        <!-- 操作ヘッダー -->
-        <div class="filter-row" style="margin-bottom:1rem">
-          <button class="sumioka-btn sumioka-btn-primary" id="btn-paidleave-load">
-            一覧を更新
-          </button>
-          <span style="font-size:0.78rem;color:GrayText;align-self:center">
-            ※ 単位は0.5日（2時間）
-          </span>
-        </div>
-
-        <!-- 有給一覧テーブル -->
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>氏名</th>
-                <th>付与日数</th>
-                <th>消化日数</th>
-                <th>残日数</th>
-                <th>更新日時</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody id="paidleave-body">
-              <tr><td colspan="6" class="empty-state">「一覧を更新」を押してください</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- 操作フォーム（行をクリックすると以下に展開） -->
-        <div id="paidleave-action-form" style="display:none;
-          border:1px solid Highlight;border-radius:8px;padding:1.25rem;
-          margin-top:1.25rem;background:Canvas">
-
-          <p class="section-title" id="paidleave-action-target-name">―</p>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.65rem;margin-bottom:1rem">
-
-            <!-- 付与追加 -->
-            <div style="border:1px solid GrayText;border-radius:6px;padding:0.85rem;background:Canvas">
-              <p style="font-size:0.75rem;font-weight:700;color:GrayText;margin-bottom:0.5rem">
-                付与を追加する
-              </p>
-              <div style="display:flex;gap:0.4rem;align-items:center">
-                <input class="sumioka-input" type="number" id="paidleave-grant-value"
-                  min="0.5" step="0.5" value="1" style="width:80px;font-size:0.9rem">
-                <span style="font-size:0.85rem">日</span>
-              </div>
-              <button class="sumioka-btn sumioka-btn-primary"
-                id="btn-paidleave-grant" style="margin-top:0.5rem;width:100%;font-size:0.82rem">
-                付与追加
-              </button>
-            </div>
-
-            <!-- 消化調整 -->
-            <div style="border:1px solid GrayText;border-radius:6px;padding:0.85rem;background:Canvas">
-              <p style="font-size:0.75rem;font-weight:700;color:GrayText;margin-bottom:0.5rem">
-                消化を調整する
-              </p>
-              <div style="display:flex;gap:0.4rem;align-items:center">
-                <input class="sumioka-input" type="number" id="paidleave-consume-value"
-                  min="0.5" step="0.5" value="0.5" style="width:80px;font-size:0.9rem">
-                <span style="font-size:0.85rem">日</span>
-              </div>
-              <button class="sumioka-btn"
-                id="btn-paidleave-consume" style="margin-top:0.5rem;width:100%;font-size:0.82rem">
-                消化追加
-              </button>
-            </div>
-
-            <!-- リセット -->
-            <div style="border:1px solid GrayText;border-radius:6px;padding:0.85rem;background:Canvas">
-              <p style="font-size:0.75rem;font-weight:700;color:GrayText;margin-bottom:0.5rem">
-                リセット
-              </p>
-              <p style="font-size:0.78rem;color:GrayText;margin-bottom:0.5rem">
-                付与・消化ともに0に戻します
-              </p>
-              <button class="sumioka-btn sumioka-btn-danger"
-                id="btn-paidleave-reset" style="margin-top:0.5rem;width:100%;font-size:0.82rem">
-                リセット
-              </button>
-            </div>
-
-          </div>
-
-          <button class="sumioka-btn" id="btn-paidleave-cancel">キャンセル</button>
         </div>
 
       </section>
@@ -2039,7 +1938,9 @@
       hideLoading();
 
       if (!result.success) {
-        showError(result.error_message, result.error_detail);
+        // 【修正②】showError（オーバーレイ）ではなく、ログインカード内にインライン表示する。
+        // 詳細ボタンを押さなくてもエラー内容が即座に見えるようにする。
+        showLoginError(result.error_message || 'ログインに失敗しました。');
         return;
       }
 
@@ -2047,9 +1948,14 @@
 
       // 管理者フラグを確認する。一般スタッフはアクセス拒否
       if (!employee.is_admin) {
-        showToast('管理者権限がありません。', 'error');
+        // 【修正①】権限なしは「ログイン権限がありません。」で明示する。
+        // 旧: 「PIN またはパスワードが正しくありません。」と同じ文言で混乱を招いていた。
+        showLoginError('ログイン権限がありません。');
         return;
       }
+
+      // エラーをクリア（前回のエラーが残らないよう）
+      clearLoginError();
 
       // セッション保存
       SumiokaStorage.save(SESSION_KEY, {
@@ -2059,6 +1965,46 @@
 
       applySession({ employeeId: employee.id, name: employee.name });
       await loadInitialData();
+    }
+
+    /**
+     * ログインカード内にエラーメッセージをインライン表示する。
+     * showError（オーバーレイ）の代わりに使用する。
+     *
+     * @param {string} message - 表示するエラーメッセージ
+     */
+    function showLoginError(message) {
+      // 既存要素があれば再利用、なければ生成してログインボタンの下に挿入する
+      let el = document.getElementById('login-error-msg');
+      if (!el) {
+        el = document.createElement('p');
+        el.id = 'login-error-msg';
+        el.style.cssText = [
+          'margin-top:0.75rem',
+          'font-size:0.88rem',
+          'font-weight:600',
+          'color:#c0392b',
+          'text-align:center',
+          'background:#fff5f5',
+          'border:1px solid #f5c6cb',
+          'border-radius:4px',
+          'padding:0.5rem 0.75rem',
+        ].join(';');
+        // ログインボタンの直後に挿入する
+        const btn = document.getElementById('btn-login');
+        btn.parentNode.insertBefore(el, btn.nextSibling);
+      }
+      el.textContent = message;
+      el.style.display = '';
+    }
+
+    /**
+     * ログインエラー表示をクリアする。
+     * ログイン成功時に呼んで前回エラーが残らないようにする。
+     */
+    function clearLoginError() {
+      const el = document.getElementById('login-error-msg');
+      if (el) el.style.display = 'none';
     }
 
     /**
@@ -2074,10 +2020,10 @@
       document.getElementById('admin-display-name').textContent = session.name;
       showScreen('admin');
 
-      // リロード時のタブ復元: 最後に表示していたタブを localStorage から取得して復元する。
-      // データロードは loadInitialData の完了後に switchTab 経由で行うため、
-      // ここではアクティブクラスの切り替えのみ行う。
-      const savedTab = SumiokaStorage.load('admin_active_tab') || 'dashboard';
+      // 【修正③】初期タブを 'attendance'（勤怠一覧）に変更する。
+      // 旧: 'dashboard' が初期表示だったが、現場では勤怠一覧を最初に確認する運用が多いため変更。
+      // リロード時は localStorage に保存されたタブを優先する（last-tab 復元は維持）。
+      const savedTab = SumiokaStorage.load('admin_active_tab') || 'attendance';
       document.querySelectorAll('.admin-tab').forEach(t => {
         t.classList.toggle('active', t.dataset.tab === savedTab);
       });
@@ -2149,8 +2095,6 @@
         case 'staff':    loadStaff();             break;
         case 'payroll':  initPayrollTab();        break;
         case 'taskview': loadTaskView();          break;
-        // 【D】有給管理タブ：タブ切り替え時に自動ロード
-        case 'paidleave': loadAllPaidLeave();     break;
         case 'monthly':  /* 明示的に検索ボタンを押す運用 */ break;
       }
     }
@@ -2170,19 +2114,22 @@
         loadStaffListForFilter(),
       ]);
 
-      // リロード時タブ復元: ダッシュボード以外のタブを復元する場合はデータを読み込む
+      // 【修正③】初期タブが 'attendance' になったため、判定を 'dashboard' から変更する。
+      // attendance タブは loadAttendanceList() をトリガーする。
       const restoredTab = adminState._restoredTab;
-      if (restoredTab && restoredTab !== 'dashboard') {
+      if (restoredTab && restoredTab !== 'attendance') {
         switch (restoredTab) {
+          case 'dashboard': loadDashboard();          break;
           case 'calendar': await loadAdminCalendar(); await loadAdminFillupPending(); break;
           case 'requests': await loadRequests();  break;
           case 'staff':    await loadStaff();     break;
           case 'payroll':  initPayrollTab();      break;
           case 'taskview': await loadTaskView();  break;
-          // 【D】有給管理タブのリロード復元
-          case 'paidleave': await loadAllPaidLeave(); break;
           case 'monthly':  /* ボタン押下運用 */   break;
         }
+      } else {
+        // デフォルト（attendance タブ）のデータを読み込む
+        await loadAttendance();
       }
     }
 
@@ -2955,12 +2902,22 @@
     function renderRequestsTable(requests) {
       const tbody = document.getElementById('req-body');
 
-      if (requests.length === 0) {
+      // 【修正④】承認管理が必要な種別のみ表示する。
+      // 「休み」「遅刻」「早退」は申請即カレンダー反映（承認フロー不要）のため除外する。
+      // 「有給」「補填」のみ表示する。
+      const filtered = requests.filter(r =>
+        r.type === '有給'    ||
+        r.type === '補填'    ||
+        r.type === '補填予定' ||
+        r.type === '補填完了'
+      );
+
+      if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="empty-state">該当する申請がありません</td></tr>';
         return;
       }
 
-      tbody.innerHTML = requests.map(req => {
+      tbody.innerHTML = filtered.map(req => {
         const badgeMap = {
           pending  : 'badge-yellow',
           approved : 'badge-green',
@@ -4133,197 +4090,10 @@
      * @param {Object} obj
      * @returns {string}
      */
-    /**
-     * オブジェクトを onclick 属性に埋め込める JSON 文字列に変換する。
-     * escHtml と組み合わせて使う。
-     *
-     * @param {Object} obj
-     * @returns {string}
-     */
     function escJson(obj) {
       // JSON.stringify 後に属性値として安全なようにシングルクォートをエスケープ
       return escHtml(JSON.stringify(obj));
     }
-
-    // ============================================================
-    // 【D】有給管理
-    //
-    // 設計方針:
-    //   - 全スタッフの有給一覧を表示し、行クリックで操作フォームを展開する
-    //   - 付与追加・消化調整・リセットの3操作を提供する
-    //   - 操作後に一覧を即時リロードして画面を最新化する
-    // ============================================================
-
-    /**
-     * 選択中の社員IDを保持する（操作フォームで参照する）。
-     * null のときは操作フォームを非表示にする。
-     */
-    let paidLeaveSelectedUserId = null;
-
-    /**
-     * 全スタッフの有給一覧をGASから取得してテーブルに描画する。
-     */
-    async function loadAllPaidLeave() {
-      setTabLoading('paidleave', true);
-
-      // 操作フォームを閉じておく（リロード時にも確実に閉じる）
-      closePaidLeaveForm();
-
-      const result = await callGAS('get_all_paid_leave', {});
-      setTabLoading('paidleave', false);
-
-      if (!result.success) {
-        showToast('有給一覧の取得に失敗しました。', 'error');
-        return;
-      }
-
-      renderPaidLeaveTable(result.data.list || []);
-    }
-
-    /**
-     * 有給一覧をテーブルに描画する。
-     * 行クリックで操作フォームを展開する。
-     *
-     * @param {Array} list - { user_id, name, granted, consumed, remaining, updated_at }[]
-     */
-    function renderPaidLeaveTable(list) {
-      const tbody = document.getElementById('paidleave-body');
-
-      if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">有給データがありません。付与を追加してください。</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = list.map(item => {
-        // 残日数が0以下の場合は赤色で警告する
-        const remainingColor = item.remaining <= 0 ? 'color:#c0392b;font-weight:700' : 'color:#1a7f37;font-weight:700';
-        const updatedAt      = item.updated_at ? item.updated_at.slice(0, 10) : '―';
-
-        return `
-          <tr style="cursor:pointer" onclick="openPaidLeaveForm('${escHtml(item.user_id)}', '${escHtml(item.name)}')">
-            <td>${escHtml(item.name)}</td>
-            <td style="text-align:right">${item.granted} 日</td>
-            <td style="text-align:right">${item.consumed} 日</td>
-            <td style="text-align:right;${remainingColor}">${item.remaining} 日</td>
-            <td style="font-size:0.78rem;color:GrayText">${escHtml(updatedAt)}</td>
-            <td>
-              <button class="sumioka-btn" style="font-size:0.75rem;padding:0.2em 0.6em"
-                onclick="event.stopPropagation(); openPaidLeaveForm('${escHtml(item.user_id)}', '${escHtml(item.name)}')">
-                操作
-              </button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    /**
-     * 操作フォームを展開し、選択中の社員IDをセットする。
-     *
-     * @param {string} userId - 社員ID
-     * @param {string} name   - 氏名
-     */
-    function openPaidLeaveForm(userId, name) {
-      paidLeaveSelectedUserId = userId;
-
-      document.getElementById('paidleave-action-target-name').textContent = name + ' の有給を操作';
-      document.getElementById('paidleave-action-form').style.display = '';
-
-      // フォームの入力値をリセット
-      document.getElementById('paidleave-grant-value').value   = '1';
-      document.getElementById('paidleave-consume-value').value = '0.5';
-
-      // フォームまでスクロール
-      document.getElementById('paidleave-action-form').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    /**
-     * 操作フォームを閉じる。
-     */
-    function closePaidLeaveForm() {
-      paidLeaveSelectedUserId = null;
-      const form = document.getElementById('paidleave-action-form');
-      if (form) form.style.display = 'none';
-    }
-
-    /**
-     * 有給操作（付与追加・消化調整・リセット）を GAS に送信する。
-     *
-     * @param {'grant'|'consume'|'reset'} type - 操作種別
-     */
-    async function execPaidLeaveAction(type) {
-      if (!paidLeaveSelectedUserId) {
-        showToast('操作対象のスタッフを選択してください。', 'warning');
-        return;
-      }
-
-      let value = 0;
-
-      if (type === 'grant') {
-        value = Number(document.getElementById('paidleave-grant-value').value);
-        if (!value || value <= 0 || value * 2 !== Math.round(value * 2)) {
-          showToast('付与日数は0.5日単位で0より大きい値を入力してください。', 'warning');
-          return;
-        }
-      } else if (type === 'consume') {
-        value = Number(document.getElementById('paidleave-consume-value').value);
-        if (!value || value <= 0 || value * 2 !== Math.round(value * 2)) {
-          showToast('消化日数は0.5日単位で0より大きい値を入力してください。', 'warning');
-          return;
-        }
-      } else if (type === 'reset') {
-        // リセットは確認ダイアログで確認してから実行する
-        const ok = await confirm('有給データをリセットしますか？付与・消化ともに0になります。');
-        if (!ok) return;
-      }
-
-      const typeLabel = { grant: '付与追加', consume: '消化追加', reset: 'リセット' };
-      showLoading(`有給を${typeLabel[type]}中...`);
-
-      const result = await callGAS('update_paid_leave', {
-        user_id : paidLeaveSelectedUserId,
-        type    : type,
-        value   : value,
-      });
-
-      hideLoading();
-
-      if (!result.success) {
-        showError(result.error_message, result.error_detail);
-        return;
-      }
-
-      showToast(`${typeLabel[type]}が完了しました。`, 'success');
-
-      // 操作後に一覧を再ロードして画面を最新化する
-      closePaidLeaveForm();
-      await loadAllPaidLeave();
-    }
-
-    // ── 有給管理タブのイベントバインド ────────────────────────────
-
-    // DOMContentLoaded 後にイベントを設定する（すでに既存のバインドと共存）
-    document.addEventListener('DOMContentLoaded', () => {
-      // 一覧更新ボタン
-      const btnLoad = document.getElementById('btn-paidleave-load');
-      if (btnLoad) btnLoad.addEventListener('click', loadAllPaidLeave);
-
-      // 付与追加ボタン
-      const btnGrant = document.getElementById('btn-paidleave-grant');
-      if (btnGrant) btnGrant.addEventListener('click', () => execPaidLeaveAction('grant'));
-
-      // 消化追加ボタン
-      const btnConsume = document.getElementById('btn-paidleave-consume');
-      if (btnConsume) btnConsume.addEventListener('click', () => execPaidLeaveAction('consume'));
-
-      // リセットボタン
-      const btnReset = document.getElementById('btn-paidleave-reset');
-      if (btnReset) btnReset.addEventListener('click', () => execPaidLeaveAction('reset'));
-
-      // キャンセルボタン
-      const btnCancel = document.getElementById('btn-paidleave-cancel');
-      if (btnCancel) btnCancel.addEventListener('click', closePaidLeaveForm);
-    });
   </script>
 
   <!--
