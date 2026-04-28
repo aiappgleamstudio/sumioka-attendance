@@ -2871,6 +2871,15 @@ p:last-child { margin-bottom: 0; }
         // 時刻欄：遅刻・早退のみ表示
         if (timeWrap) timeWrap.style.display = type === '休み' ? 'none' : '';
 
+        // 【修正4】種別に応じて時刻 select のデフォルト値を設定する。
+        // 遅刻：出勤予定時刻として 10:00、早退：退勤予定時刻として 15:00 を初期値にする。
+        // すでに値が選択されている場合は上書きしない（再選択時の誤リセット防止）。
+        const timeEl = document.getElementById('absence-time');
+        if (timeEl && !timeEl.value) {
+          if (type === '遅刻') timeEl.value = '10:00';
+          if (type === '早退') timeEl.value = '15:00';
+        }
+
         // 有給消化ラジオボタン：休みのときのみ表示
         // 遅刻・早退で有給消化は運用上想定しないため非表示にする
         if (paidLabel) paidLabel.style.display = type === '休み' ? '' : 'none';
@@ -3766,8 +3775,19 @@ p:last-child { margin-bottom: 0; }
             '会社休日' : 'ev-会社',     // GASが返す正式なtype値
           };
 
+          // 【修正1】他ユーザーのイベントは「遅刻・早退・休み・会社休日」のみ表示する。
+          // 補填予定・補填完了は本人にしか関係しない情報のため非表示にする。
+          // 会社休日は employee_id が空文字なので !ev.employee_id で通過させる。
+          const VISIBLE_FOR_OTHERS = ['遅刻', '早退', '休み', '会社休日'];
+          const filteredEvs = dayEvs.filter(ev => {
+            // 自分のイベント・会社休日（employee_id なし）は無条件で表示する
+            if (!ev.employee_id || ev.employee_id === state.employeeId) return true;
+            // 他ユーザーは許可リストに含まれる種別のみ表示する
+            return VISIBLE_FOR_OTHERS.includes(ev.type);
+          });
+
           // イベントを最大3件表示（多い場合は件数のみ表示）
-          const evHtml = dayEvs.slice(0, 3).map(ev => {
+          const evHtml = filteredEvs.slice(0, 3).map(ev => {
             const cls = typeClassMap[ev.type] || 'ev-休み';
 
             // A-①: 会社休日は employee_id が空でも name（=会社休日名）を表示する。
@@ -3791,8 +3811,9 @@ p:last-child { margin-bottom: 0; }
               >${escHtml(label)}</div>`;
           }).join('');
 
-          const moreHtml = dayEvs.length > 3
-            ? `<div style="font-size:0.62rem;color:GrayText">他${dayEvs.length - 3}件</div>`
+          // 「他N件」の件数はフィルタ後の件数を基準にする
+          const moreHtml = filteredEvs.length > 3
+            ? `<div style="font-size:0.62rem;color:GrayText">他${filteredEvs.length - 3}件</div>`
             : '';
 
           html += `<td>${dayNumHtml}${evHtml}${moreHtml}</td>`;
@@ -3980,7 +4001,14 @@ p:last-child { margin-bottom: 0; }
         return;
       }
 
-      renderRequestHistory(result.data.requests || [], 'request-history-list');
+      // 【修正6】申請管理タブは「有給・補填」の申請のみ表示する対象とする。
+      // 「休み・遅刻・早退」はカレンダー上で確認できるため申請タブには出さない。
+      // status が undefined（旧データ）の場合も表示対象とする。
+      const list = (result.data.requests || []).filter(r =>
+        (r.type === '有給' || r.type === '補填') &&
+        (r.status === 'pending' || r.status === 'approved' || !r.status)
+      );
+      renderRequestHistory(list, 'request-history-list');
     }
 
     /**
