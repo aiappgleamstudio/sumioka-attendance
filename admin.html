@@ -717,7 +717,7 @@
       <button class="admin-tab"        data-tab="dashboard"   role="tab">ダッシュボード</button>
       <button class="admin-tab active" data-tab="attendance"  role="tab">勤怠一覧</button>
       <!-- A-2〜A-12: カレンダー・申請タブを管理者側にも追加 -->
-      <button class="admin-tab"        data-tab="calendar"    role="tab">カレンダー</button>
+      <button class="admin-tab"        data-tab="calendar"    role="tab">カレンダー・申請</button>
       <button class="admin-tab"        data-tab="requests"    role="tab">申請管理</button>
       <button class="admin-tab"        data-tab="staff"       role="tab">スタッフ管理</button>
       <button class="admin-tab"        data-tab="monthly"     role="tab">月次レポート</button>
@@ -880,6 +880,71 @@
           <button class="sumioka-btn" id="btn-company-cal-clear">選択をリセット</button>
         </div>
 
+        <!-- ── A-2〜A-8: 補填申請フォーム（管理者が代理申請・確認用）── -->
+        <p class="section-title">補填申請フォーム</p>
+        <div class="fillup-form-card">
+
+          <!-- A-7: 補填のみ申請フロー。種別は「補填予定（事前）」「補填完了（事後）」の2択 -->
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="admin-req-type">種別</label>
+            <select class="sumioka-input" id="admin-req-type">
+              <option value="補填予定">補填予定（事前申請）</option>
+              <option value="補填完了">補填完了（事後報告）</option>
+            </select>
+          </div>
+
+          <!-- A-3: 理由を種別の直下に配置 -->
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="admin-req-reason">理由</label>
+            <textarea class="sumioka-textarea" id="admin-req-reason" rows="2"
+              placeholder="理由を入力してください"></textarea>
+          </div>
+
+          <!-- A-8: 「いつの分を」→対象日（不足が発生した日） -->
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="admin-req-shortage-date">
+              不足が発生した日
+              <span style="font-size:0.75rem;color:GrayText;font-weight:400">（どの日の不足分か）</span>
+            </label>
+            <input class="sumioka-input" type="date" id="admin-req-shortage-date">
+          </div>
+
+          <!-- A-2, A-8: 「いつ補填するか」→ 複数日対応テキスト入力 -->
+          <div class="sumioka-form-group">
+            <label class="sumioka-label">
+              補填する日時
+              <span style="font-size:0.75rem;color:GrayText;font-weight:400">（いつ補填するか・複数日可）</span>
+            </label>
+            <!-- A-4: テキスト形式。placeholderに「お昼休みで補填します」 -->
+            <div id="admin-fillup-dates-wrap">
+              <div class="fillup-date-row">
+                <input class="sumioka-input fillup-date-input" type="text"
+                  placeholder="お昼休みで補填します">
+              </div>
+            </div>
+            <button class="sumioka-btn" id="btn-admin-fillup-add-date"
+              style="font-size:0.78rem;margin-top:0.4rem">＋ 日程を追加</button>
+          </div>
+
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="admin-req-staff">対象スタッフ</label>
+            <select class="sumioka-input" id="admin-req-staff">
+              <option value="">選択してください</option>
+            </select>
+          </div>
+
+          <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
+            id="admin-btn-submit-fillup">補填申請を送信</button>
+        </div>
+
+        <!-- ── A-12: 補填予定・補填完了・申請履歴はログインユーザーのみ ── -->
+        <p class="section-title">補填申請の承認待ち一覧</p>
+        <div id="admin-fillup-pending-list">
+          <div style="text-align:center;color:GrayText;padding:1.5rem;font-size:0.85rem">
+            読み込み中...
+          </div>
+        </div>
+
       </section><!-- /#panel-calendar -->
 
       <!-- ②勤怠一覧 -->
@@ -937,9 +1002,9 @@
           <div class="filter-group">
             <span class="filter-label">ステータス</span>
             <select class="sumioka-input" id="req-filter-status" style="width:130px">
+              <option value="pending">承認待ち</option>
               <option value="all">全件</option>
               <option value="approved">承認済み</option>
-              <option value="pending">承認待ち</option>
               <option value="rejected">却下済み</option>
             </select>
           </div>
@@ -1019,6 +1084,19 @@
               <tr><td colspan="8" class="empty-state">読み込み中...</td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- テストデータ一括リセット（開発・検証用） -->
+        <p class="section-title" style="margin-top:2rem">テストデータのリセット</p>
+        <div style="padding:1rem;background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;margin-top:0.5rem">
+          <p style="font-size:0.83rem;color:#c0392b;margin-bottom:0.75rem">
+            ⚠️ 出退勤記録・申請管理・タスク管理・納期管理の全データを削除します。<br>
+            人員マスタ・会社カレンダー・給与設定は削除されません。本番運用後は使用しないでください。
+          </p>
+          <button class="sumioka-btn" id="btn-reset-test-data"
+            style="background:#c0392b;color:#fff;border-color:#c0392b">
+            テストデータを一括削除
+          </button>
         </div>
       </section>
 
@@ -1195,13 +1273,15 @@
           <div class="filter-group">
             <span class="filter-label">ソート</span>
             <select class="sumioka-input" id="taskview-sort" style="width:130px">
-              <option value="next_date">次の期日順</option>
+              <option value="next_date">納品日順</option>
               <option value="name">担当者順</option>
               <option value="title">案件名順</option>
             </select>
           </div>
           <button class="sumioka-btn sumioka-btn-primary" id="btn-taskview-load"
             style="align-self:flex-end">表示</button>
+          <button class="sumioka-btn sumioka-btn-primary" id="btn-admin-deadline-add"
+            style="align-self:flex-end">＋ 案件追加</button>
         </div>
 
         <!-- カレンダーナビ（カレンダービュー時のみ表示） -->
@@ -1213,24 +1293,68 @@
           </div>
         </div>
 
+        <!-- Admin納期 追加・編集フォーム（初期非表示） -->
+        <div id="admin-deadline-form-wrap" style="display:none;margin-bottom:1rem">
+          <div class="inline-form-card">
+            <p style="font-weight:700;margin-bottom:1rem;font-size:0.95rem"
+              id="admin-deadline-form-title">案件を追加</p>
+            <input type="hidden" id="admin-deadline-form-id">
+            <div class="sumioka-form-group">
+              <label class="sumioka-label">案件名 <span style="color:#c0392b">*</span></label>
+              <input class="sumioka-input" type="text" id="admin-deadline-form-name"
+                placeholder="例：△△社 カタログ制作">
+            </div>
+            <div class="sumioka-form-group">
+              <label class="sumioka-label">担当者 <span style="color:#c0392b">*</span></label>
+              <select class="sumioka-input" id="admin-deadline-form-staff">
+                <option value="">選択してください</option>
+              </select>
+            </div>
+            <div class="sumioka-form-group">
+              <label class="sumioka-label">納品日</label>
+              <input class="sumioka-input" type="date" id="admin-deadline-form-deadline">
+            </div>
+            <div class="sumioka-form-group">
+              <label class="sumioka-label">進捗</label>
+              <select class="sumioka-input" id="admin-deadline-form-status">
+                <option value="">―</option>
+                <option value="未着手">未着手</option>
+                <option value="進行中">進行中</option>
+                <option value="先方確認中">先方確認中</option>
+                <option value="修正中">修正中</option>
+                <option value="納品済">納品済</option>
+              </select>
+            </div>
+            <div class="sumioka-form-group">
+              <label class="sumioka-label">メモ</label>
+              <textarea class="sumioka-textarea" id="admin-deadline-form-memo" rows="2"
+                placeholder="担当者・連絡先・注意事項など"></textarea>
+            </div>
+            <div style="display:flex;gap:0.65rem;justify-content:flex-end">
+              <button class="sumioka-btn" id="btn-admin-deadline-form-cancel">キャンセル</button>
+              <button class="sumioka-btn sumioka-btn-primary"
+                id="btn-admin-deadline-form-save">保存</button>
+            </div>
+          </div>
+        </div>
+
         <!-- 一覧コンテンツ -->
         <div id="admin-deadline-list-wrap">
-          <!-- 納期一覧テーブル（管理者は閲覧専用。全員の納品日・顧客名・フェーズ状況を表示） -->
+          <!-- 納期一覧テーブル -->
           <div class="admin-table-wrap" id="taskview-deadline-wrap">
             <table class="admin-table">
               <thead>
                 <tr>
                   <th>担当者</th>
-                  <th>顧客名</th>
                   <th>案件名</th>
-                  <th>種別</th>
-                  <th>次の期日</th>
-                  <th>フェーズ</th>
-                  <th>備考</th>
+                  <th>納品日</th>
+                  <th>進捗</th>
+                  <th>メモ</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody id="taskview-deadline-body">
-                <tr><td colspan="7" class="empty-state">「表示」を押してください</td></tr>
+                <tr><td colspan="6" class="empty-state">「表示」を押してください</td></tr>
               </tbody>
             </table>
           </div>
@@ -1289,7 +1413,12 @@
 
       <!-- 編集モード用の隠しフィールド -->
       <input type="hidden" id="modal-edit-employee-id">
-      <input type="hidden" id="modal-edit-date">
+      <!-- 編集モード時のみ表示する日付入力欄。
+           新規モードは modal-edit-date-input-wrap 側を使うため JS で切り替える。 -->
+      <div id="modal-edit-date-wrap" class="sumioka-form-group" style="display:none">
+        <label class="sumioka-label" for="modal-edit-date">日付 <span style="color:#c0392b">*</span></label>
+        <input class="sumioka-input" type="date" id="modal-edit-date">
+      </div>
       <!-- 新規/編集モードを判定するフラグ -->
       <input type="hidden" id="modal-edit-mode"> <!-- 'edit' | 'add' -->
 
@@ -1366,17 +1495,8 @@
       <input type="hidden" id="modal-staff-id">
 
       <div class="sumioka-form-group">
-      <!-- 氏名を姓・名の2フィールドに分割する。
-           GASには「姓 名」（半角スペース区切り）で結合して送信する。
-           カレンダーの「苗字のみ表示」はスペース分割で動作するため互換性あり。 -->
-      <div class="sumioka-form-group">
-        <label class="sumioka-label">氏名 <span style="color:#c0392b">*</span></label>
-        <div style="display:flex;gap:0.5rem">
-          <input class="sumioka-input" type="text" id="modal-staff-last-name"
-            placeholder="姓（例: 住岡）" style="flex:1">
-          <input class="sumioka-input" type="text" id="modal-staff-first-name"
-            placeholder="名（例: 太郎）" style="flex:1">
-        </div>
+        <label class="sumioka-label" for="modal-staff-name">氏名 <span style="color:#c0392b">*</span></label>
+        <input class="sumioka-input" type="text" id="modal-staff-name">
       </div>
 
       <div class="sumioka-form-group">
@@ -1390,8 +1510,7 @@
 
       <div class="sumioka-form-group">
         <label class="sumioka-label" for="modal-staff-password">
-          パスワード <span style="color:#c0392b">*</span>
-          <span id="modal-staff-password-hint" style="color:GrayText;font-weight:400;font-size:0.78rem">（編集時は空欄＝変更なし）</span>
+          パスワード <span id="modal-staff-password-hint" style="color:GrayText;font-weight:400">（空欄＝変更なし）</span>
         </label>
         <input class="sumioka-input" type="text" id="modal-staff-password"
           placeholder="変更する場合のみ入力">
@@ -1806,6 +1925,12 @@
 
       // ── 納期ビュー（管理者は納期のみ。タスクはkintai.html側） ──
       document.getElementById('btn-taskview-load').addEventListener('click', loadTaskView);
+      document.getElementById('btn-admin-deadline-add').addEventListener('click',
+        () => openAdminDeadlineForm(null));
+      document.getElementById('btn-admin-deadline-form-cancel').addEventListener('click',
+        () => { document.getElementById('admin-deadline-form-wrap').style.display = 'none'; });
+      document.getElementById('btn-admin-deadline-form-save').addEventListener('click',
+        saveAdminDeadline);
       document.getElementById('taskview-sort').addEventListener('change', renderAdminDeadlineView);
 
       // 納期カレンダーナビ
@@ -1845,8 +1970,14 @@
         loadAdminCalendar();
       });
 
+      document.getElementById('btn-admin-fillup-add-date').addEventListener('click',
+        addFillupDateRow);
+      document.getElementById('admin-btn-submit-fillup').addEventListener('click',
+        handleAdminSubmitFillup);
       document.getElementById('btn-company-cal-save').addEventListener('click',
         saveCompanyCalendar);
+      document.getElementById('btn-reset-test-data').addEventListener('click',
+        handleResetTestData);
       document.getElementById('btn-company-cal-clear').addEventListener('click', () => {
         adminCalState.selectedDates = [];
         renderSelectedDates();
@@ -2279,6 +2410,40 @@
     /**
      * A-11: 選択した日付を会社カレンダーとして GAS に保存する。
      */
+    /**
+     * テストデータを一括削除する。
+     * 出退勤記録・申請管理・タスク管理・納期管理の全データを削除する。
+     * 人員マスタ・会社カレンダー・給与設定は削除されない。
+     */
+    async function handleResetTestData() {
+      const ok = await confirm(
+        '【警告】出退勤記録・申請管理・タスク・納期の全データを削除します。\n' +
+        '人員マスタは削除されません。\n\n本当に実行しますか？'
+      );
+      if (!ok) return;
+
+      // 2段階確認（誤操作防止）
+      const ok2 = await confirm('最終確認：この操作は元に戻せません。実行しますか？');
+      if (!ok2) return;
+
+      showLoading('リセット中...');
+      const result = await callGAS('admin_reset_test_data', {
+        admin_id: adminState.employeeId,
+      });
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      const deleted = result.data.deleted || {};
+      const summary = Object.entries(deleted)
+        .map(([k, v]) => `${k}: ${v}行`)
+        .join('、');
+      showToast(`リセット完了（${summary}）`, 'success');
+    }
+
     async function saveCompanyCalendar() {
       const dates = adminCalState.selectedDates;
       const title = document.getElementById('company-cal-title').value.trim();
@@ -2673,6 +2838,8 @@
       document.getElementById('modal-edit-staff-select-wrap').style.display  = isNew ? '' : 'none';
       document.getElementById('modal-edit-date-input-wrap').style.display    = isNew ? '' : 'none';
       document.getElementById('modal-edit-target-display').style.display     = isNew ? 'none' : '';
+      // 編集モード時のみ日付入力欄を表示する（新規は date-input-wrap 側を使う）
+      document.getElementById('modal-edit-date-wrap').style.display          = isNew ? 'none' : '';
 
       if (isNew) {
         // 新規モード：最新のスタッフ一覧を GAS から取得してプルダウンを生成する。
@@ -2711,7 +2878,9 @@
         document.getElementById('modal-edit-target').textContent =
           `${record.name}  ／  ${record.date}`;
         document.getElementById('modal-edit-employee-id').value = record.employee_id || '';
-        document.getElementById('modal-edit-date').value        = record.date        || '';
+        // date は YYYY/MM/DD で返ってくる場合がある。
+        // <input type="date"> は YYYY-MM-DD 形式を要求するため変換する。
+        document.getElementById('modal-edit-date').value        = (record.date || '').replace(/\//g, '-');
         document.getElementById('modal-edit-status').value      = record.status      || '出勤';
         document.getElementById('modal-edit-timein').value      = record.time_in     || '';
         document.getElementById('modal-edit-timeout').value     = record.time_out    || '';
@@ -2754,6 +2923,8 @@
       } else {
         employeeId = document.getElementById('modal-edit-employee-id').value;
         date       = document.getElementById('modal-edit-date').value;
+        // 編集モードでも日付が空の場合は送信をブロックする
+        if (!date) { showToast('日付を選択してください。', 'warning'); return; }
       }
 
       const status = document.getElementById('modal-edit-status').value;
@@ -3087,11 +3258,7 @@
         isNew ? '（必須）' : '（空欄＝変更なし）';
 
       document.getElementById('modal-staff-id').value              = isNew ? '' : (staff.id              || '');
-      // 「姓 名」形式を分割して各フィールドにセットする。
-      // スペース（半角・全角）で分割し、先頭が姓、以降が名とする。
-      const nameParts = isNew ? ['', ''] : (staff.name || '').split(/[\s\u3000]/);
-      document.getElementById('modal-staff-last-name').value  = nameParts[0] || '';
-      document.getElementById('modal-staff-first-name').value = nameParts.slice(1).join(' ') || '';
+      document.getElementById('modal-staff-name').value            = isNew ? '' : (staff.name            || '');
       document.getElementById('modal-staff-pin').value             = isNew ? '' : (staff.pin             || '');
       document.getElementById('modal-staff-password').value        = ''; // 常に空で開く
       // K-3: 雇用形態は職員/利用者の2択。既存データが他の値なら空に倒す
@@ -3101,8 +3268,7 @@
       document.getElementById('modal-staff-scheduled-start').value = isNew ? '10:00' : (staff.scheduled_start || '');
       document.getElementById('modal-staff-scheduled-end').value   = isNew ? '15:00' : (staff.scheduled_end   || '');
       document.getElementById('modal-staff-wage-type').value       = isNew ? '時給' : (staff.wage_type    || '');
-      // 時給は新規登録時に 1150 をデフォルト値として設定する
-      document.getElementById('modal-staff-hourly-wage').value     = isNew ? '1150' : (staff.hourly_wage      || '');
+      document.getElementById('modal-staff-hourly-wage').value     = isNew ? '' : (staff.hourly_wage      || '');
       document.getElementById('modal-staff-monthly-wage').value    = isNew ? '' : (staff.monthly_wage     || '');
       document.getElementById('modal-staff-transport').value       = isNew ? '' : (staff.transport_fee    || '');
 
@@ -3120,10 +3286,7 @@
      */
     async function saveStaffModal() {
       const id             = document.getElementById('modal-staff-id').value;
-      // 姓・名を別フィールドから取得して「姓 名」形式に結合する。
-      const lastName       = document.getElementById('modal-staff-last-name').value.trim();
-      const firstName      = document.getElementById('modal-staff-first-name').value.trim();
-      const name           = lastName && firstName ? `${lastName} ${firstName}` : (lastName || firstName);
+      const name           = document.getElementById('modal-staff-name').value.trim();
       const pin            = document.getElementById('modal-staff-pin').value.trim();
       const password       = document.getElementById('modal-staff-password').value.trim();
       const employment     = document.getElementById('modal-staff-employment').value;
@@ -3729,6 +3892,80 @@
     /**
      * 現在のビューモードに応じて一覧またはカレンダーを描画する。
      */
+    /**
+     * Admin納期フォームを開く（新規 or 編集）。
+     * スタッフ一覧を取得してセレクトに反映する。
+     */
+    function openAdminDeadlineForm(deadline) {
+      const isNew = !deadline || !deadline.id;
+      document.getElementById('admin-deadline-form-title').textContent = isNew ? '案件を追加' : '案件を編集';
+      document.getElementById('admin-deadline-form-id').value       = isNew ? '' : (deadline.id       || '');
+      document.getElementById('admin-deadline-form-name').value     = isNew ? '' : (deadline.name     || '');
+      document.getElementById('admin-deadline-form-deadline').value = isNew ? '' : (deadline.deadline || '');
+      document.getElementById('admin-deadline-form-status').value   = isNew ? '' : (deadline.status   || '');
+      document.getElementById('admin-deadline-form-memo').value     = isNew ? '' : (deadline.memo     || '');
+
+      // スタッフ選択肢を最新状態で生成する
+      const staffSel = document.getElementById('admin-deadline-form-staff');
+      staffSel.innerHTML = '<option value="">選択してください</option>';
+      (adminState.staffList || []).forEach(s => {
+        const opt = document.createElement('option');
+        opt.value       = s.id;
+        opt.textContent = s.name;
+        // 編集時は employee_id が一致する選択肢を selected にする
+        if (!isNew && deadline.employee_id === s.id) opt.selected = true;
+        staffSel.appendChild(opt);
+      });
+
+      const wrap = document.getElementById('admin-deadline-form-wrap');
+      wrap.style.display = '';
+      wrap.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    /** Admin納期フォームを保存する（新規 or 更新）*/
+    async function saveAdminDeadline() {
+      const id       = document.getElementById('admin-deadline-form-id').value;
+      const name     = document.getElementById('admin-deadline-form-name').value.trim();
+      const staffSel = document.getElementById('admin-deadline-form-staff');
+      const staffId  = staffSel.value;
+      const staffName = staffSel.options[staffSel.selectedIndex]?.textContent || '';
+
+      if (!name)    { showToast('案件名は必須です。', 'warning'); return; }
+      if (!staffId) { showToast('担当者を選択してください。', 'warning'); return; }
+
+      showLoading('保存中...');
+      const result = await callGAS('upsert_deadline', {
+        deadline_id  : id || undefined,
+        employee_id  : staffId,
+        assignee     : staffName,
+        name,
+        deadline     : document.getElementById('admin-deadline-form-deadline').value || '',
+        status       : document.getElementById('admin-deadline-form-status').value   || '',
+        memo         : document.getElementById('admin-deadline-form-memo').value.trim(),
+      });
+      hideLoading();
+
+      if (!result.success) { showError(result.error_message, result.error_detail); return; }
+      showToast('案件を保存しました。', 'success');
+      document.getElementById('admin-deadline-form-wrap').style.display = 'none';
+      await loadTaskView();
+    }
+
+    /** Admin納期を削除する */
+    async function deleteAdminDeadline(deadlineId) {
+      const ok = await confirm('この案件を削除しますか？');
+      if (!ok) return;
+      showLoading('削除中...');
+      const result = await callGAS('delete_deadline', {
+        deadline_id : deadlineId,
+        employee_id : adminState.employeeId,
+      });
+      hideLoading();
+      if (!result.success) { showError(result.error_message, result.error_detail); return; }
+      showToast('案件を削除しました。', 'success');
+      await loadTaskView();
+    }
+
     function renderAdminDeadlineView() {
       if (adminDeadlineViewState.mode === 'calendar') {
         renderAdminDeadlineCalendar();
@@ -3773,10 +4010,7 @@
     }
 
     /**
-     * 管理者用納期一覧テーブルを描画する。
-     * 全スタッフ分を表示。顧客名・フェーズの次の期日・フェーズ状況を含む。
-     * 管理者は閲覧のみ（ステータス変更不可）。
-     *
+     * 管理者用納期一覧テーブルを描画する（新9列シート構造対応）。
      * @param {Object[]} deadlines
      */
     function renderAdminDeadlineTable(deadlines) {
@@ -3784,43 +4018,33 @@
       const today = todayString();
 
       if (deadlines.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">案件がありません</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">案件がありません</td></tr>';
         return;
       }
 
-      // ソートする（nextDate = フェーズ中で最も近い未完了の予定日）
       const sortKey = document.getElementById('taskview-sort').value;
       const arr = [...deadlines];
 
-      function nextPhaseDate(d) {
-        const phases = Array.isArray(d.phases) ? d.phases : [];
-        const upcoming = phases
-          .filter(p => !p.done && p.planned_date)
-          .map(p => p.planned_date)
-          .sort();
-        return upcoming[0] || '';
-      }
-
+      // 新構造: 期日は d.deadline を使う
       arr.sort((a, b) => {
-        if (sortKey === 'name')  return (a.name  || '').localeCompare(b.name  || '', 'ja');
-        if (sortKey === 'title') return (a.title || '').localeCompare(b.title || '', 'ja');
-        // next_date
-        const na = nextPhaseDate(a), nb = nextPhaseDate(b);
+        if (sortKey === 'name' || sortKey === 'title')
+          return (a.assignee || '').localeCompare(b.assignee || '', 'ja');
+        const na = a.deadline || '', nb = b.deadline || '';
         if (!na && !nb) return 0; if (!na) return 1; if (!nb) return -1;
         return na.localeCompare(nb);
       });
 
-      const phaseStatusColor = {
+      const statusColorMap = {
         '未着手': '#6b7280', '進行中': '#b45309', '先方確認中': '#1d4ed8',
         '修正中': '#c0392b', '納品済': '#1a7f37',
       };
 
       tbody.innerHTML = arr.map(d => {
-        const nd       = nextPhaseDate(d);
-        const phases   = Array.isArray(d.phases) ? d.phases : [];
+        const nd       = d.deadline || '';
         const daysLeft = nd ? Math.round((new Date(nd) - new Date(today)) / 86400000) : null;
-        const isAlert  = daysLeft !== null && daysLeft <= 3 && !phases.every(p => p.done);
+        const isAlert  = daysLeft !== null && daysLeft <= 3 && d.status !== '納品済';
         const rowStyle = isAlert ? 'background:#fff5f5' : '';
+        const statusColor = statusColorMap[d.status] || '#6b7280';
 
         const daysLabel = daysLeft !== null
           ? (daysLeft < 0  ? `<span style="color:#c0392b;font-size:0.72rem;font-weight:700">超過${Math.abs(daysLeft)}日</span>`
@@ -3829,33 +4053,23 @@
            : `<span style="color:GrayText;font-size:0.72rem">残${daysLeft}日</span>`)
           : '';
 
-        // フェーズの状況サマリー（名前+ステータスをコンパクトに並べる）
-        const phasesSummary = phases.length
-          ? phases.map(p => {
-              const col = phaseStatusColor[p.status] || '#6b7280';
-              const done = p.done ? 'line-through' : 'none';
-              return `<span style="font-size:0.68rem;color:${col};text-decoration:${done};
-                margin-right:0.3rem;white-space:nowrap">${escHtml(p.name)}${p.planned_date ? '(' + p.planned_date.slice(5) + ')' : ''}</span>`;
-            }).join('')
-          : '<span style="color:GrayText;font-size:0.72rem">―</span>';
-
-        const typeBadgeCls = d.type === '継続' ? 'deadline-type-continue' : 'deadline-type-single';
-
         return `
           <tr style="${rowStyle}">
-            <td>${escHtml(d.name || '―')}</td>
-            <td style="font-size:0.82rem">${escHtml(d.client || '―')}</td>
+            <td style="font-size:0.85rem">${escHtml(d.assignee || '―')}</td>
+            <td style="font-weight:600">${escHtml(d.name || '―')}</td>
+            <td style="white-space:nowrap;font-size:0.85rem">${escHtml(nd || '―')} ${daysLabel}</td>
+            <td style="color:${statusColor};font-weight:600;font-size:0.85rem">${escHtml(d.status || '―')}</td>
+            <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+              font-size:0.78rem;color:GrayText" title="${escHtml(d.memo || '')}">
+              ${escHtml(d.memo || '―')}</td>
             <td>
-              ${escHtml(d.title)}
-              <span class="deadline-type-badge ${typeBadgeCls}" style="margin-left:0.25rem;font-size:0.62rem">
-                ${escHtml(d.type || '単発')}
-              </span>
+              <div style="display:flex;gap:0.3rem">
+                <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em"
+                  onclick="openAdminDeadlineForm(${escJson(d)})">編集</button>
+                <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em;color:#c0392b;border-color:#c0392b"
+                  onclick="deleteAdminDeadline('${escHtml(d.id)}')">削除</button>
+              </div>
             </td>
-            <td>${escHtml(d.type || '単発')}</td>
-            <td style="white-space:nowrap">${escHtml(nd || '―')} ${daysLabel}</td>
-            <td style="max-width:220px;overflow:hidden">${phasesSummary}</td>
-            <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.78rem;color:GrayText"
-              title="${escHtml(d.memo || '')}">${escHtml(d.memo || '―')}</td>
           </tr>`;
       }).join('');
     }
