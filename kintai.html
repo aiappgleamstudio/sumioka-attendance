@@ -3766,8 +3766,17 @@ p:last-child { margin-bottom: 0; }
             '会社休日' : 'ev-会社',     // GASが返す正式なtype値
           };
 
+          // 【修正】他ユーザーのイベントは「遅刻・早退・休み・会社休日」のみ表示する。
+          // 補填予定・補填完了は本人にしか関係しない情報のため他ユーザーには非表示にする。
+          // 会社休日は employee_id が空文字なので !ev.employee_id で全員に通過させる。
+          const VISIBLE_FOR_OTHERS = ['遅刻', '早退', '休み', '会社休日'];
+          const filteredEvs = dayEvs.filter(ev => {
+            if (!ev.employee_id || ev.employee_id === state.employeeId) return true;
+            return VISIBLE_FOR_OTHERS.includes(ev.type);
+          });
+
           // イベントを最大3件表示（多い場合は件数のみ表示）
-          const evHtml = dayEvs.slice(0, 3).map(ev => {
+          const evHtml = filteredEvs.slice(0, 3).map(ev => {
             const cls = typeClassMap[ev.type] || 'ev-休み';
 
             // A-①: 会社休日は employee_id が空でも name（=会社休日名）を表示する。
@@ -3791,8 +3800,8 @@ p:last-child { margin-bottom: 0; }
               >${escHtml(label)}</div>`;
           }).join('');
 
-          const moreHtml = dayEvs.length > 3
-            ? `<div style="font-size:0.62rem;color:GrayText">他${dayEvs.length - 3}件</div>`
+          const moreHtml = filteredEvs.length > 3
+            ? `<div style="font-size:0.62rem;color:GrayText">他${filteredEvs.length - 3}件</div>`
             : '';
 
           html += `<td>${dayNumHtml}${evHtml}${moreHtml}</td>`;
@@ -3980,7 +3989,14 @@ p:last-child { margin-bottom: 0; }
         return;
       }
 
-      renderRequestHistory(result.data.requests || [], 'request-history-list');
+      // 【修正】申請タブは「有給・補填」のみ表示する。
+      // 休み・遅刻・早退はカレンダーで確認できるため申請タブには出さない。
+      // status が undefined（旧データ）の場合も表示対象とする。
+      const list = (result.data.requests || []).filter(r =>
+        (r.type === '有給' || r.type === '補填') &&
+        (r.status === 'pending' || r.status === 'approved' || !r.status)
+      );
+      renderRequestHistory(list, 'request-history-list');
     }
 
     /**
@@ -4466,9 +4482,8 @@ p:last-child { margin-bottom: 0; }
       const result = await callGAS('get_deadlines', { employee_id: state.employeeId, all: false });
       if (!result.success) { showToast('納期データの取得に失敗しました。', 'error'); return; }
 
-      // 【デバッグ】表示されない場合はコンソールで employee_id とデータ件数を確認する。
-      // GAS側フィルタ条件（employee_id 一致）と照合するために両方出力する。
-      // 本番確認後もログは残してよい（パフォーマンス影響なし）。
+      // 【デバッグ】案件が表示されない場合はコンソールで確認する。
+      // GAS側のemployeeIdフィルタ条件と照合するために両方出力する。
       console.log('[loadDeadlines] ログインユーザー employee_id:', state.employeeId);
       console.log('[loadDeadlines] 取得した納期データ:', result.data.deadlines);
 
