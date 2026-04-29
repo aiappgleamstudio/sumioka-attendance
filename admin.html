@@ -1354,9 +1354,9 @@
 
       <!-- 編集モード用の隠しフィールド -->
       <input type="hidden" id="modal-edit-employee-id">
-      <!-- 【修正3】編集モードで日付が表示・変更できなかった（hidden のため）。
-           編集モード時は表示欄として出す。新規モード時は modal-edit-date-input-wrap が使われるため
-           このラッパーは編集モード時のみ visible にする（JS で切り替える）。 -->
+      <!-- 【修正】編集モードで日付が表示・変更できなかった（hidden のため）。
+           編集モード時のみ表示する date 入力欄に変更する。
+           新規モードは modal-edit-date-input-wrap を使うため、JS 側で表示を切り替える。 -->
       <div id="modal-edit-date-wrap" class="sumioka-form-group" style="display:none">
         <label class="sumioka-label" for="modal-edit-date">日付 <span style="color:#c0392b">*</span></label>
         <input class="sumioka-input" type="date" id="modal-edit-date">
@@ -2738,7 +2738,7 @@
       document.getElementById('modal-edit-staff-select-wrap').style.display  = isNew ? '' : 'none';
       document.getElementById('modal-edit-date-input-wrap').style.display    = isNew ? '' : 'none';
       document.getElementById('modal-edit-target-display').style.display     = isNew ? 'none' : '';
-      // 【修正3】編集モード時のみ日付入力欄を表示する（新規モードは date-input-wrap 側を使う）
+      // 編集モード時のみ日付入力欄を表示する（新規モードは date-input-wrap 側を使う）
       document.getElementById('modal-edit-date-wrap').style.display          = isNew ? 'none' : '';
 
       if (isNew) {
@@ -2769,9 +2769,8 @@
         document.getElementById('modal-edit-timein').value  = '';
         document.getElementById('modal-edit-timeout').value = '';
         document.getElementById('modal-edit-break').value   = '';
-        // 【修正2】弁当のデフォルトを「要（true）」に変更する。
-        // 運用上、弁当が必要なスタッフが大半のため「不要」を初期値にすると
-        // 入力漏れが発生しやすい。新規登録時は「要」を起点にして都度変更する運用とする。
+        // 弁当のデフォルトは「要（true）」にする。
+        // 不要が多い場合は都度変更する運用で入力漏れを防ぐ。
         document.getElementById('modal-edit-lunch').value   = 'true';
         document.getElementById('modal-edit-memo').value    = '';
         document.getElementById('modal-edit-reason').value  = '';
@@ -2781,7 +2780,9 @@
         document.getElementById('modal-edit-target').textContent =
           `${record.name}  ／  ${record.date}`;
         document.getElementById('modal-edit-employee-id').value = record.employee_id || '';
-        document.getElementById('modal-edit-date').value        = record.date        || '';
+        // date は YYYY/MM/DD で返ってくる場合がある。
+        // <input type="date"> は YYYY-MM-DD 形式を要求するため変換する。
+        document.getElementById('modal-edit-date').value        = (record.date || '').replace(/\//g, '-');
         document.getElementById('modal-edit-status').value      = record.status      || '出勤';
         document.getElementById('modal-edit-timein').value      = record.time_in     || '';
         document.getElementById('modal-edit-timeout').value     = record.time_out    || '';
@@ -2824,7 +2825,7 @@
       } else {
         employeeId = document.getElementById('modal-edit-employee-id').value;
         date       = document.getElementById('modal-edit-date').value;
-        // 【修正3】編集モードでも日付が空の場合は送信をブロックする
+        // 編集モードでも日付が空の場合は送信をブロックする
         if (!date) { showToast('日付を選択してください。', 'warning'); return; }
       }
 
