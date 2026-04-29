@@ -717,7 +717,7 @@
       <button class="admin-tab"        data-tab="dashboard"   role="tab">ダッシュボード</button>
       <button class="admin-tab active" data-tab="attendance"  role="tab">勤怠一覧</button>
       <!-- A-2〜A-12: カレンダー・申請タブを管理者側にも追加 -->
-      <button class="admin-tab"        data-tab="calendar"    role="tab">カレンダー・申請</button>
+      <button class="admin-tab"        data-tab="calendar"    role="tab">カレンダー</button>
       <button class="admin-tab"        data-tab="requests"    role="tab">申請管理</button>
       <button class="admin-tab"        data-tab="staff"       role="tab">スタッフ管理</button>
       <button class="admin-tab"        data-tab="monthly"     role="tab">月次レポート</button>
@@ -880,71 +880,6 @@
           <button class="sumioka-btn" id="btn-company-cal-clear">選択をリセット</button>
         </div>
 
-        <!-- ── A-2〜A-8: 補填申請フォーム（管理者が代理申請・確認用）── -->
-        <p class="section-title">補填申請フォーム</p>
-        <div class="fillup-form-card">
-
-          <!-- A-7: 補填のみ申請フロー。種別は「補填予定（事前）」「補填完了（事後）」の2択 -->
-          <div class="sumioka-form-group">
-            <label class="sumioka-label" for="admin-req-type">種別</label>
-            <select class="sumioka-input" id="admin-req-type">
-              <option value="補填予定">補填予定（事前申請）</option>
-              <option value="補填完了">補填完了（事後報告）</option>
-            </select>
-          </div>
-
-          <!-- A-3: 理由を種別の直下に配置 -->
-          <div class="sumioka-form-group">
-            <label class="sumioka-label" for="admin-req-reason">理由</label>
-            <textarea class="sumioka-textarea" id="admin-req-reason" rows="2"
-              placeholder="理由を入力してください"></textarea>
-          </div>
-
-          <!-- A-8: 「いつの分を」→対象日（不足が発生した日） -->
-          <div class="sumioka-form-group">
-            <label class="sumioka-label" for="admin-req-shortage-date">
-              不足が発生した日
-              <span style="font-size:0.75rem;color:GrayText;font-weight:400">（どの日の不足分か）</span>
-            </label>
-            <input class="sumioka-input" type="date" id="admin-req-shortage-date">
-          </div>
-
-          <!-- A-2, A-8: 「いつ補填するか」→ 複数日対応テキスト入力 -->
-          <div class="sumioka-form-group">
-            <label class="sumioka-label">
-              補填する日時
-              <span style="font-size:0.75rem;color:GrayText;font-weight:400">（いつ補填するか・複数日可）</span>
-            </label>
-            <!-- A-4: テキスト形式。placeholderに「お昼休みで補填します」 -->
-            <div id="admin-fillup-dates-wrap">
-              <div class="fillup-date-row">
-                <input class="sumioka-input fillup-date-input" type="text"
-                  placeholder="お昼休みで補填します">
-              </div>
-            </div>
-            <button class="sumioka-btn" id="btn-admin-fillup-add-date"
-              style="font-size:0.78rem;margin-top:0.4rem">＋ 日程を追加</button>
-          </div>
-
-          <div class="sumioka-form-group">
-            <label class="sumioka-label" for="admin-req-staff">対象スタッフ</label>
-            <select class="sumioka-input" id="admin-req-staff">
-              <option value="">選択してください</option>
-            </select>
-          </div>
-
-          <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
-            id="admin-btn-submit-fillup">補填申請を送信</button>
-        </div>
-
-        <!-- ── A-12: 補填予定・補填完了・申請履歴はログインユーザーのみ ── -->
-        <p class="section-title">補填申請の承認待ち一覧</p>
-        <div id="admin-fillup-pending-list">
-          <div style="text-align:center;color:GrayText;padding:1.5rem;font-size:0.85rem">
-            読み込み中...
-          </div>
-        </div>
-
       </section><!-- /#panel-calendar -->
 
       <!-- ②勤怠一覧 -->
@@ -1002,9 +937,9 @@
           <div class="filter-group">
             <span class="filter-label">ステータス</span>
             <select class="sumioka-input" id="req-filter-status" style="width:130px">
-              <option value="pending">承認待ち</option>
               <option value="all">全件</option>
               <option value="approved">承認済み</option>
+              <option value="pending">承認待ち</option>
               <option value="rejected">却下済み</option>
             </select>
           </div>
@@ -1354,13 +1289,7 @@
 
       <!-- 編集モード用の隠しフィールド -->
       <input type="hidden" id="modal-edit-employee-id">
-      <!-- 【修正】編集モードで日付が表示・変更できなかった（hidden のため）。
-           編集モード時のみ表示する date 入力欄に変更する。
-           新規モードは modal-edit-date-input-wrap を使うため、JS 側で表示を切り替える。 -->
-      <div id="modal-edit-date-wrap" class="sumioka-form-group" style="display:none">
-        <label class="sumioka-label" for="modal-edit-date">日付 <span style="color:#c0392b">*</span></label>
-        <input class="sumioka-input" type="date" id="modal-edit-date">
-      </div>
+      <input type="hidden" id="modal-edit-date">
       <!-- 新規/編集モードを判定するフラグ -->
       <input type="hidden" id="modal-edit-mode"> <!-- 'edit' | 'add' -->
 
@@ -1437,8 +1366,17 @@
       <input type="hidden" id="modal-staff-id">
 
       <div class="sumioka-form-group">
-        <label class="sumioka-label" for="modal-staff-name">氏名 <span style="color:#c0392b">*</span></label>
-        <input class="sumioka-input" type="text" id="modal-staff-name">
+      <!-- 氏名を姓・名の2フィールドに分割する。
+           GASには「姓 名」（半角スペース区切り）で結合して送信する。
+           カレンダーの「苗字のみ表示」はスペース分割で動作するため互換性あり。 -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label">氏名 <span style="color:#c0392b">*</span></label>
+        <div style="display:flex;gap:0.5rem">
+          <input class="sumioka-input" type="text" id="modal-staff-last-name"
+            placeholder="姓（例: 住岡）" style="flex:1">
+          <input class="sumioka-input" type="text" id="modal-staff-first-name"
+            placeholder="名（例: 太郎）" style="flex:1">
+        </div>
       </div>
 
       <div class="sumioka-form-group">
@@ -1452,7 +1390,8 @@
 
       <div class="sumioka-form-group">
         <label class="sumioka-label" for="modal-staff-password">
-          パスワード <span id="modal-staff-password-hint" style="color:GrayText;font-weight:400">（空欄＝変更なし）</span>
+          パスワード <span style="color:#c0392b">*</span>
+          <span id="modal-staff-password-hint" style="color:GrayText;font-weight:400;font-size:0.78rem">（編集時は空欄＝変更なし）</span>
         </label>
         <input class="sumioka-input" type="text" id="modal-staff-password"
           placeholder="変更する場合のみ入力">
@@ -1906,10 +1845,6 @@
         loadAdminCalendar();
       });
 
-      document.getElementById('btn-admin-fillup-add-date').addEventListener('click',
-        addFillupDateRow);
-      document.getElementById('admin-btn-submit-fillup').addEventListener('click',
-        handleAdminSubmitFillup);
       document.getElementById('btn-company-cal-save').addEventListener('click',
         saveCompanyCalendar);
       document.getElementById('btn-company-cal-clear').addEventListener('click', () => {
@@ -2738,8 +2673,6 @@
       document.getElementById('modal-edit-staff-select-wrap').style.display  = isNew ? '' : 'none';
       document.getElementById('modal-edit-date-input-wrap').style.display    = isNew ? '' : 'none';
       document.getElementById('modal-edit-target-display').style.display     = isNew ? 'none' : '';
-      // 編集モード時のみ日付入力欄を表示する（新規モードは date-input-wrap 側を使う）
-      document.getElementById('modal-edit-date-wrap').style.display          = isNew ? 'none' : '';
 
       if (isNew) {
         // 新規モード：最新のスタッフ一覧を GAS から取得してプルダウンを生成する。
@@ -2769,9 +2702,7 @@
         document.getElementById('modal-edit-timein').value  = '';
         document.getElementById('modal-edit-timeout').value = '';
         document.getElementById('modal-edit-break').value   = '';
-        // 弁当のデフォルトは「要（true）」にする。
-        // 不要が多い場合は都度変更する運用で入力漏れを防ぐ。
-        document.getElementById('modal-edit-lunch').value   = 'true';
+        document.getElementById('modal-edit-lunch').value   = 'false';
         document.getElementById('modal-edit-memo').value    = '';
         document.getElementById('modal-edit-reason').value  = '';
 
@@ -2780,9 +2711,7 @@
         document.getElementById('modal-edit-target').textContent =
           `${record.name}  ／  ${record.date}`;
         document.getElementById('modal-edit-employee-id').value = record.employee_id || '';
-        // date は YYYY/MM/DD で返ってくる場合がある。
-        // <input type="date"> は YYYY-MM-DD 形式を要求するため変換する。
-        document.getElementById('modal-edit-date').value        = (record.date || '').replace(/\//g, '-');
+        document.getElementById('modal-edit-date').value        = record.date        || '';
         document.getElementById('modal-edit-status').value      = record.status      || '出勤';
         document.getElementById('modal-edit-timein').value      = record.time_in     || '';
         document.getElementById('modal-edit-timeout').value     = record.time_out    || '';
@@ -2825,8 +2754,6 @@
       } else {
         employeeId = document.getElementById('modal-edit-employee-id').value;
         date       = document.getElementById('modal-edit-date').value;
-        // 編集モードでも日付が空の場合は送信をブロックする
-        if (!date) { showToast('日付を選択してください。', 'warning'); return; }
       }
 
       const status = document.getElementById('modal-edit-status').value;
@@ -3160,7 +3087,11 @@
         isNew ? '（必須）' : '（空欄＝変更なし）';
 
       document.getElementById('modal-staff-id').value              = isNew ? '' : (staff.id              || '');
-      document.getElementById('modal-staff-name').value            = isNew ? '' : (staff.name            || '');
+      // 「姓 名」形式を分割して各フィールドにセットする。
+      // スペース（半角・全角）で分割し、先頭が姓、以降が名とする。
+      const nameParts = isNew ? ['', ''] : (staff.name || '').split(/[\s\u3000]/);
+      document.getElementById('modal-staff-last-name').value  = nameParts[0] || '';
+      document.getElementById('modal-staff-first-name').value = nameParts.slice(1).join(' ') || '';
       document.getElementById('modal-staff-pin').value             = isNew ? '' : (staff.pin             || '');
       document.getElementById('modal-staff-password').value        = ''; // 常に空で開く
       // K-3: 雇用形態は職員/利用者の2択。既存データが他の値なら空に倒す
@@ -3170,7 +3101,8 @@
       document.getElementById('modal-staff-scheduled-start').value = isNew ? '10:00' : (staff.scheduled_start || '');
       document.getElementById('modal-staff-scheduled-end').value   = isNew ? '15:00' : (staff.scheduled_end   || '');
       document.getElementById('modal-staff-wage-type').value       = isNew ? '時給' : (staff.wage_type    || '');
-      document.getElementById('modal-staff-hourly-wage').value     = isNew ? '' : (staff.hourly_wage      || '');
+      // 時給は新規登録時に 1150 をデフォルト値として設定する
+      document.getElementById('modal-staff-hourly-wage').value     = isNew ? '1150' : (staff.hourly_wage      || '');
       document.getElementById('modal-staff-monthly-wage').value    = isNew ? '' : (staff.monthly_wage     || '');
       document.getElementById('modal-staff-transport').value       = isNew ? '' : (staff.transport_fee    || '');
 
@@ -3188,7 +3120,10 @@
      */
     async function saveStaffModal() {
       const id             = document.getElementById('modal-staff-id').value;
-      const name           = document.getElementById('modal-staff-name').value.trim();
+      // 姓・名を別フィールドから取得して「姓 名」形式に結合する。
+      const lastName       = document.getElementById('modal-staff-last-name').value.trim();
+      const firstName      = document.getElementById('modal-staff-first-name').value.trim();
+      const name           = lastName && firstName ? `${lastName} ${firstName}` : (lastName || firstName);
       const pin            = document.getElementById('modal-staff-pin').value.trim();
       const password       = document.getElementById('modal-staff-password').value.trim();
       const employment     = document.getElementById('modal-staff-employment').value;
