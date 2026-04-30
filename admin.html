@@ -1027,16 +1027,50 @@
 
       <!-- 使い方タブ -->
       <section class="tab-panel" id="panel-howto">
-        <p class="section-title">使い方</p>
-        <div style="font-size:0.88rem;line-height:1.8;margin-bottom:1.5rem">
-          <p><strong>ダッシュボード</strong>：本日の出退勤状況・弁当注文数・未打刻スタッフを確認できます。</p>
-          <p><strong>勤怠一覧</strong>：日付・スタッフで絞り込んで打刻データを確認・修正できます。修正は監査ログに記録されます。</p>
-          <p><strong>カレンダー</strong>：全スタッフの欠勤・遅刻・早退・補填申請をカレンダーで確認できます。会社カレンダーへの休日登録もここで行います。</p>
-          <p><strong>申請管理</strong>：スタッフからの補填申請・有給申請を確認・承認・却下できます。</p>
-          <p><strong>スタッフ管理</strong>：スタッフの追加・編集・削除ができます。PIN・パスワードの0始まりにも対応しています。</p>
-          <p><strong>月次レポート</strong>：指定月の全スタッフの実働時間・残不足・出勤率を集計できます。</p>
-          <p><strong>給与計算</strong>：指定月の給与計算を実行し、明細を確認できます。</p>
-          <p><strong>納期</strong>：全スタッフの案件納期を一覧・カレンダーで確認できます。</p>
+        <p class="section-title">管理者ガイド</p>
+
+        <!-- 日常確認 -->
+        <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
+          margin-bottom:0.85rem;background:Canvas">
+          <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
+            📊 勤務データの確認
+          </p>
+          <div style="font-size:0.86rem;line-height:1.9">
+            <p><strong>ダッシュボード</strong>：本日の出退勤状況・弁当注文数・未打刻スタッフをリアルタイムで把握</p>
+            <p><strong>勤怠一覧</strong>：日付 or スタッフ名で絞り込み → 打刻内容を確認</p>
+            <p><strong>月次レポート</strong>：月を選んで「集計」→ 実働時間・残不足・出勤率を一覧表示</p>
+          </div>
+        </div>
+
+        <!-- 修正・承認 -->
+        <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
+          margin-bottom:0.85rem;background:Canvas">
+          <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
+            ✏️ データの修正・承認
+          </p>
+          <div style="font-size:0.86rem;line-height:1.9">
+            <p><strong>打刻修正</strong>：勤怠一覧の「修正」ボタンで時刻を書き換え → 修正理由を入力して「保存」（監査ログに記録されます）</p>
+            <p><strong>新規登録</strong>：打ち忘れた日は「＋ 打刻を新規登録」から代理入力</p>
+            <p><strong>申請管理</strong>：スタッフからの補填・有給申請を「承認」または「却下」</p>
+          </div>
+          <div style="margin-top:0.75rem;padding:0.6rem 0.85rem;background:#fff8e1;
+            border-radius:6px;font-size:0.8rem;color:#92400e">
+            💡 修正理由は必ず入力してください。空欄では保存できません。
+          </div>
+        </div>
+
+        <!-- 休日・スタッフ管理 -->
+        <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
+          margin-bottom:0.85rem;background:Canvas">
+          <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
+            ⚙️ 各種設定
+          </p>
+          <div style="font-size:0.86rem;line-height:1.9">
+            <p><strong>会社休日登録</strong>：カレンダータブでカレンダー上の日付をクリックして選択 → 名称を入力して「休日を登録」</p>
+            <p><strong>スタッフ追加・編集</strong>：スタッフ管理タブの「＋ スタッフ追加」から登録。PIN・パスワードは0始まりも使用可</p>
+            <p><strong>給与計算</strong>：給与計算タブで月を選んで「給与計算を実行」→ 各スタッフの明細を確認</p>
+            <p><strong>納期管理</strong>：全スタッフの案件納期を「担当者順」「納品日順」「進捗順」で確認</p>
+          </div>
         </div>
 
         <p class="section-title" style="margin-top:2rem">テスト機能</p>
@@ -1249,6 +1283,7 @@
               <option value="next_date">納品日順</option>
               <option value="name">担当者順</option>
               <option value="title">案件名順</option>
+              <option value="progress">進捗順</option>
             </select>
           </div>
           <button class="sumioka-btn sumioka-btn-primary" id="btn-taskview-load"
@@ -2255,9 +2290,15 @@
       document.getElementById('admin-cal-title').textContent =
         `${adminCalState.calYear}年${adminCalState.calMonth}月`;
 
-      // A-10: 承認済みを含む全イベント + 会社カレンダーを一括取得する
+      // Admin側: get_calendar は申請・打刻イベントのみ取得（会社カレンダーは別途取得）。
+      // include_company_cal: false を渡すことで GAS 側の会社カレンダー二重取得を防ぐ。
+      // 会社カレンダーは get_company_calendar で取得し compDates として renderAdminCalendar に渡す。
       const [evResult, compResult] = await Promise.all([
-        callGAS('get_calendar', { year_month: yearMonth, include_approved: true }),
+        callGAS('get_calendar', {
+          year_month          : yearMonth,
+          include_approved    : true,
+          include_company_cal : false,  // Admin側は別途 get_company_calendar で取得するため false
+        }),
         callGAS('get_company_calendar', { year_month: yearMonth }),
       ]);
 
@@ -4116,10 +4157,11 @@
       const sortKey = document.getElementById('taskview-sort').value;
       const arr = [...deadlines];
 
-      // 新構造: 期日は d.deadline を使う
       arr.sort((a, b) => {
-        if (sortKey === 'name' || sortKey === 'title')
-          return (a.assignee || '').localeCompare(b.assignee || '', 'ja');
+        if (sortKey === 'name')     return (a.assignee || '').localeCompare(b.assignee || '', 'ja');
+        if (sortKey === 'title')    return (a.name     || '').localeCompare(b.name     || '', 'ja');
+        if (sortKey === 'progress') return (b.progress || 0) - (a.progress || 0); // 進捗降順
+        // デフォルト: 納品日順
         const na = a.deadline || '', nb = b.deadline || '';
         if (!na && !nb) return 0; if (!na) return 1; if (!nb) return -1;
         return na.localeCompare(nb);
