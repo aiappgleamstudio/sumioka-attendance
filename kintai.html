@@ -921,6 +921,8 @@ p:last-child { margin-bottom: 0; }
 .ev-補填予定  { background: #d1fae5; color: #065f46; }  /* 緑 */
 .ev-補填完了  { background: #dbeafe; color: #1e40af; }  /* 青 */
 .ev-会社      { background: #f3e8ff; color: #7c3aed; }  /* 紫：会社カレンダー */
+        /* 納期イベント: 担当案件フェーズの予定日をオレンジ系で表示 */
+        .ev-納期      { background: #ffedd5; color: #c2410c; }  /* オレンジ */
 
 /* ============================================================
    Phase 2: 申請フォーム（タブ2）
@@ -2069,6 +2071,7 @@ p:last-child { margin-bottom: 0; }
         <span class="calendar-event ev-補填予定">補填予定</span>
         <span class="calendar-event ev-補填完了">補填完了</span>
         <span class="calendar-event ev-会社">会社休日</span>
+        <span class="calendar-event ev-納期">納期</span>
       </div>
 
       <!-- A-7: 補填申請フォームはカレンダーから独立した「申請」タブに移動 -->
@@ -2456,11 +2459,15 @@ p:last-child { margin-bottom: 0; }
           <option value="next_date">次の期日順</option>
           <option value="title">案件名順</option>
           <option value="type">種別順</option>
+          <!-- 進捗ソート: progress フィールド降順（0〜100）で並べる -->
+          <option value="progress">進捗順</option>
         </select>
-        <select class="sumioka-input" id="deadline-filter-type" style="width:100px">
+        <select class="sumioka-input" id="deadline-filter-type" style="width:120px">
           <option value="all">すべて</option>
           <option value="単発">単発</option>
           <option value="継続">継続</option>
+          <!-- 納品済みフィルタ: 全フェーズが完了している案件を非表示にする -->
+          <option value="hide_shipped">納品済みを非表示</option>
         </select>
         <button class="sumioka-btn sumioka-btn-primary" id="btn-deadline-add"
           style="margin-left:auto">＋ 案件追加</button>
@@ -2712,9 +2719,9 @@ p:last-child { margin-bottom: 0; }
     </div><!-- /#panel-howto -->
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.5 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.6 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.5</div>
+  <div class="version-badge" id="app-version">v1.2.6</div>
 
 
   <script>
@@ -2755,6 +2762,12 @@ p:last-child { margin-bottom: 0; }
       lunch        : null, // true=要 / false=不要 / null=未選択
       report       : '',
       breakMinutes : null, // 休憩時間（分）。null=未選択。退勤時に必須
+      // データ読み込み完了フラグ。
+      // false の間は打刻ボタンを絶対に有効化しない（操作制限）。
+      // applySession() で false にセット → loadTodayRecord() 完了後に true になる。
+      _dataLoaded  : false,
+      // リロード時のタブ復元キー（applySession/loadTodayRecord で使用）
+      _restoredTab : '',
     };
 
     // ============================================================
@@ -3067,6 +3080,16 @@ p:last-child { margin-bottom: 0; }
         p.classList.toggle('active', p.id === `panel-${initialTab}`);
       });
       state._restoredTab = initialTab;
+
+      // データ取得完了まで打刻ボタンを確実にロックする。
+      // _dataLoaded フラグが true になるまで renderState() でもロックを維持する。
+      // 理由: リロード時にラジオボタンを先に選択しても、
+      //       打刻済み状態を確認する前に打刻できてしまうバグを防ぐ。
+      state._dataLoaded = false;
+      const checkinBtn  = document.getElementById('btn-checkin');
+      const checkoutBtn = document.getElementById('btn-checkout');
+      if (checkinBtn)  checkinBtn.disabled  = true;
+      if (checkoutBtn) checkoutBtn.disabled = true;
     }
 
     /**
@@ -3141,6 +3164,11 @@ p:last-child { margin-bottom: 0; }
       }
 
       await loadBalance();
+
+      // データ取得完了フラグを true にする。
+      // これ以降 renderState() が打刻済み状態を正しく判定し、
+      // 必要なボタンだけを有効化できる。
+      state._dataLoaded = true;
       renderState();
 
       // タブ復元: applySession で保存したタブに対応するデータを、
@@ -3232,6 +3260,8 @@ p:last-child { margin-bottom: 0; }
         attendance_data : {
           status  : '出勤',
           time_in : now,
+          // 弁当は boolean で GAS に送る。saveAttendanceRecord が '有'/'無' に変換して保存する。
+          // フロントの state.lunch は true(要) / false(不要) / null(未選択) の3値。
           lunch   : state.lunch,
         },
       }, { button: btn });
@@ -3271,9 +3301,6 @@ p:last-child { margin-bottom: 0; }
       const now    = nowTimeString();
       const btn    = document.getElementById('btn-checkout');
       const workMin = calcWorkMinutes(state.checkinTime, now);
-      // breakMinutes が null（未選択）のときは 0 として計算する。
-      // null のまま引き算すると NaN になりスプシに壊れた値が保存されるため。
-      const breakMin = state.breakMinutes ?? 0;
 
       showLoading('退勤打刻中...');
 
@@ -3284,8 +3311,10 @@ p:last-child { margin-bottom: 0; }
           status        : state.checkinTime ? deriveStatus() : '出勤',
           time_in       : state.checkinTime,
           time_out      : now,
-          break_minutes : breakMin,
-          work_minutes  : Math.max(0, workMin - breakMin),
+          break_minutes : state.breakMinutes,
+          work_minutes  : Math.max(0, workMin - state.breakMinutes),
+          // 弁当: 退勤時は出勤時のデータを引き継ぐ。
+          // state.lunch が null の場合（異常系）は false(不要) にフォールバック。
           lunch         : state.lunch ?? false,
           memo          : state.report,
         },
@@ -3329,6 +3358,18 @@ p:last-child { margin-bottom: 0; }
     function renderState() {
       renderCheckinArea();
       renderCheckoutArea();
+
+      // _dataLoaded フラグが false の間は打刻ボタンを絶対に有効化しない。
+      // リロード時に今日の打刻状態を確認する前に打刻されてしまうのを防ぐ。
+      // applySession() で false にセットし、loadTodayRecord() 完了後に true になる。
+      if (!state._dataLoaded) {
+        const ci = document.getElementById('btn-checkin');
+        const co = document.getElementById('btn-checkout');
+        if (ci) ci.disabled = true;
+        if (co) co.disabled = true;
+        return;
+      }
+
       renderCheckinButton();
       renderCheckoutButton();
       checkOvertimeNotice();
@@ -3698,7 +3739,12 @@ p:last-child { margin-bottom: 0; }
       document.getElementById('cal-title').textContent =
         `${phase2State.calYear}年${phase2State.calMonth}月`;
 
-      const result = await callGAS('get_calendar', { year_month: yearMonth });
+      // employee_id を渡すことで GAS 側が担当案件の納期フェーズも返してくれる。
+      // 渡さない場合は全員共通イベント（申請・会社休日）のみ返る。
+      const result = await callGAS('get_calendar', {
+        year_month  : yearMonth,
+        employee_id : state.employeeId,  // 担当案件の納期表示に使用
+      });
 
       if (!result.success) {
         showToast('カレンダーの取得に失敗しました。', 'error');
@@ -3767,23 +3813,28 @@ p:last-child { margin-bottom: 0; }
             '補填完了' : 'ev-補填完了',
             '会社'    : 'ev-会社',      // 旧フォーマット互換
             '会社休日' : 'ev-会社',     // GASが返す正式なtype値
+            '納期'    : 'ev-納期',      // 担当案件フェーズ予定日
           };
 
           // イベントを最大3件表示（多い場合は件数のみ表示）
           const evHtml = dayEvs.slice(0, 3).map(ev => {
             const cls = typeClassMap[ev.type] || 'ev-休み';
 
-            // A-①: 会社休日は employee_id が空でも name（=会社休日名）を表示する。
-            //       個人イベントは「苗字＋名前頭文字」で表示（A-6 の挙動を維持）。
+            // A-①: イベント種別によってラベル表示を変える。
             let label;
             if (ev.type === '会社休日' || ev.type === '会社') {
-              // 会社カレンダーは name に「会社休日」や行事名が入っている
+              // 会社カレンダー: name に「会社休日」や行事名が入っている
               label = ev.name || '会社休日';
+            } else if (ev.type === '納期') {
+              // 納期イベント: "案件名：フェーズ名" 形式で返ってくる。
+              // カレンダー内は文字数が限られるため、案件名の先頭8文字のみ表示する。
+              const fullName = ev.name || '';
+              label = '📋' + fullName.replace(/：.+$/, '').slice(0, 8);
             } else {
-              // A-6: 名字のみ（スペース・全角スペースで分割して先頭）
-              // 苗字が同じ人を区別するため、名前の1文字目も付加する
-              const parts       = (ev.name || '').split(/[\s\u3000]/);
-              const lastName    = parts[0] || '';
+              // 個人イベント: A-6 の仕様通り「苗字＋名前頭文字」で表示する。
+              // 苗字が同じ人を区別するため、名前の1文字目も付加する。
+              const parts        = (ev.name || '').split(/[\s\u3000]/);
+              const lastName     = parts[0] || '';
               const firstInitial = parts[1] ? parts[1].charAt(0) : '';
               label = lastName + firstInitial;
             }
@@ -4508,7 +4559,21 @@ p:last-child { margin-bottom: 0; }
       let   items   = [...phase2State.deadlines];
       const today   = todayString();
 
-      if (filter !== 'all') items = items.filter(d => d.type === filter);
+      // 種別フィルタ（単発/継続）
+      if (filter === '単発' || filter === '継続') {
+        items = items.filter(d => d.type === filter);
+      }
+
+      // 「納品済みを非表示」フィルタ:
+      // 全フェーズが done=true の案件は「納品済み」とみなして除外する。
+      // フェーズがない案件は除外しない（データ未整備の案件を守るため）。
+      if (filter === 'hide_shipped') {
+        items = items.filter(d => {
+          const phases = Array.isArray(d.phases) ? d.phases : [];
+          if (phases.length === 0) return true; // フェーズなし → 除外しない
+          return !phases.every(p => p.done);    // 全完了でなければ表示
+        });
+      }
 
       // 「次の期日」= フェーズの中で最も近い未完了の予定日
       function nextDate(d) {
@@ -4521,8 +4586,10 @@ p:last-child { margin-bottom: 0; }
       }
 
       items.sort((a, b) => {
-        if (sortKey === 'title') return (a.title || '').localeCompare(b.title || '', 'ja');
-        if (sortKey === 'type')  return (a.type  || '').localeCompare(b.type  || '');
+        if (sortKey === 'title')    return (a.title || '').localeCompare(b.title || '', 'ja');
+        if (sortKey === 'type')     return (a.type  || '').localeCompare(b.type  || '');
+        // 進捗順: progress フィールド降順（100% = 完了に近い順）
+        if (sortKey === 'progress') return (b.progress || 0) - (a.progress || 0);
         const na = nextDate(a), nb = nextDate(b);
         if (!na && !nb) return 0; if (!na) return 1; if (!nb) return -1;
         return na.localeCompare(nb);
