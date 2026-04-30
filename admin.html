@@ -716,14 +716,16 @@
     <nav class="admin-tabs" id="admin-tabs" role="tablist">
       <button class="admin-tab"        data-tab="dashboard"   role="tab">ダッシュボード</button>
       <button class="admin-tab active" data-tab="attendance"  role="tab">勤怠一覧</button>
-      <!-- A-2〜A-12: カレンダー・申請タブを管理者側にも追加 -->
-      <button class="admin-tab"        data-tab="calendar"    role="tab">カレンダー・申請</button>
+      <!-- カレンダータブ: 旧「カレンダー・申請」から「カレンダー」に変更（補填申請フォームを削除したため） -->
+      <button class="admin-tab"        data-tab="calendar"    role="tab">カレンダー</button>
       <button class="admin-tab"        data-tab="requests"    role="tab">申請管理</button>
       <button class="admin-tab"        data-tab="staff"       role="tab">スタッフ管理</button>
       <button class="admin-tab"        data-tab="monthly"     role="tab">月次レポート</button>
       <button class="admin-tab"        data-tab="payroll"     role="tab">給与計算</button>
       <!-- 納期ビュー（管理者は全スタッフの納期を閲覧。タスクはkintai.html側で個人管理） -->
       <button class="admin-tab"        data-tab="taskview"    role="tab">納期</button>
+      <!-- 使い方タブ：操作手順とテストデータリセットボタンを配置 -->
+      <button class="admin-tab"        data-tab="howto"       role="tab">使い方</button>
     </nav>
 
     <!-- ============================================================
@@ -872,77 +874,13 @@
           </div>
           <div class="sumioka-form-group">
             <label class="sumioka-label" for="company-cal-title">名称</label>
+            <!-- デフォルト値を「会社休日」にする。登録担当者が変更することもできる。 -->
             <input class="sumioka-input" type="text" id="company-cal-title"
-              placeholder="例：創立記念日、お盆休み">
+              value="会社休日" placeholder="例：創立記念日、お盆休み">
           </div>
           <button class="sumioka-btn sumioka-btn-primary" id="btn-company-cal-save"
             style="margin-right:0.5rem">休日を登録</button>
           <button class="sumioka-btn" id="btn-company-cal-clear">選択をリセット</button>
-        </div>
-
-        <!-- ── A-2〜A-8: 補填申請フォーム（管理者が代理申請・確認用）── -->
-        <p class="section-title">補填申請フォーム</p>
-        <div class="fillup-form-card">
-
-          <!-- A-7: 補填のみ申請フロー。種別は「補填予定（事前）」「補填完了（事後）」の2択 -->
-          <div class="sumioka-form-group">
-            <label class="sumioka-label" for="admin-req-type">種別</label>
-            <select class="sumioka-input" id="admin-req-type">
-              <option value="補填予定">補填予定（事前申請）</option>
-              <option value="補填完了">補填完了（事後報告）</option>
-            </select>
-          </div>
-
-          <!-- A-3: 理由を種別の直下に配置 -->
-          <div class="sumioka-form-group">
-            <label class="sumioka-label" for="admin-req-reason">理由</label>
-            <textarea class="sumioka-textarea" id="admin-req-reason" rows="2"
-              placeholder="理由を入力してください"></textarea>
-          </div>
-
-          <!-- A-8: 「いつの分を」→対象日（不足が発生した日） -->
-          <div class="sumioka-form-group">
-            <label class="sumioka-label" for="admin-req-shortage-date">
-              不足が発生した日
-              <span style="font-size:0.75rem;color:GrayText;font-weight:400">（どの日の不足分か）</span>
-            </label>
-            <input class="sumioka-input" type="date" id="admin-req-shortage-date">
-          </div>
-
-          <!-- A-2, A-8: 「いつ補填するか」→ 複数日対応テキスト入力 -->
-          <div class="sumioka-form-group">
-            <label class="sumioka-label">
-              補填する日時
-              <span style="font-size:0.75rem;color:GrayText;font-weight:400">（いつ補填するか・複数日可）</span>
-            </label>
-            <!-- A-4: テキスト形式。placeholderに「お昼休みで補填します」 -->
-            <div id="admin-fillup-dates-wrap">
-              <div class="fillup-date-row">
-                <input class="sumioka-input fillup-date-input" type="text"
-                  placeholder="お昼休みで補填します">
-              </div>
-            </div>
-            <button class="sumioka-btn" id="btn-admin-fillup-add-date"
-              style="font-size:0.78rem;margin-top:0.4rem">＋ 日程を追加</button>
-          </div>
-
-          <div class="sumioka-form-group">
-            <label class="sumioka-label" for="admin-req-staff">対象スタッフ</label>
-            <select class="sumioka-input" id="admin-req-staff">
-              <option value="">選択してください</option>
-            </select>
-          </div>
-
-          <button class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
-            id="admin-btn-submit-fillup">補填申請を送信</button>
-        </div>
-
-        <!-- ── A-12: 補填予定・補填完了・申請履歴はログインユーザーのみ ── -->
-        <p class="section-title">補填申請の承認待ち一覧</p>
-        <div id="admin-fillup-pending-list">
-          <div style="text-align:center;color:GrayText;padding:1.5rem;font-size:0.85rem">
-            読み込み中...
-          </div>
         </div>
 
       </section><!-- /#panel-calendar -->
@@ -1085,13 +1023,48 @@
             </tbody>
           </table>
         </div>
+      </section>
 
-        <!-- テストデータ一括リセット（開発・検証用） -->
-        <p class="section-title" style="margin-top:2rem">テストデータのリセット</p>
-        <div style="padding:1rem;background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;margin-top:0.5rem">
+      <!-- 使い方タブ -->
+      <section class="tab-panel" id="panel-howto">
+        <p class="section-title">使い方</p>
+        <div style="font-size:0.88rem;line-height:1.8;margin-bottom:1.5rem">
+          <p><strong>ダッシュボード</strong>：本日の出退勤状況・弁当注文数・未打刻スタッフを確認できます。</p>
+          <p><strong>勤怠一覧</strong>：日付・スタッフで絞り込んで打刻データを確認・修正できます。修正は監査ログに記録されます。</p>
+          <p><strong>カレンダー</strong>：全スタッフの欠勤・遅刻・早退・補填申請をカレンダーで確認できます。会社カレンダーへの休日登録もここで行います。</p>
+          <p><strong>申請管理</strong>：スタッフからの補填申請・有給申請を確認・承認・却下できます。</p>
+          <p><strong>スタッフ管理</strong>：スタッフの追加・編集・削除ができます。PIN・パスワードの0始まりにも対応しています。</p>
+          <p><strong>月次レポート</strong>：指定月の全スタッフの実働時間・残不足・出勤率を集計できます。</p>
+          <p><strong>給与計算</strong>：指定月の給与計算を実行し、明細を確認できます。</p>
+          <p><strong>納期</strong>：全スタッフの案件納期を一覧・カレンダーで確認できます。</p>
+        </div>
+
+        <p class="section-title" style="margin-top:2rem">テスト機能</p>
+
+        <!-- 一括ダミー登録 -->
+        <div style="padding:1rem;background:#f0f9ff;border:1px solid #93c5fd;border-radius:6px;margin-bottom:1rem">
+          <p style="font-size:0.83rem;color:#1d4ed8;margin-bottom:0.75rem">
+            📋 <strong>ダミー勤怠データ一括登録</strong><br>
+            指定月の全スタッフ分のダミー勤怠データを登録します。導入前のUI確認・テスト用途専用です。
+          </p>
+          <div style="display:flex;gap:0.65rem;align-items:center;flex-wrap:wrap">
+            <div class="filter-group">
+              <span class="filter-label">対象月</span>
+              <input class="sumioka-input" type="month" id="dummy-insert-month" style="width:160px">
+            </div>
+            <button class="sumioka-btn" id="btn-bulk-insert-dummy"
+              style="background:#1d4ed8;color:#fff;border-color:#1d4ed8;align-self:flex-end">
+              ダミーデータを一括登録
+            </button>
+          </div>
+        </div>
+
+        <!-- テストデータ一括リセット -->
+        <div style="padding:1rem;background:#fff5f5;border:1px solid #fca5a5;border-radius:6px">
           <p style="font-size:0.83rem;color:#c0392b;margin-bottom:0.75rem">
-            ⚠️ 出退勤記録・申請管理・タスク管理・納期管理の全データを削除します。<br>
-            人員マスタ・会社カレンダー・給与設定は削除されません。本番運用後は使用しないでください。
+            ⚠️ <strong>テストデータのリセット</strong><br>
+            出退勤記録・申請管理・タスク管理・納期管理の全データを削除します。<br>
+            人員マスタ・会社カレンダー・給与設定は削除されません。<strong>本番運用後は使用しないでください。</strong>
           </p>
           <button class="sumioka-btn" id="btn-reset-test-data"
             style="background:#c0392b;color:#fff;border-color:#c0392b">
@@ -1494,9 +1467,24 @@
       <!-- 新規/編集を判定するための隠しフィールド -->
       <input type="hidden" id="modal-staff-id">
 
-      <div class="sumioka-form-group">
-        <label class="sumioka-label" for="modal-staff-name">氏名 <span style="color:#c0392b">*</span></label>
-        <input class="sumioka-input" type="text" id="modal-staff-name">
+      <!-- 氏名を「姓」「名」の2枠に分割する。
+           スプレッドシートでは「姓」「名」の2列に分けて保管し、
+           カレンダー表示時は「姓 名」として結合して使う。 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem">
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="modal-staff-last-name">
+            姓 <span style="color:#c0392b">*</span>
+          </label>
+          <input class="sumioka-input" type="text" id="modal-staff-last-name"
+            placeholder="例：住岡">
+        </div>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="modal-staff-first-name">
+            名 <span style="color:#c0392b">*</span>
+          </label>
+          <input class="sumioka-input" type="text" id="modal-staff-first-name"
+            placeholder="例：太郎">
+        </div>
       </div>
 
       <div class="sumioka-form-group">
@@ -1510,7 +1498,10 @@
 
       <div class="sumioka-form-group">
         <label class="sumioka-label" for="modal-staff-password">
-          パスワード <span id="modal-staff-password-hint" style="color:GrayText;font-weight:400">（空欄＝変更なし）</span>
+          パスワード
+          <!-- 新規追加時は「必須」赤*、編集時は「空欄=変更なし」を JS で切り替える -->
+          <span id="modal-staff-password-required" style="color:#c0392b">*</span>
+          <span id="modal-staff-password-hint" style="color:GrayText;font-weight:400;display:none">（空欄＝変更なし）</span>
         </label>
         <input class="sumioka-input" type="text" id="modal-staff-password"
           placeholder="変更する場合のみ入力">
@@ -1524,6 +1515,34 @@
           <option value="職員">職員</option>
           <option value="利用者">利用者</option>
         </select>
+      </div>
+
+      <!-- 勤務曜日チェックボックス（デフォルトで月〜金にチェックを入れる） -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label">勤務曜日</label>
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.25rem">
+          <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.88rem;cursor:pointer">
+            <input type="checkbox" name="modal-work-day" value="月" checked> 月
+          </label>
+          <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.88rem;cursor:pointer">
+            <input type="checkbox" name="modal-work-day" value="火" checked> 火
+          </label>
+          <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.88rem;cursor:pointer">
+            <input type="checkbox" name="modal-work-day" value="水" checked> 水
+          </label>
+          <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.88rem;cursor:pointer">
+            <input type="checkbox" name="modal-work-day" value="木" checked> 木
+          </label>
+          <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.88rem;cursor:pointer">
+            <input type="checkbox" name="modal-work-day" value="金" checked> 金
+          </label>
+          <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.88rem;cursor:pointer">
+            <input type="checkbox" name="modal-work-day" value="土"> 土
+          </label>
+          <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.88rem;cursor:pointer">
+            <input type="checkbox" name="modal-work-day" value="日"> 日
+          </label>
+        </div>
       </div>
 
       <!-- 始業・終業を横並びにして視認性を高める -->
@@ -1549,8 +1568,9 @@
 
       <div class="sumioka-form-group">
         <label class="sumioka-label" for="modal-staff-hourly-wage">時給（円）</label>
+        <!-- デフォルト値を 1150 に設定する（地域の最低賃金水準を反映） -->
         <input class="sumioka-input" type="number" id="modal-staff-hourly-wage"
-          placeholder="例：1,050" min="0">
+          placeholder="例：1,050" min="0" value="1150">
       </div>
 
       <div class="sumioka-form-group">
@@ -1970,10 +1990,8 @@
         loadAdminCalendar();
       });
 
-      document.getElementById('btn-admin-fillup-add-date').addEventListener('click',
-        addFillupDateRow);
-      document.getElementById('admin-btn-submit-fillup').addEventListener('click',
-        handleAdminSubmitFillup);
+      // btn-admin-fillup-add-date / admin-btn-submit-fillup は
+      // カレンダータブから補填申請フォームを削除したため、リスナー不要。
       document.getElementById('btn-company-cal-save').addEventListener('click',
         saveCompanyCalendar);
       document.getElementById('btn-reset-test-data').addEventListener('click',
@@ -1982,6 +2000,13 @@
         adminCalState.selectedDates = [];
         renderSelectedDates();
       });
+
+      // ── 使い方タブ ──────────────────────────────────────────
+      // 一括ダミー登録ボタン
+      document.getElementById('btn-bulk-insert-dummy').addEventListener('click',
+        handleBulkInsertDummy);
+      // ダミー登録月の初期値を今月にする
+      document.getElementById('dummy-insert-month').value = ym;
     }
 
     // ============================================================
@@ -2418,7 +2443,7 @@
     async function handleResetTestData() {
       const ok = await confirm(
         '【警告】出退勤記録・申請管理・タスク・納期の全データを削除します。\n' +
-        '人員マスタは削除されません。\n\n本当に実行しますか？'
+        '人員マスタ・会社カレンダー・給与設定は削除されません。\n\n本当に実行しますか？'
       );
       if (!ok) return;
 
@@ -2427,7 +2452,7 @@
       if (!ok2) return;
 
       showLoading('リセット中...');
-      const result = await callGAS('admin_reset_test_data', {
+      const result = await callGAS('reset_test_data', {
         admin_id: adminState.employeeId,
       });
       hideLoading();
@@ -2437,23 +2462,47 @@
         return;
       }
 
-      const deleted = result.data.deleted || {};
-      const summary = Object.entries(deleted)
-        .map(([k, v]) => `${k}: ${v}行`)
-        .join('、');
-      showToast(`リセット完了（${summary}）`, 'success');
+      const cleared = result.data.cleared || [];
+      showToast(`リセット完了（${cleared.join('、')}）`, 'success');
+    }
+
+    /**
+     * 全スタッフ分のダミー勤怠データを一括登録する（テスト用）。
+     * 使い方タブの「ダミーデータを一括登録」ボタンから呼ばれる。
+     */
+    async function handleBulkInsertDummy() {
+      const yearMonth = document.getElementById('dummy-insert-month').value;
+      if (!yearMonth) {
+        showToast('対象月を選択してください。', 'warning');
+        return;
+      }
+
+      const ok = await confirm(
+        `${yearMonth}の全スタッフ分のダミー勤怠データを登録します。\n` +
+        '既存データがある日付は上書き（upsert）されます。\n\n実行しますか？'
+      );
+      if (!ok) return;
+
+      showLoading('一括登録中（しばらくかかります）...');
+      const result = await callGAS('bulk_insert_dummy', { year_month: yearMonth });
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      const { inserted, skipped } = result.data;
+      showToast(`ダミーデータを登録しました（登録: ${inserted}件、スキップ: ${skipped}件）`, 'success');
     }
 
     async function saveCompanyCalendar() {
       const dates = adminCalState.selectedDates;
-      const title = document.getElementById('company-cal-title').value.trim();
+      // 名称が空の場合は「会社休日」をデフォルトにする（GAS側も同様）
+      const title = document.getElementById('company-cal-title').value.trim() || '会社休日';
 
       if (dates.length === 0) {
         showToast('日付を選択してください。', 'warning');
-        return;
-      }
-      if (!title) {
-        showToast('名称を入力してください。', 'warning');
         return;
       }
 
@@ -2479,7 +2528,8 @@
 
       // リセットして再描画
       adminCalState.selectedDates = [];
-      document.getElementById('company-cal-title').value = '';
+      // タイトルを「会社休日」に戻す（デフォルト値）
+      document.getElementById('company-cal-title').value = '会社休日';
       renderSelectedDates();
       await loadAdminCalendar();
     }
@@ -2880,11 +2930,14 @@
         document.getElementById('modal-edit-employee-id').value = record.employee_id || '';
         // date は YYYY/MM/DD で返ってくる場合がある。
         // <input type="date"> は YYYY-MM-DD 形式を要求するため変換する。
-        document.getElementById('modal-edit-date').value        = (record.date || '').replace(/\//g, '-');
+        const dateVal = (record.date || '').replace(/\//g, '-');
+        document.getElementById('modal-edit-date').value        = dateVal;
         document.getElementById('modal-edit-status').value      = record.status      || '出勤';
         document.getElementById('modal-edit-timein').value      = record.time_in     || '';
         document.getElementById('modal-edit-timeout').value     = record.time_out    || '';
         document.getElementById('modal-edit-break').value       = record.break_minutes != null ? record.break_minutes : '';
+        // 弁当: record.lunch は boolean（true=要、false=不要）。
+        // 編集時は日付のみを読み込み、弁当は既存データの値を設定する（「不要」固定にしない）。
         document.getElementById('modal-edit-lunch').value       = String(record.lunch ?? false);
         document.getElementById('modal-edit-memo').value        = record.memo        || '';
         document.getElementById('modal-edit-reason').value      = '';
@@ -2927,10 +2980,13 @@
         if (!date) { showToast('日付を選択してください。', 'warning'); return; }
       }
 
-      const status = document.getElementById('modal-edit-status').value;
+      const status  = document.getElementById('modal-edit-status').value;
       const timeIn  = document.getElementById('modal-edit-timein').value;
       const timeOut = document.getElementById('modal-edit-timeout').value;
       const breakMin = document.getElementById('modal-edit-break').value;
+      // 弁当: フロントのセレクトは 'true'/'false' 文字列→boolean→'有'/'無' でGASに送る。
+      // GAS（saveAttendanceRecord）が '有'/'無' でスプレッドシートに保存する設計のため、
+      // フロントから boolean で送り GAS 側で '有'/'無' に変換する。
       const lunch   = document.getElementById('modal-edit-lunch').value === 'true';
       const memo    = document.getElementById('modal-edit-memo').value.trim();
 
@@ -3244,33 +3300,60 @@
 
     /**
      * スタッフ追加/編集モーダルを開く。
-     * K-3: 所定労働時間・弁当要否の入力欄を廃止。雇用形態は職員/利用者の2択。
+     * v1.4.0: 氏名を「姓」「名」の2欄に分割。
      *
      * @param {Object|null} staff - null なら新規追加モード
      */
     function openStaffModal(staff) {
       const isNew = !staff;
 
-      // タイトルとパスワードヒントを切り替える
       document.getElementById('modal-staff-title').textContent =
         isNew ? 'スタッフを追加' : 'スタッフ情報を編集';
-      document.getElementById('modal-staff-password-hint').textContent =
-        isNew ? '（必須）' : '（空欄＝変更なし）';
 
-      document.getElementById('modal-staff-id').value              = isNew ? '' : (staff.id              || '');
-      document.getElementById('modal-staff-name').value            = isNew ? '' : (staff.name            || '');
-      document.getElementById('modal-staff-pin').value             = isNew ? '' : (staff.pin             || '');
+      // パスワード欄のラベルを切り替える（新規: 必須マーク、編集: 変更なしヒント）
+      document.getElementById('modal-staff-password-required').style.display = isNew ? '' : 'none';
+      document.getElementById('modal-staff-password-hint').style.display     = isNew ? 'none' : '';
+
+      document.getElementById('modal-staff-id').value = isNew ? '' : (staff.id || '');
+
+      // 氏名を姓・名に分割して設定する。
+      // 既存データが「姓 名」の結合形式で来た場合はスペースで分割する。
+      if (isNew) {
+        document.getElementById('modal-staff-last-name').value  = '';
+        document.getElementById('modal-staff-first-name').value = '';
+      } else {
+        // GASが last_name / first_name を個別に返す場合と name を返す場合の両方に対応
+        const lastName  = staff.last_name  || (staff.name ? staff.name.split(/[\s\u3000]+/)[0] : '');
+        const firstName = staff.first_name || (staff.name ? staff.name.split(/[\s\u3000]+/).slice(1).join(' ') : '');
+        document.getElementById('modal-staff-last-name').value  = lastName;
+        document.getElementById('modal-staff-first-name').value = firstName;
+      }
+
+      document.getElementById('modal-staff-pin').value             = isNew ? '' : (staff.pin || '');
       document.getElementById('modal-staff-password').value        = ''; // 常に空で開く
+
       // K-3: 雇用形態は職員/利用者の2択。既存データが他の値なら空に倒す
       const empValue = isNew ? '' : (staff.employment || '');
       document.getElementById('modal-staff-employment').value =
         ['職員', '利用者'].includes(empValue) ? empValue : '';
+
+      // 勤務曜日チェックボックスを設定する。
+      // 新規追加時は月〜金（5日間）をデフォルトでチェック。
+      // 編集時はスタッフのデータに合わせる。
+      const workDays = isNew
+        ? ['月', '火', '水', '木', '金']  // 月〜金デフォルト
+        : (Array.isArray(staff.work_days) ? staff.work_days : []);
+      document.querySelectorAll('input[name="modal-work-day"]').forEach(cb => {
+        cb.checked = workDays.includes(cb.value);
+      });
+
       document.getElementById('modal-staff-scheduled-start').value = isNew ? '10:00' : (staff.scheduled_start || '');
       document.getElementById('modal-staff-scheduled-end').value   = isNew ? '15:00' : (staff.scheduled_end   || '');
-      document.getElementById('modal-staff-wage-type').value       = isNew ? '時給' : (staff.wage_type    || '');
-      document.getElementById('modal-staff-hourly-wage').value     = isNew ? '' : (staff.hourly_wage      || '');
-      document.getElementById('modal-staff-monthly-wage').value    = isNew ? '' : (staff.monthly_wage     || '');
-      document.getElementById('modal-staff-transport').value       = isNew ? '' : (staff.transport_fee    || '');
+      document.getElementById('modal-staff-wage-type').value       = isNew ? '時給'  : (staff.wage_type    || '');
+      // 新規追加時は時給のデフォルトを 1150 に設定する（地域最低賃金水準）
+      document.getElementById('modal-staff-hourly-wage').value     = isNew ? '1150'  : (staff.hourly_wage  || '');
+      document.getElementById('modal-staff-monthly-wage').value    = isNew ? ''      : (staff.monthly_wage || '');
+      document.getElementById('modal-staff-transport').value       = isNew ? ''      : (staff.transport_fee || '');
 
       document.getElementById('modal-edit-staff').classList.remove('hidden');
     }
@@ -3282,25 +3365,31 @@
 
     /**
      * スタッフ追加/更新を GAS に送信する。
-     * K-3: 所定労働時間欄を廃止。雇用形態必須バリデーション追加。
+     * v1.4.0: 氏名を姓・名の2フィールドで送信。勤務曜日チェックボックスを収集して送信。
      */
     async function saveStaffModal() {
-      const id             = document.getElementById('modal-staff-id').value;
-      const name           = document.getElementById('modal-staff-name').value.trim();
-      const pin            = document.getElementById('modal-staff-pin').value.trim();
-      const password       = document.getElementById('modal-staff-password').value.trim();
-      const employment     = document.getElementById('modal-staff-employment').value;
+      const id           = document.getElementById('modal-staff-id').value;
+      const lastName     = document.getElementById('modal-staff-last-name').value.trim();
+      const firstName    = document.getElementById('modal-staff-first-name').value.trim();
+      const pin          = document.getElementById('modal-staff-pin').value.trim();
+      const password     = document.getElementById('modal-staff-password').value.trim();
+      const employment   = document.getElementById('modal-staff-employment').value;
       const scheduledStart = document.getElementById('modal-staff-scheduled-start').value;
       const scheduledEnd   = document.getElementById('modal-staff-scheduled-end').value;
-      const wageType       = document.getElementById('modal-staff-wage-type').value;
-      const hourlyWage     = document.getElementById('modal-staff-hourly-wage').value;
-      const monthlyWage    = document.getElementById('modal-staff-monthly-wage').value;
-      const transportFee   = document.getElementById('modal-staff-transport').value;
+      const wageType     = document.getElementById('modal-staff-wage-type').value;
+      const hourlyWage   = document.getElementById('modal-staff-hourly-wage').value;
+      const monthlyWage  = document.getElementById('modal-staff-monthly-wage').value;
+      const transportFee = document.getElementById('modal-staff-transport').value;
+
+      // 勤務曜日チェックボックスから選択値を配列で収集する
+      const workDays = Array.from(
+        document.querySelectorAll('input[name="modal-work-day"]:checked')
+      ).map(cb => cb.value);
 
       const isNew = !id;
 
       // バリデーション
-      if (!name)       { showToast('氏名は必須です。', 'warning'); return; }
+      if (!lastName)   { showToast('姓は必須です。', 'warning'); return; }
       if (!pin)        { showToast('PIN は必須です。', 'warning'); return; }
       if (!/^\d{4}$/.test(pin)) {
         showToast('PIN は4桁の数字で入力してください。（0始まり可）', 'warning');
@@ -3313,18 +3402,20 @@
       }
 
       const staffData = {
-        name,
+        // 姓・名を個別フィールドで送信する。GAS側で「姓 名」として保存する。
+        last_name        : lastName,
+        first_name       : firstName,
         pin,
         ...(password ? { password } : {}),
         employment_type  : employment,
         scheduled_start  : scheduledStart,
         scheduled_end    : scheduledEnd,
         wage_type        : wageType,
-        hourly_wage      : hourlyWage   ? Number(hourlyWage)    : null,
-        monthly_wage     : monthlyWage  ? Number(monthlyWage)   : null,
-        transport_fee    : transportFee ? Number(transportFee)  : 0,
-        // K-3: scheduled_hours は廃止。GAS側の既存フィールドは null で送信する。
-        scheduled_hours  : null,
+        hourly_wage      : hourlyWage   ? Number(hourlyWage)   : null,
+        monthly_wage     : monthlyWage  ? Number(monthlyWage)  : null,
+        transport_fee    : transportFee ? Number(transportFee) : 0,
+        work_days        : workDays,     // チェックボックスで選択した曜日配列
+        scheduled_hours  : null,         // K-3: 廃止。GAS側の既存フィールドは null で送信
       };
 
       const btn    = document.getElementById('modal-staff-save');
@@ -4277,9 +4368,9 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- Uploader がアップロード時に v1.2.5 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.6 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.5</div>
+  <div class="version-badge" id="app-version">v1.2.6</div>
 
 </body>
 </html>
