@@ -2104,14 +2104,7 @@ p:last-child { margin-bottom: 0; }
           <input class="sumioka-input" type="date" id="absence-date">
         </div>
 
-        <!-- ③ 理由（全種別共通） -->
-        <div class="sumioka-form-group">
-          <label class="sumioka-label" for="absence-reason">理由</label>
-          <textarea class="sumioka-textarea" id="absence-reason" rows="2"
-            placeholder="理由を入力してください（任意）"></textarea>
-        </div>
-
-        <!-- ④ 時刻（遅刻・早退のときのみ表示） -->
+        <!-- ③ 時刻（遅刻・早退のときのみ表示）→ 対象日の直下・理由の上に配置 -->
         <!-- A-②: input[type="time"] は禁止。15分単位 select で代替する。 -->
         <div class="sumioka-form-group" id="absence-time-wrap" style="display:none">
           <label class="sumioka-label" for="absence-time">
@@ -2195,6 +2188,13 @@ p:last-child { margin-bottom: 0; }
             <option value="21:45">21:45</option>
             <option value="22:00">22:00</option>
           </select>
+        </div>
+
+        <!-- ④ 理由（全種別共通）→ 時刻の下に移動 -->
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="absence-reason">理由</label>
+          <textarea class="sumioka-textarea" id="absence-reason" rows="2"
+            placeholder="理由を入力してください（任意）"></textarea>
         </div>
 
         <!-- ⑤ 補填・有給選択（全種別で表示） -->
@@ -2567,14 +2567,9 @@ p:last-child { margin-bottom: 0; }
               placeholder="担当者・連絡先・注意事項など"></textarea>
           </div>
 
-          <!-- 全体進捗（自動計算の補助値） -->
-          <div class="sumioka-form-group">
-            <label class="sumioka-label" for="deadline-form-progress">
-              全体進捗（0〜100）
-            </label>
-            <input class="sumioka-input" type="number" id="deadline-form-progress"
-              min="0" max="100" value="0">
-          </div>
+          <!-- 全体進捗: UIから削除（難易度が高いため）。
+               後方互換のため隠しフィールドで値を保持する。 -->
+          <input type="hidden" id="deadline-form-progress" value="0">
 
           <div style="display:flex;gap:0.65rem;justify-content:flex-end">
             <button class="sumioka-btn" id="btn-deadline-form-cancel">キャンセル</button>
@@ -2659,69 +2654,96 @@ p:last-child { margin-bottom: 0; }
 
     <!-- ============================================================
          タブ7: 使い方
-         A-③: 指示書の仕様に合わせて内容をシンプルに整理する。
          ============================================================ -->
     <div class="kintai-tab-panel" id="panel-howto">
-      <div style="max-width:480px;margin:0 auto;line-height:1.9">
+      <div style="max-width:480px;margin:0 auto;padding-bottom:2rem">
 
-        <!-- 基本操作 -->
-        <p style="font-size:0.82rem;font-weight:700;color:GrayText;
-          text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem">
-          使い方
-        </p>
-        <div style="border:1px solid GrayText;border-radius:8px;padding:1rem;
-          margin-bottom:1.25rem;background:Canvas;font-size:0.92rem">
-          <div style="display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:0.75rem">
-            <span style="font-size:1.2rem">🕘</span>
-            <div>
-              <strong>出勤</strong><br>
-              <span style="color:GrayText;font-size:0.85rem">来たら押す</span>
-            </div>
+        <!-- ヒーロー -->
+        <div style="text-align:center;padding:1.5rem 0 1rem">
+          <div style="font-size:2rem;margin-bottom:0.4rem">📋</div>
+          <p style="font-size:1rem;font-weight:700;margin-bottom:0.25rem">らくらく勤怠入力</p>
+          <p style="font-size:0.82rem;color:GrayText">毎日の打刻をかんたんに</p>
+        </div>
+
+        <!-- 出勤・退勤 -->
+        <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
+          margin-bottom:1rem;background:Canvas">
+          <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
+            🕘 出勤・退勤の打刻
+          </p>
+          <div style="font-size:0.88rem;line-height:1.8;color:CanvasText">
+            <p>① <strong>「打刻」タブ</strong>を開く</p>
+            <p>② 弁当の<strong>要/不要</strong>を選ぶ</p>
+            <p>③ <strong>「出勤打刻」</strong>ボタンを押す ← 来たら即！</p>
+            <p>④ 帰る前に休憩時間・業務報告を入力して
+              <strong>「退勤打刻」</strong>を押す</p>
           </div>
-          <div style="display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:0.75rem">
-            <span style="font-size:1.2rem">🕔</span>
-            <div>
-              <strong>退勤</strong><br>
-              <span style="color:GrayText;font-size:0.85rem">帰る前に押す</span>
-            </div>
-          </div>
-          <div style="display:flex;align-items:flex-start;gap:0.75rem">
-            <span style="font-size:1.2rem">📋</span>
-            <div>
-              <strong>補填</strong><br>
-              <span style="color:GrayText;font-size:0.85rem">足りない時間を別日で補う</span>
-            </div>
+          <div style="margin-top:0.85rem;padding:0.65rem 0.85rem;
+            background:#fff8e1;border-radius:6px;font-size:0.8rem;color:#92400e">
+            💡 押し忘れに気づいたら、すぐに管理者に連絡してください。
           </div>
         </div>
 
-        <!-- アクセス権 -->
-        <p style="font-size:0.82rem;font-weight:700;color:GrayText;
-          text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem">
-          アクセス権
-        </p>
-        <div style="border:1px solid GrayText;border-radius:8px;padding:1rem;
-          background:Canvas;font-size:0.88rem">
-          <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:0.65rem">
-            <span class="access-badge access-badge-self">[自]</span>
-            <span>自分のみ閲覧・操作できる</span>
+        <!-- 申請 -->
+        <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
+          margin-bottom:1rem;background:Canvas">
+          <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
+            📅 休み・遅刻・早退の申請
+          </p>
+          <div style="font-size:0.88rem;line-height:1.8">
+            <p>① <strong>「申請」タブ</strong>を開く</p>
+            <p>② 種別（休み / 遅刻 / 早退）を選ぶ</p>
+            <p>③ 対象日・時刻（遅刻/早退のみ）・理由を入力</p>
+            <p>④ <strong>「申請する」</strong>ボタンを押す → カレンダーに即反映</p>
           </div>
-          <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:0.65rem">
-            <span class="access-badge access-badge-all">[全]</span>
-            <span>全員が閲覧できる</span>
+        </div>
+
+        <!-- カレンダー・タスク -->
+        <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
+          margin-bottom:1rem;background:Canvas">
+          <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
+            🗓 その他の機能
+          </p>
+          <div style="font-size:0.88rem;line-height:1.9">
+            <p><strong>カレンダー</strong>：全員の休み・遅刻・早退と担当案件の納期を確認</p>
+            <p><strong>タスク</strong>：担当案件の進捗を記録・管理</p>
+            <p><strong>納期</strong>：案件のフェーズ別納期を管理。完了したフェーズは「完了」ボタンを押す</p>
+            <p><strong>出勤状況</strong>：自分の月間実績・残不足時間を確認</p>
           </div>
-          <div style="display:flex;align-items:center;gap:0.65rem">
-            <span class="access-badge access-badge-admin">[管]</span>
-            <span>管理者のみ操作できる</span>
+        </div>
+
+        <!-- アクセス権凡例 -->
+        <div style="border:1px solid GrayText;border-radius:10px;padding:1rem 1.25rem;
+          background:Canvas">
+          <p style="font-weight:700;font-size:0.82rem;color:GrayText;
+            text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.65rem">
+            アクセス権の見方
+          </p>
+          <div style="display:flex;flex-direction:column;gap:0.5rem;font-size:0.86rem">
+            <div style="display:flex;align-items:center;gap:0.65rem">
+              <span class="access-badge access-badge-self">[自]</span>
+              <span>自分だけが見れる・操作できる</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.65rem">
+              <span class="access-badge access-badge-all">[全]</span>
+              <span>全員が見れる（他の人の情報も表示）</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.65rem">
+              <span class="access-badge access-badge-admin">[管]</span>
+              <span>管理者のみ操作できる</span>
+            </div>
           </div>
         </div>
 
       </div>
     </div><!-- /#panel-howto -->
 
+
+
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.6 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.7 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.6</div>
+  <div class="version-badge" id="app-version">v1.2.7</div>
 
 
   <script>
