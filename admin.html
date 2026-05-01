@@ -2222,6 +2222,14 @@
 
       // タブ初回表示時にデータを自動ロードする
       switch (tabKey) {
+        case 'attendance':
+          // 勤怠一覧タブを開いたら当日の全員分を自動検索する。
+          // 日付フィルタに今日の日付をセットしてからロードする。
+          // 理由: 毎日の運用で「今日の状況を確認したい」がほぼ100%のユースケースのため。
+          document.getElementById('att-filter-date').value = todayString();
+          document.getElementById('att-filter-staff').value = '';
+          loadAttendance();
+          break;
         case 'calendar': loadAdminCalendar(); loadAdminFillupPending(); break;
         case 'requests': loadRequests();          break;
         case 'staff':    loadStaff();             break;
@@ -2765,7 +2773,9 @@
       setText('dash-pending',    data.pending_count     ?? '―');
 
       // 打刻一覧テーブルを描画
-      renderDashAttendance(data.attendances || []);
+      // GAS の adminDashboard が返すキーは 'attendance'（sなし）
+      // ※ 旧コードで 'attendances' と誤記していたためデータが空になっていた
+      renderDashAttendance(data.attendance || []);
 
       // 未打刻スタッフを描画
       renderDashAbsent(data.absent_staff || []);
@@ -3111,15 +3121,17 @@
     function renderRequestsTable(requests) {
       const tbody = document.getElementById('req-body');
 
-      // 【修正④】承認管理が必要な種別のみ表示する。
-      // 「休み」「遅刻」「早退」は申請即カレンダー反映（承認フロー不要）のため除外する。
-      // 「有給」「補填」のみ表示する。
-      const filtered = requests.filter(r =>
-        r.type === '有給'    ||
-        r.type === '補填'    ||
-        r.type === '補填予定' ||
-        r.type === '補填完了'
-      );
+      // 表示対象の判定:
+      //   ① 有給・補填予定・補填完了 → 常に表示（承認フロー対象）
+      //   ② 早退・遅刻・休み で reason に「補填日時:」を含む → 補填ありのため表示
+      //      ※ submitRequest で reasonFull に「【補填日時: ...】」が付与されて保存される
+      //   ③ 早退・遅刻・休みで補填なし → 申請即反映のため承認一覧には不要（非表示）
+      const filtered = requests.filter(r => {
+        const isApprovalType  = r.type === '有給' || r.type === '補填' ||
+                                r.type === '補填予定' || r.type === '補填完了';
+        const hasCompensation = (r.reason || '').includes('補填日時:');
+        return isApprovalType || hasCompensation;
+      });
 
       if (filtered.length === 0) {
         tbody.innerHTML = '<tr><td colspan="8" class="empty-state">該当する申請がありません</td></tr>';
@@ -3140,14 +3152,28 @@
         const statusClass = badgeMap[req.status] || 'badge-gray';
         const statusLabel = labelMap[req.status] || req.status || '―';
 
-        // 承認フローは補填のみ。休み/遅刻/早退は記録のみで操作ボタンなし。
-        const isFillup = req.type === '補填予定' || req.type === '補填完了';
-        const actionHtml = (req.status === 'pending' && isFillup)
+        // 補填情報を reason から抽出して表示用に整形する
+        // 例: "私用のため 【補填日時: 2026-05-01 12:00 30分】" → 理由と補填日時を分離して表示
+        const reasonMain = (req.reason || '').replace(/【補填日時:.*?】/g, '').trim();
+        const fillupMatch = (req.reason || '').match(/【補填日時:(.*?)】/);
+        const fillupInfo  = fillupMatch ? fillupMatch[1].trim() : '';
+
+        // 承認フローが必要なケース:
+        //   ① 種別が補填予定・補填完了
+        //   ② 早退・遅刻・休みで補填ありの申請（補填日時が含まれる場合）
+        const needsAction = req.status === 'pending' &&
+          (req.type === '補填予定' || req.type === '補填完了' || fillupInfo);
+        const actionHtml = needsAction
           ? `<div class="action-btn-group">
                <button class="btn-approve" onclick="handleRequestAction('${escHtml(req.id)}', 'approve')">承認</button>
                <button class="btn-reject"  onclick="handleRequestAction('${escHtml(req.id)}', 'reject')">却下</button>
              </div>`
           : '―';
+
+        // 理由カラム: 補填日時がある場合は折りたたんでtitleで全文表示
+        const reasonDisplay = fillupInfo
+          ? `${escHtml(reasonMain)}<br><span style="font-size:0.75rem;color:#065f46">🔄 補填: ${escHtml(fillupInfo)}</span>`
+          : escHtml(req.reason || '―');
 
         return `
           <tr>
@@ -3156,9 +3182,9 @@
             <td>${escHtml(req.type || '―')}</td>
             <td>${escHtml(req.target_date || '―')}</td>
             <td>${escHtml(req.time || '―')}</td>
-            <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+            <td style="max-width:160px;font-size:0.82rem"
               title="${escHtml(req.reason || '')}">
-              ${escHtml(req.reason || '―')}
+              ${reasonDisplay}
             </td>
             <td><span class="badge ${statusClass}">${statusLabel}</span></td>
             <td>${actionHtml}</td>
@@ -4410,9 +4436,9 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- Uploader がアップロード時に v1.2.6 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.7 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.6</div>
+  <div class="version-badge" id="app-version">v1.2.7</div>
 
 </body>
 </html>
