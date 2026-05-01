@@ -1382,6 +1382,18 @@
               <textarea class="sumioka-textarea" id="admin-deadline-form-memo" rows="3"
                 placeholder="例：担当: 田中 / 入稿データはGoogleDriveの○○フォルダ / 色校正あり"></textarea>
             </div>
+            <!-- カレンダー表示チェックボックス -->
+            <!-- チェックを外すと担当者の Kintai カレンダーに表示されなくなる -->
+            <div class="sumioka-form-group" style="display:flex;align-items:flex-start;gap:0.6rem;padding:0.75rem;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0">
+              <input type="checkbox" id="admin-deadline-form-show-cal" checked
+                style="width:1.1rem;height:1.1rem;cursor:pointer;accent-color:Highlight;margin-top:0.1rem;flex-shrink:0">
+              <label for="admin-deadline-form-show-cal" style="cursor:pointer;font-size:0.88rem;line-height:1.4">
+                Kintaiのカレンダーに表示する
+                <span style="font-size:0.75rem;color:GrayText;display:block;margin-top:0.1rem">
+                  チェックを外すと担当者のカレンダーに表示されません
+                </span>
+              </label>
+            </div>
             <div style="display:flex;gap:0.65rem;justify-content:flex-end">
               <button class="sumioka-btn" id="btn-admin-deadline-form-cancel">キャンセル</button>
               <button class="sumioka-btn sumioka-btn-primary"
@@ -2507,21 +2519,22 @@
      * @param {Object} ev - イベントデータ（name, type, date, time_in, time_out, time, reason）
      */
     function showCalEventDetail(ev) {
-      // 既存のポップオーバーがあれば閉じる
       const existing = document.getElementById('cal-event-popover');
       if (existing) existing.remove();
+      const back = document.getElementById('cal-event-backdrop');
+      if (back) back.remove();
 
-      // 時刻の表示ロジック:
-      //   遅刻 → 出勤予定時刻（time_in または time）
-      //   早退 → 退勤予定時刻（time_out または time）
-      //   欠勤・休み → 時刻なし
+      // 時刻フィールドを全て正規化してから表示する（1899問題を確実に回避）
+      const timeIn  = fmtTime(ev.time_in  || ev.time, '');
+      const timeOut = fmtTime(ev.time_out || ev.time, '');
+
       let timeLabel = '';
       if (ev.type === '遅刻') {
-        const t = ev.time_in || ev.time;
-        timeLabel = t ? `出勤予定: ${t}` : '出勤予定時刻 未登録';
+        timeLabel = timeIn  ? `出勤予定: ${timeIn}`  : '出勤予定時刻 未登録';
       } else if (ev.type === '早退') {
-        const t = ev.time_out || ev.time;
-        timeLabel = t ? `退勤予定: ${t}` : '退勤予定時刻 未登録';
+        timeLabel = timeOut ? `退勤予定: ${timeOut}` : '退勤予定時刻 未登録';
+      } else if (ev.type === '納期') {
+        timeLabel = '';  // 納期は時刻なし
       }
 
       const reasonText = (ev.reason || '').replace(/【補填日時:.*?】/g, '').trim();
@@ -2924,15 +2937,17 @@
       }
 
       tbody.innerHTML = records.map(r => {
-        const status = r.time_out ? '退勤済' : r.time_in ? '出勤中' : '未打刻';
-        const badgeClass = r.time_out ? 'badge-gray' : r.time_in ? 'badge-green' : 'badge-red';
+        const timeIn  = fmtTime(r.time_in);
+        const timeOut = fmtTime(r.time_out);
+        const status = timeOut !== '―' ? '退勤済' : timeIn !== '―' ? '出勤中' : '未打刻';
+        const badgeClass = timeOut !== '―' ? 'badge-gray' : timeIn !== '―' ? 'badge-green' : 'badge-red';
 
         return `
           <tr>
             <td>${escHtml(r.name)}</td>
             <td>${escHtml(r.type || '―')}</td>
-            <td>${escHtml(r.time_in  || '―')}</td>
-            <td>${escHtml(r.time_out || '―')}</td>
+            <td>${timeIn}</td>
+            <td>${timeOut}</td>
             <td>${r.lunch === true ? '要' : r.lunch === false ? '不要' : '―'}</td>
             <td><span class="badge ${badgeClass}">${status}</span></td>
           </tr>
@@ -2957,7 +2972,7 @@
         <tr>
           <td>${escHtml(s.name)}</td>
           <td>${escHtml(s.type || '―')}</td>
-          <td>${escHtml(s.scheduled_end || '―')}</td>
+          <td>${fmtTime(s.scheduled_end)}</td>
         </tr>
       `).join('');
     }
@@ -3022,7 +3037,7 @@
               <td>―</td>
               <td>―</td>
               <td style="font-size:0.78rem;color:#9ca3af">
-                ${r.scheduled_end ? `所定終業: ${escHtml(r.scheduled_end)}` : ''}
+                ${r.scheduled_end ? `所定終業: ${fmtTime(r.scheduled_end)}` : ''}
               </td>
               <td>
                 <div style="display:flex;gap:0.3rem;align-items:center">
@@ -3044,8 +3059,8 @@
             <td>${escHtml(r.date || '―')}</td>
             <td>${escHtml(r.name || '―')}</td>
             <td>${escHtml(r.type || '―')}</td>
-            <td>${escHtml(r.time_in  || '―')}</td>
-            <td>${escHtml(r.time_out || '―')}</td>
+            <td>${fmtTime(r.time_in)}</td>
+            <td>${fmtTime(r.time_out)}</td>
             <td>${workStr}</td>
             <td>${r.lunch === true ? '要' : r.lunch === false ? '不要' : '―'}</td>
             <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
@@ -3310,7 +3325,7 @@
             <td>${escHtml(req.name || '―')}</td>
             <td>${escHtml(req.type || '―')}</td>
             <td>${escHtml(req.target_date || '―')}</td>
-            <td>${escHtml(req.time || '―')}</td>
+            <td>${fmtTime(req.time)}</td>
             <td style="max-width:160px;font-size:0.82rem"
               title="${escHtml(req.reason || '')}">
               ${reasonDisplay}
@@ -3476,7 +3491,7 @@
             <td>${escHtml(s.type || '―')}</td>
             <td>${escHtml(s.pin  || '―')}</td>
             <td>${escHtml(s.employment || '―')}</td>
-            <td>${escHtml(s.scheduled_end || '―')}</td>
+            <td>${fmtTime(s.scheduled_end)}</td>
             <td>${wageLabel}</td>
             <td>${s.is_admin ? '<span class="badge badge-blue">管理者</span>' : '―'}</td>
             <td>
@@ -4193,6 +4208,9 @@
       // #11: statusはdatalist付きinputになったのでvalueを直接セットする
       document.getElementById('admin-deadline-form-status').value     = isNew ? '' : (deadline.status   || '');
       document.getElementById('admin-deadline-form-memo').value       = isNew ? '' : (deadline.memo     || '');
+      // カレンダー表示: デフォルトtrue。既存データに show_on_calendar が明示的に false のときのみ外す
+      document.getElementById('admin-deadline-form-show-cal').checked =
+        isNew ? true : (deadline.show_on_calendar !== false);
 
       // スタッフ選択肢を最新状態で生成する
       const staffSel = document.getElementById('admin-deadline-form-staff');
@@ -4229,6 +4247,8 @@
       document.getElementById('admin-deadline-form-deadline').value    = deadline.deadline || '';
       document.getElementById('admin-deadline-form-status').value      = deadline.status   || '';
       document.getElementById('admin-deadline-form-memo').value        = deadline.memo     || '';
+      document.getElementById('admin-deadline-form-show-cal').checked  =
+        deadline.show_on_calendar !== false;
 
       // スタッフ選択肢を生成しコピー元担当者を初期選択する
       const staffSel = document.getElementById('admin-deadline-form-staff');
@@ -4259,13 +4279,15 @@
 
       showLoading('保存中...');
       const result = await callGAS('upsert_deadline', {
-        deadline_id  : id || undefined,
-        employee_id  : staffId,
-        assignee     : staffName,
+        deadline_id      : id || undefined,
+        employee_id      : staffId,
+        assignee         : staffName,
         name,
-        deadline     : document.getElementById('admin-deadline-form-deadline').value || '',
-        status       : document.getElementById('admin-deadline-form-status').value   || '',
-        memo         : document.getElementById('admin-deadline-form-memo').value.trim(),
+        deadline         : document.getElementById('admin-deadline-form-deadline').value || '',
+        status           : document.getElementById('admin-deadline-form-status').value   || '',
+        memo             : document.getElementById('admin-deadline-form-memo').value.trim(),
+        // カレンダー表示フラグ: チェックボックスの状態を送信する
+        show_on_calendar : document.getElementById('admin-deadline-form-show-cal').checked,
       });
       hideLoading();
 
@@ -4530,6 +4552,49 @@
     }
 
     /**
+     * 時刻値を安全に "HH:MM" 文字列に変換する（フロント共通ユーティリティ）。
+     *
+     * GAS の JSON シリアライズで Date型が "1899-12-30T01:30:00.000Z" のような
+     * ISO文字列になることがある。UTC時刻をそのまま取り出すと JST と9時間ずれるため、
+     * new Date(raw).getHours() でローカル時刻を取得する。
+     *
+     * 対応パターン:
+     *   "HH:MM"                  → そのまま返す
+     *   "HH:MM:SS"               → 先頭5文字
+     *   "1899-..."               → 空文字（誤変換データ）
+     *   ISO文字列                 → new Date() でローカル時刻に変換
+     *   空・null・undefined      → fallback を返す（デフォルト '―'）
+     *
+     * @param {string} raw      - 変換前の値
+     * @param {string} fallback - 値がない場合に返す文字列（デフォルト '―'）
+     * @returns {string}
+     */
+    function fmtTime(raw, fallback) {
+      if (fallback === undefined) fallback = '―';
+      if (!raw) return fallback;
+      if (typeof raw !== 'string') return fallback;
+
+      // 1899年の誤変換データは捨てる
+      if (raw.startsWith('1899')) return fallback;
+
+      // HH:MM 形式はそのまま（最速パス）
+      if (/^\d{1,2}:\d{2}/.test(raw)) {
+        const parts = raw.slice(0, 5).split(':');
+        return parts[0].padStart(2, '0') + ':' + parts[1];
+      }
+
+      // ISO 8601: new Date() でパースしてローカル時刻（JST）を取得
+      if (raw.includes('T')) {
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+          return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+      }
+
+      return fallback;
+    }
+
+    /**
      * 出勤・退勤時刻（HH:MM）から勤務時間（分）を計算する。
      * どちらかが未入力の場合は 0 を返す。
      *
@@ -4607,9 +4672,9 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- Uploader がアップロード時に v1.2.9 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.10 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.9</div>
+  <div class="version-badge" id="app-version">v1.2.10</div>
 
 </body>
 </html>
