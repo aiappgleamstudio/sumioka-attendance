@@ -2741,9 +2741,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.7 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.8 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.7</div>
+  <div class="version-badge" id="app-version">v1.2.8</div>
 
 
   <script>
@@ -3438,31 +3438,59 @@ p:last-child { margin-bottom: 0; }
     /**
      * 時刻文字列を HH:MM 形式に正規化する。
      *
-     * GAS が Date 型をシリアライズした ISO 文字列
-     * （例: "1899-12-30T01:17:00.000Z"）が来た場合は
-     * UTC 時刻部分を取り出して返す。
-     * すでに "HH:MM" 形式の場合はそのまま返す。
+     * GAS から返ってくる time_in / time_out の形式は複数ある:
+     *   1) "HH:MM"          - 正常な文字列型（最も多いケース）
+     *   2) "HH:MM:SS"       - 秒付き文字列
+     *   3) "1899-12-30T..." - GAS の Date 型→JSON シリアライズ時の誤変換
+     *                          ※ GAS 側の _safeTimeStr で空文字に変換されるはずだが
+     *                            念のためフロントでも対応する
+     *   4) 現在日付の ISO   - "2026-05-01T09:00:00.000Z" のような通常の ISO 文字列
+     *                          → JST は UTC+9 なので Date.getHours() で取得する
+     *
+     * 重要: ISO文字列を UTC 時刻のまま表示すると9時間ずれるため
+     *        必ず Date オブジェクト経由でローカル時刻（JST）を取得する。
      *
      * @param {string} raw - time_in / time_out の生値
-     * @returns {string} "HH:MM" 形式
+     * @returns {string} "HH:MM" 形式。値がない場合は "--:--"
      */
     function formatTimeDisplay(raw) {
+      // デバッグ: GASから受け取った生値をコンソールに出力する
+      // 打刻時刻が正しく表示されない場合はここで原因を特定できる
+      console.debug('[formatTimeDisplay] raw =', raw, typeof raw);
+
       if (!raw) return '--:--';
 
-      // "HH:MM" または "HH:MM:SS" 形式はそのまま使う
+      // ① "HH:MM" または "HH:MM:SS" 形式 → 先頭5文字をそのまま使う
       if (/^\d{1,2}:\d{2}/.test(raw)) {
-        return raw.slice(0, 5);
+        const result = raw.slice(0, 5);
+        // 0埋め正規化: "9:05" → "09:05"
+        const parts = result.split(':');
+        return `${parts[0].padStart(2, '0')}:${parts[1]}`;
       }
 
-      // ISO 8601 形式（例: "1899-12-30T01:17:00.000Z"）の場合
-      // → T以降の時刻部分（UTC）を取り出す
-      const isoMatch = raw.match(/T(\d{2}):(\d{2})/);
-      if (isoMatch) {
-        return `${isoMatch[1]}:${isoMatch[2]}`;
+      // ② ISO 8601 文字列の場合（Date オブジェクト経由で JST に変換）
+      if (typeof raw === 'string' && raw.includes('T')) {
+        // 1899年は GAS のシリアル値誤変換 → 表示できないので '--:--' を返す
+        if (raw.startsWith('1899')) {
+          console.warn('[formatTimeDisplay] 1899年の誤変換データを検出。GAS 側の _safeTimeStr が機能していない可能性があります。raw =', raw);
+          return '--:--';
+        }
+
+        // Date オブジェクトに変換してローカル時刻（JST）を取得する
+        // ※ new Date("2026-05-01T00:09:00.000Z").getHours() は実行環境の
+        //    タイムゾーンに依存するため、ブラウザ（JST環境）では正しく9h加算される
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+          const h = String(d.getHours()).padStart(2, '0');
+          const m = String(d.getMinutes()).padStart(2, '0');
+          return `${h}:${m}`;
+        }
       }
 
-      // それ以外はそのまま返す（予期しない形式のデバッグ用）
-      return raw;
+      // ③ 数値（GAS がシリアル値をそのまま返した場合）は対応外
+      //    GAS 側で文字列変換されているはずなので通常は到達しない
+      console.warn('[formatTimeDisplay] 未知の形式です。raw =', raw);
+      return '--:--';
     }
 
     /** 退勤エリアの表示を更新する */
