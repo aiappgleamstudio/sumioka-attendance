@@ -3328,24 +3328,47 @@ p:last-child { margin-bottom: 0; }
      * @param {string} raw - time_in / time_out の生値
      * @returns {string} "HH:MM" 形式
      */
-    function formatTimeDisplay(raw) {
-      if (!raw) return '--:--';
+    /**
+     * 時刻文字列を "HH:MM" 形式に正規化する（フロント共通）。
+     *
+     * GAS の JSON シリアライズで Date型が "1899-12-30T01:30:00.000Z" のような
+     * ISO 文字列になることがある。UTC のまま T 以降を取り出すと JST と9時間ずれるため
+     * new Date(raw).getHours() でローカル時刻（JST）を取得する。
+     *
+     * @param {string} raw      - 変換前の値
+     * @param {string} fallback - 値がない場合の表示（デフォルト '--:--'）
+     * @returns {string}
+     */
+    function formatTimeDisplay(raw, fallback) {
+      if (fallback === undefined) fallback = '--:--';
+      if (!raw) return fallback;
+      if (typeof raw !== 'string') return fallback;
 
-      // "HH:MM" または "HH:MM:SS" 形式はそのまま使う
+      // デバッグ: 予期しない形式を記録する
+      console.debug('[formatTimeDisplay] raw =', raw);
+
+      // 1899年の誤変換データ → 捨てる
+      if (raw.startsWith('1899')) return fallback;
+
+      // "HH:MM" / "HH:MM:SS" → 先頭5文字（最速パス）
       if (/^\d{1,2}:\d{2}/.test(raw)) {
-        return raw.slice(0, 5);
+        const parts = raw.slice(0, 5).split(':');
+        return parts[0].padStart(2, '0') + ':' + parts[1];
       }
 
-      // ISO 8601 形式（例: "1899-12-30T01:17:00.000Z"）の場合
-      // → T以降の時刻部分（UTC）を取り出す
-      const isoMatch = raw.match(/T(\d{2}):(\d{2})/);
-      if (isoMatch) {
-        return `${isoMatch[1]}:${isoMatch[2]}`;
+      // ISO 8601 → new Date() でローカル時刻（JST）に変換
+      if (raw.includes('T')) {
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) {
+          return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
       }
 
-      // それ以外はそのまま返す（予期しない形式のデバッグ用）
-      return raw;
+      return fallback;
     }
+
+    // admin.htmlとの互換性のためエイリアスを定義
+    const fmtTime = (v, fb) => formatTimeDisplay(v, fb === undefined ? '―' : fb);
 
     /** 退勤エリアの表示を更新する */
     function renderCheckoutArea() {
@@ -3754,13 +3777,12 @@ p:last-child { margin-bottom: 0; }
           const evHtml = dayEvs.slice(0, 3).map(ev => {
             const cls = typeClassMap[ev.type] || 'ev-休み';
 
-            // A-①: イベント種別によってラベル表示を変える。
             let label;
             if (ev.type === '会社休日' || ev.type === '会社') {
               label = ev.name || '会社休日';
             } else if (ev.type === '納期') {
-              const fullName = ev.name || '';
-              label = '📋' + fullName.replace(/：.+$/, '').slice(0, 8);
+              // 案件名を先頭8文字で表示（📋絵文字は非表示）
+              label = (ev.title || ev.name || '').slice(0, 8);
             } else {
               const parts        = (ev.name || '').split(/[\s\u3000]/);
               const lastName     = parts[0] || '';
@@ -3768,21 +3790,28 @@ p:last-child { margin-bottom: 0; }
               label = lastName + firstInitial;
             }
 
-            // 遅刻・早退はクリックで時刻詳細を表示する
-            const isClickable = ['遅刻','早退'].includes(ev.type);
+            // 遅刻・早退・納期はクリックで詳細表示する
+            const isClickable = ['遅刻','早退','納期'].includes(ev.type);
             const evData = isClickable ? escHtml(JSON.stringify({
-              name    : ev.name,
-              type    : ev.type,
-              date    : ev.target_date,
-              time_in : ev.time_in  || '',
-              time_out: ev.time_out || '',
-              time    : ev.time     || '',
-              reason  : ev.reason   || '',
+              name      : ev.name,
+              type      : ev.type,
+              date      : ev.target_date,
+              time_in   : ev.time_in   || '',
+              time_out  : ev.time_out  || '',
+              time      : ev.time      || '',
+              reason    : ev.reason    || '',
+              // 納期専用フィールド
+              title     : ev.title     || '',
+              phase_name: ev.phase_name|| '',
+              client    : ev.client    || '',
+              memo      : ev.memo      || '',
+              status    : ev.status    || '',
+              deadline_done: !!ev.deadline_done,
             })) : '';
 
             return `<div class="calendar-event ${escHtml(cls)}"
               style="display:inline-block;width:auto;max-width:100%;${isClickable ? 'cursor:pointer' : ''}"
-              title="${escHtml(ev.name || '')}：${escHtml(ev.type)}"
+              title="${escHtml(ev.title || ev.name || '')}${ev.phase_name ? '：' + ev.phase_name : ''}"
               ${isClickable ? `onclick="showKintaiCalEventDetail(${evData})"` : ''}
               >${escHtml(label)}</div>`;
           }).join('');
@@ -3801,45 +3830,75 @@ p:last-child { margin-bottom: 0; }
     }
 
     /**
-     * カレンダーの遅刻・早退イベントをクリックしたときに時刻詳細を表示する。
-     * 遅刻 → 出勤予定時刻、早退 → 退勤予定時刻。
-     *
-     * @param {Object} ev
+     * カレンダーのイベントをクリックしたときに詳細をポップオーバーで表示する。
+     * 遅刻 → 出勤予定時刻、早退 → 退勤予定時刻、納期 → 案件詳細。
      */
     function showKintaiCalEventDetail(ev) {
       const existing = document.getElementById('kintai-cal-popover');
-      if (existing) { existing.remove(); document.getElementById('kintai-cal-backdrop')?.remove(); }
+      if (existing) existing.remove();
+      const existingBack = document.getElementById('kintai-cal-backdrop');
+      if (existingBack) existingBack.remove();
 
-      let timeLabel = '';
-      if (ev.type === '遅刻') {
-        const t = ev.time_in || ev.time;
-        timeLabel = t ? `出勤予定: ${t}` : '出勤予定時刻 未登録';
-      } else if (ev.type === '早退') {
-        const t = ev.time_out || ev.time;
-        timeLabel = t ? `退勤予定: ${t}` : '退勤予定時刻 未登録';
+      // 時刻フィールドを正規化（1899問題を回避）
+      const timeIn  = fmtTime(ev.time_in  || ev.time, '');
+      const timeOut = fmtTime(ev.time_out || ev.time, '');
+
+      let bodyHtml = '';
+
+      if (ev.type === '納期') {
+        // 納期イベントの詳細: 案件名・フェーズ・担当・状況・補足を表示
+        const doneLabel = ev.deadline_done
+          ? '<span style="color:#065f46;font-weight:700">✅ 完了済</span>'
+          : '<span style="color:#c2410c;font-weight:700">⏳ 予定</span>';
+        bodyHtml = `
+          <div style="margin-bottom:0.3rem">
+            <strong style="font-size:0.95rem">${escHtml(ev.title || ev.name)}</strong>
+          </div>
+          ${ev.phase_name ? `<div style="font-size:0.82rem;color:#0e7490;margin-bottom:0.25rem">フェーズ: ${escHtml(ev.phase_name)}</div>` : ''}
+          <div style="font-size:0.82rem;margin-bottom:0.25rem">
+            <span style="font-size:0.72rem;background:#cffafe;color:#0e7490;padding:0.1em 0.5em;border-radius:3px">納期</span>
+            <span style="color:GrayText;margin-left:0.4rem">${escHtml(ev.date)}</span>
+            <span style="margin-left:0.6rem">${doneLabel}</span>
+          </div>
+          ${ev.client ? `<div style="font-size:0.8rem;color:GrayText">クライアント: ${escHtml(ev.client)}</div>` : ''}
+          ${ev.status ? `<div style="font-size:0.8rem;color:GrayText">進捗: ${escHtml(ev.status)}</div>` : ''}
+          ${ev.memo   ? `<div style="font-size:0.78rem;color:GrayText;margin-top:0.3rem;border-top:1px solid #e5e7eb;padding-top:0.3rem">${escHtml(ev.memo)}</div>` : ''}
+        `;
+      } else {
+        // 遅刻・早退
+        let timeLabel = '';
+        if (ev.type === '遅刻') {
+          timeLabel = timeIn  ? `出勤予定: ${timeIn}`  : '出勤予定時刻 未登録';
+        } else if (ev.type === '早退') {
+          timeLabel = timeOut ? `退勤予定: ${timeOut}` : '退勤予定時刻 未登録';
+        }
+        const reasonText = (ev.reason || '').replace(/【補填日時:.*?】/g, '').trim();
+        bodyHtml = `
+          <div style="margin-bottom:0.35rem">
+            <span style="font-size:0.75rem;background:#f3f4f6;padding:0.1em 0.5em;border-radius:3px">${escHtml(ev.type)}</span>
+            <span style="font-size:0.82rem;color:GrayText;margin-left:0.5rem">${escHtml(ev.date)}</span>
+          </div>
+          ${timeLabel ? `<div style="font-weight:700;color:#1d4ed8;margin:0.4rem 0">${timeLabel}</div>` : ''}
+          ${reasonText ? `<div style="color:GrayText;font-size:0.82rem">${escHtml(reasonText)}</div>` : ''}
+        `;
       }
-      const reasonText = (ev.reason || '').replace(/【補填日時:.*?】/g, '').trim();
 
       const popover = document.createElement('div');
       popover.id = 'kintai-cal-popover';
       popover.style.cssText = `
         position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
         background:Canvas;border:1px solid GrayText;border-radius:10px;
-        padding:1.25rem 1.5rem;min-width:220px;max-width:300px;
+        padding:1.25rem 1.5rem;min-width:240px;max-width:320px;
         box-shadow:0 8px 24px rgba(0,0,0,0.18);z-index:9999;font-size:0.88rem;line-height:1.6;
       `;
+      const closeBtn = `<button onclick="document.getElementById('kintai-cal-popover').remove();document.getElementById('kintai-cal-backdrop')?.remove()"
+        style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:GrayText;padding:0 0.2em;flex-shrink:0">✕</button>`;
       popover.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem">
-          <strong>${escHtml(ev.name)}</strong>
-          <button onclick="document.getElementById('kintai-cal-popover').remove();document.getElementById('kintai-cal-backdrop')?.remove()"
-            style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:GrayText;padding:0 0.2em">✕</button>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.6rem">
+          <strong>${escHtml(ev.type === '納期' ? (ev.title || ev.name) : ev.name)}</strong>
+          ${closeBtn}
         </div>
-        <div style="margin-bottom:0.35rem">
-          <span style="font-size:0.75rem;background:#f3f4f6;padding:0.1em 0.5em;border-radius:3px">${escHtml(ev.type)}</span>
-          <span style="font-size:0.82rem;color:GrayText;margin-left:0.5rem">${escHtml(ev.date)}</span>
-        </div>
-        ${timeLabel ? `<div style="font-weight:700;color:#1d4ed8;margin:0.4rem 0">${escHtml(timeLabel)}</div>` : ''}
-        ${reasonText ? `<div style="color:GrayText;font-size:0.82rem">${escHtml(reasonText)}</div>` : ''}
+        ${bodyHtml}
       `;
       document.body.appendChild(popover);
 
@@ -4030,11 +4089,12 @@ p:last-child { margin-bottom: 0; }
         const sStyle = statusStyle[r.status] || statusStyle.pending;
         const sLabel = statusLabel[r.status] || r.status;
 
-        // 時刻ラベル：遅刻＝出勤予定、早退＝退勤予定
-        const timeLabel = r.time
-          ? (r.type === '遅刻' ? `出勤予定: ${escHtml(r.time)}`
-           : r.type === '早退' ? `退勤予定: ${escHtml(r.time)}`
-           : `時刻: ${escHtml(r.time)}`)
+        // 時刻ラベル：遅刻＝出勤予定、早退＝退勤予定（fmtTimeで1899問題を回避）
+        const fmtT = fmtTime(r.time, '');
+        const timeLabel = fmtT
+          ? (r.type === '遅刻' ? `出勤予定: ${fmtT}`
+           : r.type === '早退' ? `退勤予定: ${fmtT}`
+           : `時刻: ${fmtT}`)
           : '';
 
         // 補填情報を reason から分離して表示
