@@ -2104,38 +2104,29 @@ p:last-child { margin-bottom: 0; }
           <input class="sumioka-input" type="date" id="absence-date">
         </div>
 
-        <!-- ③ 時刻（遅刻・早退のときのみ表示）→ 対象日の直下・理由の上に配置 -->
-        <!-- 5分刻みのリスト＋手入力の両方に対応するため datalist を使う。
-             休憩が1時間ごとに5分あるため、5分単位で選択できることが運用上重要。
-             input[type="time"] はモバイルで操作性が悪いため、
-             text + datalist の組み合わせで「選択もできるし手入力もできる」UIにする。 -->
+        <!-- ③ 時刻（遅刻・早退のときのみ表示） -->
+        <!-- 5分刻りリスト＋手入力の両方に対応するため datalist を使う -->
         <div class="sumioka-form-group" id="absence-time-wrap" style="display:none">
-          <label class="sumioka-label" for="absence-time">
-            時刻
-            <span style="font-size:0.75rem;color:GrayText;font-weight:400">
-              （遅刻：出勤予定時刻 / 早退：退勤予定時刻）
-            </span>
+          <!-- ラベルは種別に応じて JS で動的に書き換える（updateAbsenceTimeLabel）-->
+          <label class="sumioka-label" for="absence-time" id="absence-time-label">
+            出勤予定時刻
           </label>
-          <!-- pattern で HH:MM 形式を強制しつつ、手入力も許容する -->
           <input class="sumioka-input" type="text" id="absence-time"
             list="absence-time-list"
-            placeholder="例: 09:05"
+            placeholder="11:00"
             pattern="^\d{1,2}:\d{2}$"
             autocomplete="off"
             style="width:140px">
           <datalist id="absence-time-list">
             <!-- JS の buildAbsenceTimelist() で 5分刻みのオプションを動的生成する -->
           </datalist>
-          <span style="font-size:0.75rem;color:GrayText;display:block;margin-top:0.25rem">
-            ▼ から選択、または「09:05」のように直接入力できます
-          </span>
         </div>
 
-        <!-- ④ 理由（全種別共通）→ 時刻の下に移動 -->
+        <!-- ④ 理由（全種別共通） -->
         <div class="sumioka-form-group">
           <label class="sumioka-label" for="absence-reason">理由</label>
           <textarea class="sumioka-textarea" id="absence-reason" rows="2"
-            placeholder="理由を入力してください（任意）"></textarea>
+            placeholder="理由を入力してください"></textarea>
         </div>
 
         <!-- ⑤ 補填・有給選択（全種別で表示） -->
@@ -2653,9 +2644,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.9 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.10 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.9</div>
+  <div class="version-badge" id="app-version">v1.2.10</div>
 
 
   <script>
@@ -2819,13 +2810,19 @@ p:last-child { margin-bottom: 0; }
       document.getElementById('absence-type').addEventListener('change', () => {
         const type       = document.getElementById('absence-type').value;
         const timeWrap   = document.getElementById('absence-time-wrap');
+        const timeLabel  = document.getElementById('absence-time-label');
         const paidLabel  = document.getElementById('comp-paid-label');
 
         // 時刻欄：遅刻・早退のみ表示
         if (timeWrap) timeWrap.style.display = type === '休み' ? 'none' : '';
 
+        // 時刻ラベル：種別に応じて変更する
+        // 遅刻 → 「出勤予定時刻」、早退 → 「退勤予定時刻」
+        if (timeLabel) {
+          timeLabel.textContent = type === '遅刻' ? '出勤予定時刻' : '退勤予定時刻';
+        }
+
         // 有給消化ラジオボタン：休みのときのみ表示
-        // 遅刻・早退で有給消化は運用上想定しないため非表示にする
         if (paidLabel) paidLabel.style.display = type === '休み' ? '' : 'none';
 
         // 遅刻・早退で有給を選んでいた場合は「しない」に戻す
@@ -3761,25 +3758,33 @@ p:last-child { margin-bottom: 0; }
             // A-①: イベント種別によってラベル表示を変える。
             let label;
             if (ev.type === '会社休日' || ev.type === '会社') {
-              // 会社カレンダー: name に「会社休日」や行事名が入っている
               label = ev.name || '会社休日';
             } else if (ev.type === '納期') {
-              // 納期イベント: "案件名：フェーズ名" 形式で返ってくる。
-              // カレンダー内は文字数が限られるため、案件名の先頭8文字のみ表示する。
               const fullName = ev.name || '';
               label = '📋' + fullName.replace(/：.+$/, '').slice(0, 8);
             } else {
-              // 個人イベント: A-6 の仕様通り「苗字＋名前頭文字」で表示する。
-              // 苗字が同じ人を区別するため、名前の1文字目も付加する。
               const parts        = (ev.name || '').split(/[\s\u3000]/);
               const lastName     = parts[0] || '';
               const firstInitial = parts[1] ? parts[1].charAt(0) : '';
               label = lastName + firstInitial;
             }
 
+            // 遅刻・早退はクリックで時刻詳細を表示する
+            const isClickable = ['遅刻','早退'].includes(ev.type);
+            const evData = isClickable ? escHtml(JSON.stringify({
+              name    : ev.name,
+              type    : ev.type,
+              date    : ev.target_date,
+              time_in : ev.time_in  || '',
+              time_out: ev.time_out || '',
+              time    : ev.time     || '',
+              reason  : ev.reason   || '',
+            })) : '';
+
             return `<div class="calendar-event ${escHtml(cls)}"
-              style="display:inline-block;width:auto;max-width:100%"
+              style="display:inline-block;width:auto;max-width:100%;${isClickable ? 'cursor:pointer' : ''}"
               title="${escHtml(ev.name || '')}：${escHtml(ev.type)}"
+              ${isClickable ? `onclick="showKintaiCalEventDetail(${evData})"` : ''}
               >${escHtml(label)}</div>`;
           }).join('');
 
@@ -3794,6 +3799,56 @@ p:last-child { margin-bottom: 0; }
       }
 
       tbody.innerHTML = html;
+    }
+
+    /**
+     * カレンダーの遅刻・早退イベントをクリックしたときに時刻詳細を表示する。
+     * 遅刻 → 出勤予定時刻、早退 → 退勤予定時刻。
+     *
+     * @param {Object} ev
+     */
+    function showKintaiCalEventDetail(ev) {
+      const existing = document.getElementById('kintai-cal-popover');
+      if (existing) { existing.remove(); document.getElementById('kintai-cal-backdrop')?.remove(); }
+
+      let timeLabel = '';
+      if (ev.type === '遅刻') {
+        const t = ev.time_in || ev.time;
+        timeLabel = t ? `出勤予定: ${t}` : '出勤予定時刻 未登録';
+      } else if (ev.type === '早退') {
+        const t = ev.time_out || ev.time;
+        timeLabel = t ? `退勤予定: ${t}` : '退勤予定時刻 未登録';
+      }
+      const reasonText = (ev.reason || '').replace(/【補填日時:.*?】/g, '').trim();
+
+      const popover = document.createElement('div');
+      popover.id = 'kintai-cal-popover';
+      popover.style.cssText = `
+        position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+        background:Canvas;border:1px solid GrayText;border-radius:10px;
+        padding:1.25rem 1.5rem;min-width:220px;max-width:300px;
+        box-shadow:0 8px 24px rgba(0,0,0,0.18);z-index:9999;font-size:0.88rem;line-height:1.6;
+      `;
+      popover.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem">
+          <strong>${escHtml(ev.name)}</strong>
+          <button onclick="document.getElementById('kintai-cal-popover').remove();document.getElementById('kintai-cal-backdrop')?.remove()"
+            style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:GrayText;padding:0 0.2em">✕</button>
+        </div>
+        <div style="margin-bottom:0.35rem">
+          <span style="font-size:0.75rem;background:#f3f4f6;padding:0.1em 0.5em;border-radius:3px">${escHtml(ev.type)}</span>
+          <span style="font-size:0.82rem;color:GrayText;margin-left:0.5rem">${escHtml(ev.date)}</span>
+        </div>
+        ${timeLabel ? `<div style="font-weight:700;color:#1d4ed8;margin:0.4rem 0">${escHtml(timeLabel)}</div>` : ''}
+        ${reasonText ? `<div style="color:GrayText;font-size:0.82rem">${escHtml(reasonText)}</div>` : ''}
+      `;
+      document.body.appendChild(popover);
+
+      const backdrop = document.createElement('div');
+      backdrop.id = 'kintai-cal-backdrop';
+      backdrop.style.cssText = 'position:fixed;inset:0;z-index:9998;';
+      backdrop.onclick = () => { popover.remove(); backdrop.remove(); };
+      document.body.appendChild(backdrop);
     }
 
     /**
@@ -3875,14 +3930,20 @@ p:last-child { margin-bottom: 0; }
         date,
         time          : time || '',
         reason        : reasonFull,
-        compensation  : compValue,         // 'none' | 'fillup' | 'paid'
-        fillup_items  : fillupItems,       // 補填日時の構造化データ
-        needs_approval: false,             // 承認フロー廃止
+        compensation  : compValue,
+        fillup_items  : fillupItems,
+        // needs_approval は GAS 側で判定するためフロントからは送らない（廃止）
       });
       hideLoading();
 
       if (!result.success) { showError(result.error_message, result.error_detail); return; }
-      showToast('申請しました。カレンダーに反映されます。', 'success');
+
+      // 補填・有給は承認待ち（pending）になる。それ以外は即反映（approved）。
+      if (result.data?.needs_approval) {
+        showToast('申請しました。管理者の承認後にカレンダーへ反映されます。', 'success');
+      } else {
+        showToast('申請しました。カレンダーに反映されます。', 'success');
+      }
 
       // フォームリセット
       document.getElementById('absence-reason').value = '';
