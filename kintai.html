@@ -2105,7 +2105,10 @@ p:last-child { margin-bottom: 0; }
         </div>
 
         <!-- ③ 時刻（遅刻・早退のときのみ表示）→ 対象日の直下・理由の上に配置 -->
-        <!-- A-②: input[type="time"] は禁止。15分単位 select で代替する。 -->
+        <!-- 5分刻みのリスト＋手入力の両方に対応するため datalist を使う。
+             休憩が1時間ごとに5分あるため、5分単位で選択できることが運用上重要。
+             input[type="time"] はモバイルで操作性が悪いため、
+             text + datalist の組み合わせで「選択もできるし手入力もできる」UIにする。 -->
         <div class="sumioka-form-group" id="absence-time-wrap" style="display:none">
           <label class="sumioka-label" for="absence-time">
             時刻
@@ -2113,81 +2116,19 @@ p:last-child { margin-bottom: 0; }
               （遅刻：出勤予定時刻 / 早退：退勤予定時刻）
             </span>
           </label>
-          <select class="sumioka-input" id="absence-time">
-            <option value="">--:--</option>
-            <!-- 00:00〜23:45 を 15分刻みで JS で動的に生成してもよいが、
-                 この箇所はHTML初期値として静的に記述する。
-                 動的生成が必要な場合は buildTimeSelect() を使うこと。 -->
-            <option value="05:00">05:00</option>
-            <option value="05:15">05:15</option>
-            <option value="05:30">05:30</option>
-            <option value="05:45">05:45</option>
-            <option value="06:00">06:00</option>
-            <option value="06:15">06:15</option>
-            <option value="06:30">06:30</option>
-            <option value="06:45">06:45</option>
-            <option value="07:00">07:00</option>
-            <option value="07:15">07:15</option>
-            <option value="07:30">07:30</option>
-            <option value="07:45">07:45</option>
-            <option value="08:00">08:00</option>
-            <option value="08:15">08:15</option>
-            <option value="08:30">08:30</option>
-            <option value="08:45">08:45</option>
-            <option value="09:00">09:00</option>
-            <option value="09:15">09:15</option>
-            <option value="09:30">09:30</option>
-            <option value="09:45">09:45</option>
-            <option value="10:00">10:00</option>
-            <option value="10:15">10:15</option>
-            <option value="10:30">10:30</option>
-            <option value="10:45">10:45</option>
-            <option value="11:00">11:00</option>
-            <option value="11:15">11:15</option>
-            <option value="11:30">11:30</option>
-            <option value="11:45">11:45</option>
-            <option value="12:00">12:00</option>
-            <option value="12:15">12:15</option>
-            <option value="12:30">12:30</option>
-            <option value="12:45">12:45</option>
-            <option value="13:00">13:00</option>
-            <option value="13:15">13:15</option>
-            <option value="13:30">13:30</option>
-            <option value="13:45">13:45</option>
-            <option value="14:00">14:00</option>
-            <option value="14:15">14:15</option>
-            <option value="14:30">14:30</option>
-            <option value="14:45">14:45</option>
-            <option value="15:00">15:00</option>
-            <option value="15:15">15:15</option>
-            <option value="15:30">15:30</option>
-            <option value="15:45">15:45</option>
-            <option value="16:00">16:00</option>
-            <option value="16:15">16:15</option>
-            <option value="16:30">16:30</option>
-            <option value="16:45">16:45</option>
-            <option value="17:00">17:00</option>
-            <option value="17:15">17:15</option>
-            <option value="17:30">17:30</option>
-            <option value="17:45">17:45</option>
-            <option value="18:00">18:00</option>
-            <option value="18:15">18:15</option>
-            <option value="18:30">18:30</option>
-            <option value="18:45">18:45</option>
-            <option value="19:00">19:00</option>
-            <option value="19:15">19:15</option>
-            <option value="19:30">19:30</option>
-            <option value="19:45">19:45</option>
-            <option value="20:00">20:00</option>
-            <option value="20:15">20:15</option>
-            <option value="20:30">20:30</option>
-            <option value="20:45">20:45</option>
-            <option value="21:00">21:00</option>
-            <option value="21:15">21:15</option>
-            <option value="21:30">21:30</option>
-            <option value="21:45">21:45</option>
-            <option value="22:00">22:00</option>
-          </select>
+          <!-- pattern で HH:MM 形式を強制しつつ、手入力も許容する -->
+          <input class="sumioka-input" type="text" id="absence-time"
+            list="absence-time-list"
+            placeholder="例: 09:05"
+            pattern="^\d{1,2}:\d{2}$"
+            autocomplete="off"
+            style="width:140px">
+          <datalist id="absence-time-list">
+            <!-- JS の buildAbsenceTimelist() で 5分刻みのオプションを動的生成する -->
+          </datalist>
+          <span style="font-size:0.75rem;color:GrayText;display:block;margin-top:0.25rem">
+            ▼ から選択、または「09:05」のように直接入力できます
+          </span>
         </div>
 
         <!-- ④ 理由（全種別共通）→ 時刻の下に移動 -->
@@ -2230,46 +2171,13 @@ p:last-child { margin-bottom: 0; }
               <span style="font-size:0.75rem;color:GrayText;font-weight:400">（複数追加可）</span>
             </label>
             <div id="fillup-dates-wrap">
-              <!-- 1行目（JS側で生成する buildFillupTimeSelect() を参照） -->
-              <!-- A-②: fillup-time-input も select で統一する。JSで動的に生成する。 -->
+              <!-- 1行目（JS側の buildFillupRow() で生成する） -->
               <div class="fillup-date-row" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;align-items:center">
                 <input class="sumioka-input fillup-date-input" type="date" style="width:145px;font-size:0.85rem">
-                <select class="sumioka-input fillup-time-input" style="width:115px;font-size:0.85rem">
-                  <option value="">--:--</option>
-                  <option value="06:00">06:00</option><option value="06:15">06:15</option>
-                  <option value="06:30">06:30</option><option value="06:45">06:45</option>
-                  <option value="07:00">07:00</option><option value="07:15">07:15</option>
-                  <option value="07:30">07:30</option><option value="07:45">07:45</option>
-                  <option value="08:00">08:00</option><option value="08:15">08:15</option>
-                  <option value="08:30">08:30</option><option value="08:45">08:45</option>
-                  <option value="09:00">09:00</option><option value="09:15">09:15</option>
-                  <option value="09:30">09:30</option><option value="09:45">09:45</option>
-                  <option value="10:00">10:00</option><option value="10:15">10:15</option>
-                  <option value="10:30">10:30</option><option value="10:45">10:45</option>
-                  <option value="11:00">11:00</option><option value="11:15">11:15</option>
-                  <option value="11:30">11:30</option><option value="11:45">11:45</option>
-                  <option value="12:00">12:00</option><option value="12:15">12:15</option>
-                  <option value="12:30">12:30</option><option value="12:45">12:45</option>
-                  <option value="13:00">13:00</option><option value="13:15">13:15</option>
-                  <option value="13:30">13:30</option><option value="13:45">13:45</option>
-                  <option value="14:00">14:00</option><option value="14:15">14:15</option>
-                  <option value="14:30">14:30</option><option value="14:45">14:45</option>
-                  <option value="15:00">15:00</option><option value="15:15">15:15</option>
-                  <option value="15:30">15:30</option><option value="15:45">15:45</option>
-                  <option value="16:00">16:00</option><option value="16:15">16:15</option>
-                  <option value="16:30">16:30</option><option value="16:45">16:45</option>
-                  <option value="17:00">17:00</option><option value="17:15">17:15</option>
-                  <option value="17:30">17:30</option><option value="17:45">17:45</option>
-                  <option value="18:00">18:00</option><option value="18:15">18:15</option>
-                  <option value="18:30">18:30</option><option value="18:45">18:45</option>
-                  <option value="19:00">19:00</option><option value="19:15">19:15</option>
-                  <option value="19:30">19:30</option><option value="19:45">19:45</option>
-                  <option value="20:00">20:00</option><option value="20:15">20:15</option>
-                  <option value="20:30">20:30</option><option value="20:45">20:45</option>
-                  <option value="21:00">21:00</option><option value="21:15">21:15</option>
-                  <option value="21:30">21:30</option><option value="21:45">21:45</option>
-                  <option value="22:00">22:00</option>
-                </select>
+                <!-- 5分刻みリスト＋手入力対応 datalist -->
+                <input class="sumioka-input fillup-time-input" type="text"
+                  list="fillup-time-list" placeholder="09:00"
+                  autocomplete="off" style="width:100px;font-size:0.85rem">
                 <select class="sumioka-input fillup-duration-input" style="width:110px;font-size:0.85rem">
                   <option value="">時間数</option>
                   <option value="0.25">15分</option><option value="0.5">30分</option>
@@ -2280,6 +2188,10 @@ p:last-child { margin-bottom: 0; }
                   <option value="4">4時間</option>
                 </select>
               </div>
+              <!-- 補填時刻の共通 datalist（全行で共有する） -->
+              <datalist id="fillup-time-list">
+                <!-- JS の buildAbsenceTimelist() と共有、または buildFillupTimelist() で生成 -->
+              </datalist>
             </div>
             <button class="sumioka-btn" id="btn-fillup-add-date"
               style="font-size:0.78rem;margin-top:0.2rem">＋ 日程を追加</button>
@@ -2741,9 +2653,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.8 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.9 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.8</div>
+  <div class="version-badge" id="app-version">v1.2.9</div>
 
 
   <script>
@@ -2817,6 +2729,12 @@ p:last-child { margin-bottom: 0; }
       // Phase 2: カレンダーの表示月を今月に初期化する
       phase2State.calYear  = today.getFullYear();
       phase2State.calMonth = today.getMonth() + 1;
+
+      // 時刻選択 datalist を 5分刻みで初期化する（遅刻・早退時刻の入力に使う）
+      // 理由: 休憩が1時間ごとに5分あるため5分単位の精度が必要。
+      //        datalist により「候補から選択」と「手入力」を両立する。
+      buildAbsenceTimelist('absence-time-list');
+      buildAbsenceTimelist('fillup-time-list');
 
       // イベントリスナーを設定（bindEventsより前に実行すると一部のイベントが効かないため先に設定）
       bindEvents();
@@ -2929,44 +2847,12 @@ p:last-child { margin-bottom: 0; }
         const row  = document.createElement('div');
         row.className = 'fillup-date-row';
         row.style.cssText = 'display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;align-items:center';
+        // fillup-time-list は HTML に定義済みの datalist を共有する（list属性で参照するため同ID可）
         row.innerHTML = `
           <input class="sumioka-input fillup-date-input" type="date" style="width:145px;font-size:0.85rem">
-          <select class="sumioka-input fillup-time-input" style="width:115px;font-size:0.85rem">
-            <option value="">--:--</option>
-            <option value="06:00">06:00</option><option value="06:15">06:15</option>
-            <option value="06:30">06:30</option><option value="06:45">06:45</option>
-            <option value="07:00">07:00</option><option value="07:15">07:15</option>
-            <option value="07:30">07:30</option><option value="07:45">07:45</option>
-            <option value="08:00">08:00</option><option value="08:15">08:15</option>
-            <option value="08:30">08:30</option><option value="08:45">08:45</option>
-            <option value="09:00">09:00</option><option value="09:15">09:15</option>
-            <option value="09:30">09:30</option><option value="09:45">09:45</option>
-            <option value="10:00">10:00</option><option value="10:15">10:15</option>
-            <option value="10:30">10:30</option><option value="10:45">10:45</option>
-            <option value="11:00">11:00</option><option value="11:15">11:15</option>
-            <option value="11:30">11:30</option><option value="11:45">11:45</option>
-            <option value="12:00">12:00</option><option value="12:15">12:15</option>
-            <option value="12:30">12:30</option><option value="12:45">12:45</option>
-            <option value="13:00">13:00</option><option value="13:15">13:15</option>
-            <option value="13:30">13:30</option><option value="13:45">13:45</option>
-            <option value="14:00">14:00</option><option value="14:15">14:15</option>
-            <option value="14:30">14:30</option><option value="14:45">14:45</option>
-            <option value="15:00">15:00</option><option value="15:15">15:15</option>
-            <option value="15:30">15:30</option><option value="15:45">15:45</option>
-            <option value="16:00">16:00</option><option value="16:15">16:15</option>
-            <option value="16:30">16:30</option><option value="16:45">16:45</option>
-            <option value="17:00">17:00</option><option value="17:15">17:15</option>
-            <option value="17:30">17:30</option><option value="17:45">17:45</option>
-            <option value="18:00">18:00</option><option value="18:15">18:15</option>
-            <option value="18:30">18:30</option><option value="18:45">18:45</option>
-            <option value="19:00">19:00</option><option value="19:15">19:15</option>
-            <option value="19:30">19:30</option><option value="19:45">19:45</option>
-            <option value="20:00">20:00</option><option value="20:15">20:15</option>
-            <option value="20:30">20:30</option><option value="20:45">20:45</option>
-            <option value="21:00">21:00</option><option value="21:15">21:15</option>
-            <option value="21:30">21:30</option><option value="21:45">21:45</option>
-            <option value="22:00">22:00</option>
-          </select>
+          <input class="sumioka-input fillup-time-input" type="text"
+            list="fillup-time-list" placeholder="09:00"
+            autocomplete="off" style="width:100px;font-size:0.85rem">
           <select class="sumioka-input fillup-duration-input" style="width:110px;font-size:0.85rem">
             <option value="">時間数</option>
             <option value="0.25">15分</option><option value="0.5">30分</option>
@@ -3438,59 +3324,31 @@ p:last-child { margin-bottom: 0; }
     /**
      * 時刻文字列を HH:MM 形式に正規化する。
      *
-     * GAS から返ってくる time_in / time_out の形式は複数ある:
-     *   1) "HH:MM"          - 正常な文字列型（最も多いケース）
-     *   2) "HH:MM:SS"       - 秒付き文字列
-     *   3) "1899-12-30T..." - GAS の Date 型→JSON シリアライズ時の誤変換
-     *                          ※ GAS 側の _safeTimeStr で空文字に変換されるはずだが
-     *                            念のためフロントでも対応する
-     *   4) 現在日付の ISO   - "2026-05-01T09:00:00.000Z" のような通常の ISO 文字列
-     *                          → JST は UTC+9 なので Date.getHours() で取得する
-     *
-     * 重要: ISO文字列を UTC 時刻のまま表示すると9時間ずれるため
-     *        必ず Date オブジェクト経由でローカル時刻（JST）を取得する。
+     * GAS が Date 型をシリアライズした ISO 文字列
+     * （例: "1899-12-30T01:17:00.000Z"）が来た場合は
+     * UTC 時刻部分を取り出して返す。
+     * すでに "HH:MM" 形式の場合はそのまま返す。
      *
      * @param {string} raw - time_in / time_out の生値
-     * @returns {string} "HH:MM" 形式。値がない場合は "--:--"
+     * @returns {string} "HH:MM" 形式
      */
     function formatTimeDisplay(raw) {
-      // デバッグ: GASから受け取った生値をコンソールに出力する
-      // 打刻時刻が正しく表示されない場合はここで原因を特定できる
-      console.debug('[formatTimeDisplay] raw =', raw, typeof raw);
-
       if (!raw) return '--:--';
 
-      // ① "HH:MM" または "HH:MM:SS" 形式 → 先頭5文字をそのまま使う
+      // "HH:MM" または "HH:MM:SS" 形式はそのまま使う
       if (/^\d{1,2}:\d{2}/.test(raw)) {
-        const result = raw.slice(0, 5);
-        // 0埋め正規化: "9:05" → "09:05"
-        const parts = result.split(':');
-        return `${parts[0].padStart(2, '0')}:${parts[1]}`;
+        return raw.slice(0, 5);
       }
 
-      // ② ISO 8601 文字列の場合（Date オブジェクト経由で JST に変換）
-      if (typeof raw === 'string' && raw.includes('T')) {
-        // 1899年は GAS のシリアル値誤変換 → 表示できないので '--:--' を返す
-        if (raw.startsWith('1899')) {
-          console.warn('[formatTimeDisplay] 1899年の誤変換データを検出。GAS 側の _safeTimeStr が機能していない可能性があります。raw =', raw);
-          return '--:--';
-        }
-
-        // Date オブジェクトに変換してローカル時刻（JST）を取得する
-        // ※ new Date("2026-05-01T00:09:00.000Z").getHours() は実行環境の
-        //    タイムゾーンに依存するため、ブラウザ（JST環境）では正しく9h加算される
-        const d = new Date(raw);
-        if (!isNaN(d.getTime())) {
-          const h = String(d.getHours()).padStart(2, '0');
-          const m = String(d.getMinutes()).padStart(2, '0');
-          return `${h}:${m}`;
-        }
+      // ISO 8601 形式（例: "1899-12-30T01:17:00.000Z"）の場合
+      // → T以降の時刻部分（UTC）を取り出す
+      const isoMatch = raw.match(/T(\d{2}):(\d{2})/);
+      if (isoMatch) {
+        return `${isoMatch[1]}:${isoMatch[2]}`;
       }
 
-      // ③ 数値（GAS がシリアル値をそのまま返した場合）は対応外
-      //    GAS 側で文字列変換されているはずなので通常は到達しない
-      console.warn('[formatTimeDisplay] 未知の形式です。raw =', raw);
-      return '--:--';
+      // それ以外はそのまま返す（予期しない形式のデバッグ用）
+      return raw;
     }
 
     /** 退勤エリアの表示を更新する */
@@ -3673,6 +3531,36 @@ p:last-child { margin-bottom: 0; }
       const m   = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       return `${y}-${m}-${day}`;
+    }
+
+    /**
+     * 時刻選択用 datalist のオプションを動的に生成する。
+     *
+     * 5分刻みにする理由:
+     *   休憩が1時間ごとに5分あるため、15分刻みでは実際の遅刻・早退時刻を
+     *   正確に表現できないケースがある（例: 10:05 に来た → 10:00 か 10:15 か曖昧）。
+     *   datalist + text input の組み合わせにすることで「選択もできるし手入力もできる」。
+     *
+     * @param {string} datalistId - 対象の datalist 要素の id
+     * @param {number} [startH=5] - 開始時（デフォルト 5時）
+     * @param {number} [endH=22]  - 終了時（デフォルト 22時）
+     * @param {number} [step=5]   - 刻み幅（分、デフォルト 5分）
+     */
+    function buildAbsenceTimelist(datalistId, startH = 5, endH = 22, step = 5) {
+      const dl = document.getElementById(datalistId);
+      if (!dl) return;
+
+      const options = [];
+      for (let h = startH; h <= endH; h++) {
+        for (let m = 0; m < 60; m += step) {
+          // 終了時の場合は 00 分のみ追加
+          if (h === endH && m > 0) break;
+          const hh = String(h).padStart(2, '0');
+          const mm = String(m).padStart(2, '0');
+          options.push(`<option value="${hh}:${mm}">`);
+        }
+      }
+      dl.innerHTML = options.join('');
     }
 
     /** 現在時刻を 'HH:MM' 形式で返す */
@@ -3999,7 +3887,7 @@ p:last-child { margin-bottom: 0; }
       // フォームリセット
       document.getElementById('absence-reason').value = '';
       document.getElementById('absence-date').value   = '';
-      // A-②: absence-time は select に変更済みのため value リセットで対応
+      // absence-time は datalist 付き input のため value リセットで対応
       const absenceTimeEl = document.getElementById('absence-time');
       if (absenceTimeEl) absenceTimeEl.value = '';
       const noneRadio = document.getElementById('comp-none');
@@ -4011,42 +3899,9 @@ p:last-child { margin-bottom: 0; }
       if (wrap) wrap.innerHTML = `
         <div class="fillup-date-row" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem;align-items:center">
           <input class="sumioka-input fillup-date-input" type="date" style="width:145px;font-size:0.85rem">
-          <select class="sumioka-input fillup-time-input" style="width:115px;font-size:0.85rem">
-            <option value="">--:--</option>
-            <option value="06:00">06:00</option><option value="06:15">06:15</option>
-            <option value="06:30">06:30</option><option value="06:45">06:45</option>
-            <option value="07:00">07:00</option><option value="07:15">07:15</option>
-            <option value="07:30">07:30</option><option value="07:45">07:45</option>
-            <option value="08:00">08:00</option><option value="08:15">08:15</option>
-            <option value="08:30">08:30</option><option value="08:45">08:45</option>
-            <option value="09:00">09:00</option><option value="09:15">09:15</option>
-            <option value="09:30">09:30</option><option value="09:45">09:45</option>
-            <option value="10:00">10:00</option><option value="10:15">10:15</option>
-            <option value="10:30">10:30</option><option value="10:45">10:45</option>
-            <option value="11:00">11:00</option><option value="11:15">11:15</option>
-            <option value="11:30">11:30</option><option value="11:45">11:45</option>
-            <option value="12:00">12:00</option><option value="12:15">12:15</option>
-            <option value="12:30">12:30</option><option value="12:45">12:45</option>
-            <option value="13:00">13:00</option><option value="13:15">13:15</option>
-            <option value="13:30">13:30</option><option value="13:45">13:45</option>
-            <option value="14:00">14:00</option><option value="14:15">14:15</option>
-            <option value="14:30">14:30</option><option value="14:45">14:45</option>
-            <option value="15:00">15:00</option><option value="15:15">15:15</option>
-            <option value="15:30">15:30</option><option value="15:45">15:45</option>
-            <option value="16:00">16:00</option><option value="16:15">16:15</option>
-            <option value="16:30">16:30</option><option value="16:45">16:45</option>
-            <option value="17:00">17:00</option><option value="17:15">17:15</option>
-            <option value="17:30">17:30</option><option value="17:45">17:45</option>
-            <option value="18:00">18:00</option><option value="18:15">18:15</option>
-            <option value="18:30">18:30</option><option value="18:45">18:45</option>
-            <option value="19:00">19:00</option><option value="19:15">19:15</option>
-            <option value="19:30">19:30</option><option value="19:45">19:45</option>
-            <option value="20:00">20:00</option><option value="20:15">20:15</option>
-            <option value="20:30">20:30</option><option value="20:45">20:45</option>
-            <option value="21:00">21:00</option><option value="21:15">21:15</option>
-            <option value="21:30">21:30</option><option value="21:45">21:45</option>
-            <option value="22:00">22:00</option>
-          </select>
+          <input class="sumioka-input fillup-time-input" type="text"
+            list="fillup-time-list" placeholder="09:00"
+            autocomplete="off" style="width:100px;font-size:0.85rem">
           <select class="sumioka-input fillup-duration-input" style="width:110px;font-size:0.85rem">
             <option value="">時間数</option>
             <option value="0.25">15分</option><option value="0.5">30分</option>
