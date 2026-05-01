@@ -914,15 +914,15 @@ p:last-child { margin-bottom: 0; }
   cursor: default;
 }
 
-/* A-5: 遅刻・早退を別色に分離する */
-.ev-休み      { background: #fee2e2; color: #991b1b; }  /* 赤 */
-.ev-遅刻      { background: #fef9c3; color: #78350f; }  /* 黄 */
-.ev-早退      { background: #ffedd5; color: #c2410c; }  /* オレンジ（遅刻と区別） */
-.ev-補填予定  { background: #d1fae5; color: #065f46; }  /* 緑 */
-.ev-補填完了  { background: #dbeafe; color: #1e40af; }  /* 青 */
-.ev-会社      { background: #f3e8ff; color: #7c3aed; }  /* 紫：会社カレンダー */
-        /* 納期イベント: 担当案件フェーズの予定日をオレンジ系で表示 */
-        .ev-納期      { background: #ffedd5; color: #c2410c; }  /* オレンジ */
+/* カレンダーイベント色（admin.htmlと統一）
+   欠勤・休み → グレー、遅刻・早退 → オレンジ、補填予定 → 黄、補填完了 → 緑、会社休日 → 紫、納期 → シアン */
+.ev-休み      { background: #e5e7eb; color: #374151; }  /* グレー */
+.ev-遅刻      { background: #ffedd5; color: #c2410c; }  /* オレンジ */
+.ev-早退      { background: #ffedd5; color: #c2410c; }  /* オレンジ（遅刻と同色） */
+.ev-補填予定  { background: #fef9c3; color: #854d0e; }  /* 黄 */
+.ev-補填完了  { background: #d1fae5; color: #065f46; }  /* 緑 */
+.ev-会社      { background: #f3e8ff; color: #7c3aed; }  /* 紫 */
+.ev-納期      { background: #cffafe; color: #0e7490; }  /* シアン */
 
 /* ============================================================
    Phase 2: 申請フォーム（タブ2）
@@ -2063,11 +2063,10 @@ p:last-child { margin-bottom: 0; }
         </tbody>
       </table>
 
-      <!-- A-5: 遅刻・早退を別色で凡例表示（カレンダー内には種別テキストは入れない） -->
+      <!-- 凡例 -->
       <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1.25rem;font-size:0.72rem">
-        <span class="calendar-event ev-休み">休み</span>
-        <span class="calendar-event ev-遅刻">遅刻</span>
-        <span class="calendar-event ev-早退">早退</span>
+        <span class="calendar-event ev-休み">欠勤・休み</span>
+        <span class="calendar-event ev-遅刻">遅刻・早退</span>
         <span class="calendar-event ev-補填予定">補填予定</span>
         <span class="calendar-event ev-補填完了">補填完了</span>
         <span class="calendar-event ev-会社">会社休日</span>
@@ -2644,9 +2643,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.10 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.11 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.10</div>
+  <div class="version-badge" id="app-version">v1.2.11</div>
 
 
   <script>
@@ -4004,41 +4003,77 @@ p:last-child { margin-bottom: 0; }
     }
 
     /**
-     * 申請履歴を描画する（カレンダータブ・自分の状況タブで共用）。
+     * 申請履歴を描画する（自分の状況タブ）。
+     * 承認状況（承認待ち・承認済み・却下）と承認者・承認日時も表示する。
      *
      * @param {Object[]} requests
      * @param {string}   containerId - 描画先要素のID
      */
     function renderRequestHistory(requests, containerId) {
       const el = document.getElementById(containerId);
+      if (!el) return;
 
       if (requests.length === 0) {
         el.innerHTML = '<div style="text-align:center;color:GrayText;padding:1.5rem;font-size:0.85rem">申請履歴がありません</div>';
         return;
       }
 
-      const badgeClass = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
-      const badgeLabel = { pending: '承認待ち', approved: '承認済み', rejected: '却下' };
+      // ステータスに応じたバッジスタイル
+      const statusStyle = {
+        pending : 'background:#fef9c3;color:#854d0e;border:1px solid #fbbf24',
+        approved: 'background:#d1fae5;color:#065f46;border:1px solid #34d399',
+        rejected: 'background:#fee2e2;color:#991b1b;border:1px solid #f87171',
+      };
+      const statusLabel = { pending: '⏳ 承認待ち', approved: '✅ 承認済み', rejected: '❌ 却下' };
 
       el.innerHTML = requests.map(r => {
-        const cls   = badgeClass[r.status] || 'badge-pending';
-        const label = badgeLabel[r.status] || r.status;
-        const rejectHtml = r.status === 'rejected' && r.reject_reason
-          ? `<div class="request-reject-reason">却下理由: ${escHtml(r.reject_reason)}</div>`
+        const sStyle = statusStyle[r.status] || statusStyle.pending;
+        const sLabel = statusLabel[r.status] || r.status;
+
+        // 時刻ラベル：遅刻＝出勤予定、早退＝退勤予定
+        const timeLabel = r.time
+          ? (r.type === '遅刻' ? `出勤予定: ${escHtml(r.time)}`
+           : r.type === '早退' ? `退勤予定: ${escHtml(r.time)}`
+           : `時刻: ${escHtml(r.time)}`)
+          : '';
+
+        // 補填情報を reason から分離して表示
+        const reasonMain  = (r.reason || '').replace(/【補填日時:.*?】/g, '').trim();
+        const fillupMatch = (r.reason || '').match(/【補填日時:(.*?)】/);
+        const fillupInfo  = fillupMatch ? fillupMatch[1].trim() : '';
+
+        // 承認済みの場合は承認者・承認日時を表示
+        const approvedHtml = r.status === 'approved' && r.approved_by
+          ? `<div style="font-size:0.75rem;color:#065f46;margin-top:0.25rem">
+               ✓ 承認: ${escHtml(r.approved_at ? r.approved_at.slice(0,10) : '')}
+             </div>`
+          : '';
+
+        // 却下の場合は却下理由を表示
+        const rejectedHtml = r.status === 'rejected'
+          ? `<div style="font-size:0.78rem;color:#991b1b;margin-top:0.25rem;padding:0.3rem 0.5rem;background:#fff5f5;border-radius:4px">
+               却下理由: ${escHtml(r.reject_reason || '（理由なし）')}
+             </div>`
           : '';
 
         return `
-          <div class="request-history-item">
-            <div class="request-history-header">
-              <span>${escHtml(r.type)} — ${escHtml(r.target_date)}</span>
-              <span class="badge ${cls}">${label}</span>
+          <div style="border:1px solid #e5e7eb;border-radius:8px;padding:0.85rem 1rem;margin-bottom:0.65rem;background:Canvas">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
+              <span style="font-weight:600;font-size:0.92rem">
+                ${escHtml(r.type)} — ${escHtml(r.target_date)}
+              </span>
+              <span style="font-size:0.75rem;padding:0.15em 0.6em;border-radius:99px;font-weight:600;${sStyle}">
+                ${sLabel}
+              </span>
             </div>
-            <div style="font-size:0.78rem;color:GrayText">
-              申請日: ${escHtml(r.created_at)}
-              ${r.time ? ` / 時間: ${escHtml(r.time)}` : ''}
-              ${r.reason ? ` / 理由: ${escHtml(r.reason)}` : ''}
+            <div style="font-size:0.78rem;color:GrayText;line-height:1.6">
+              申請日: ${escHtml((r.created_at||'').slice(0,10))}
+              ${timeLabel ? ` / ${timeLabel}` : ''}
+              ${reasonMain ? ` / ${escHtml(reasonMain)}` : ''}
             </div>
-            ${rejectHtml}
+            ${fillupInfo ? `<div style="font-size:0.75rem;color:#065f46;margin-top:0.2rem">🔄 補填: ${escHtml(fillupInfo)}</div>` : ''}
+            ${approvedHtml}
+            ${rejectedHtml}
           </div>
         `;
       }).join('');
