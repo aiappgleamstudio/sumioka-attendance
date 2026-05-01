@@ -564,15 +564,22 @@
       display: block;
     }
 
-    /* A-5: 遅刻・早退を別色に分ける */
-    .admin-ev-欠勤     { background: #fee2e2; color: #991b1b; }  /* 赤 */
-    .admin-ev-遅刻     { background: #fef9c3; color: #78350f; }  /* 黄 */
-    .admin-ev-早退     { background: #ffedd5; color: #c2410c; }  /* オレンジ */
-    .admin-ev-補填予定 { background: #d1fae5; color: #065f46; }  /* 緑 */
-    .admin-ev-補填完了 { background: #dbeafe; color: #1e40af; }  /* 青 */
-    .admin-ev-会社     { background: #f3e8ff; color: #7c3aed; }  /* 紫：会社カレンダー */
-    /* 納期専用クラス: 補填予定(緑)と早退(オレンジ)のどちらとも被らないピンク系 */
-    .admin-ev-納期     { background: #fce7f3; color: #9d174d; }  /* ピンク：納期カレンダー */
+    /* ── カレンダーイベント色 ──────────────────────────────────────
+       ユーザー指定の色分け:
+         欠勤・休み → グレー
+         遅刻・早退 → オレンジ（同色で統一）
+         補填予定   → 黄
+         補填完了   → 緑
+         会社休日   → 紫
+         納期       → シアン
+    ───────────────────────────────────────────────────────────── */
+    .admin-ev-欠勤     { background: #e5e7eb; color: #374151; }  /* グレー */
+    .admin-ev-遅刻     { background: #ffedd5; color: #c2410c; }  /* オレンジ */
+    .admin-ev-早退     { background: #ffedd5; color: #c2410c; }  /* オレンジ（遅刻と同色） */
+    .admin-ev-補填予定 { background: #fef9c3; color: #854d0e; }  /* 黄 */
+    .admin-ev-補填完了 { background: #d1fae5; color: #065f46; }  /* 緑 */
+    .admin-ev-会社     { background: #f3e8ff; color: #7c3aed; }  /* 紫 */
+    .admin-ev-納期     { background: #cffafe; color: #0e7490; }  /* シアン */
 
     /* #8 ローディング: スピナー付きに強化 */
     .tab-loading {
@@ -874,14 +881,14 @@
           </tbody>
         </table>
 
-        <!-- A-5: 遅刻・早退を別色で凡例表示 -->
+        <!-- 凡例 -->
         <div class="admin-cal-legend">
-          <span class="admin-cal-event admin-ev-欠勤">欠勤</span>
-          <span class="admin-cal-event admin-ev-遅刻">遅刻</span>
-          <span class="admin-cal-event admin-ev-早退">早退</span>
+          <span class="admin-cal-event admin-ev-欠勤">欠勤・休み</span>
+          <span class="admin-cal-event admin-ev-遅刻">遅刻・早退</span>
           <span class="admin-cal-event admin-ev-補填予定">補填予定</span>
           <span class="admin-cal-event admin-ev-補填完了">補填完了</span>
           <span class="admin-cal-event admin-ev-会社">会社休日</span>
+          <span class="admin-cal-event admin-ev-納期">納期</span>
         </div>
 
         <!-- ── A-11: 会社カレンダー登録（管理者専用）── -->
