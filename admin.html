@@ -442,18 +442,6 @@
 
     /* ── ローディング・オーバーレイ（タブ内） ── */
 
-    .tab-loading {
-      display: none;
-      text-align: center;
-      padding: 2rem;
-      color: GrayText;
-      font-size: 0.88rem;
-    }
-
-    .tab-loading.show {
-      display: block;
-    }
-
     /* ── レスポンシブ：小画面でテーブルを横スクロール ── */
 
     @media (max-width: 600px) {
@@ -583,6 +571,40 @@
     .admin-ev-補填予定 { background: #d1fae5; color: #065f46; }  /* 緑 */
     .admin-ev-補填完了 { background: #dbeafe; color: #1e40af; }  /* 青 */
     .admin-ev-会社     { background: #f3e8ff; color: #7c3aed; }  /* 紫：会社カレンダー */
+    /* 納期専用クラス: 補填予定(緑)と早退(オレンジ)のどちらとも被らないピンク系 */
+    .admin-ev-納期     { background: #fce7f3; color: #9d174d; }  /* ピンク：納期カレンダー */
+
+    /* #8 ローディング: スピナー付きに強化 */
+    .tab-loading {
+      display: none;
+      text-align: center;
+      padding: 2.5rem 2rem;
+      color: GrayText;
+      font-size: 0.88rem;
+    }
+
+    .tab-loading.show {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    /* CSS スピナー（外部ライブラリ不要） */
+    .tab-loading::before {
+      content: '';
+      display: block;
+      width: 2rem;
+      height: 2rem;
+      border: 3px solid #e5e7eb;
+      border-top-color: Highlight;
+      border-radius: 50%;
+      animation: tab-loading-spin 0.8s linear infinite;
+    }
+
+    @keyframes tab-loading-spin {
+      to { transform: rotate(360deg); }
+    }
 
     /* カレンダー凡例 */
     .admin-cal-legend {
@@ -1307,6 +1329,8 @@
             <p style="font-weight:700;margin-bottom:1rem;font-size:0.95rem"
               id="admin-deadline-form-title">案件を追加</p>
             <input type="hidden" id="admin-deadline-form-id">
+            <!-- コピー元ID（コピーして追加する場合にセット） -->
+            <input type="hidden" id="admin-deadline-form-copy-source">
             <div class="sumioka-form-group">
               <label class="sumioka-label">案件名 <span style="color:#c0392b">*</span></label>
               <input class="sumioka-input" type="text" id="admin-deadline-form-name"
@@ -1323,20 +1347,33 @@
               <input class="sumioka-input" type="date" id="admin-deadline-form-deadline">
             </div>
             <div class="sumioka-form-group">
-              <label class="sumioka-label">進捗</label>
-              <select class="sumioka-input" id="admin-deadline-form-status">
-                <option value="">―</option>
-                <option value="未着手">未着手</option>
-                <option value="進行中">進行中</option>
-                <option value="先方確認中">先方確認中</option>
-                <option value="修正中">修正中</option>
-                <option value="納品済">納品済</option>
-              </select>
+              <label class="sumioka-label">進捗
+                <span style="font-size:0.72rem;color:GrayText;font-weight:400">
+                  ▼から選択、または直接入力できます
+                </span>
+              </label>
+              <!-- #11: selectをdatalist付きinputに変更して手入力も許容する -->
+              <input class="sumioka-input" type="text" id="admin-deadline-form-status"
+                list="deadline-status-list"
+                placeholder="例：先方確認中、入稿済、印刷中 など"
+                autocomplete="off">
+              <datalist id="deadline-status-list">
+                <option value="未着手">
+                <option value="進行中">
+                <option value="先方確認中">
+                <option value="修正中">
+                <option value="納品済">
+              </datalist>
             </div>
             <div class="sumioka-form-group">
-              <label class="sumioka-label">メモ</label>
-              <textarea class="sumioka-textarea" id="admin-deadline-form-memo" rows="2"
-                placeholder="担当者・連絡先・注意事項など"></textarea>
+              <label class="sumioka-label">補足
+                <span style="font-size:0.72rem;color:GrayText;font-weight:400">
+                  連絡先・注意事項・補足説明など
+                </span>
+              </label>
+              <!-- #10: 補足欄（旧「メモ」欄）は自由記述。ラベルを「補足」に変更して用途を明確化 -->
+              <textarea class="sumioka-textarea" id="admin-deadline-form-memo" rows="3"
+                placeholder="例：担当: 田中 / 入稿データはGoogleDriveの○○フォルダ / 色校正あり"></textarea>
             </div>
             <div style="display:flex;gap:0.65rem;justify-content:flex-end">
               <button class="sumioka-btn" id="btn-admin-deadline-form-cancel">キャンセル</button>
@@ -1357,7 +1394,7 @@
                   <th>案件名</th>
                   <th>納品日</th>
                   <th>進捗</th>
-                  <th>メモ</th>
+                  <th>補足</th>
                   <th>操作</th>
                 </tr>
               </thead>
@@ -2225,7 +2262,6 @@
         case 'attendance':
           // 勤怠一覧タブを開いたら当日の全員分を自動検索する。
           // 日付フィルタに今日の日付をセットしてからロードする。
-          // 理由: 毎日の運用で「今日の状況を確認したい」がほぼ100%のユースケースのため。
           document.getElementById('att-filter-date').value = todayString();
           document.getElementById('att-filter-staff').value = '';
           loadAttendance();
@@ -2875,7 +2911,7 @@
 
     /**
      * 勤怠一覧テーブルを描画する。
-     * 各行に「修正」ボタンを設置し、クリックで打刻修正モーダルを開く。
+     * 未打刻スタッフ（is_absent:true）は行を強調し、代理入力ボタンを表示する。
      *
      * @param {Array} records
      */
@@ -2888,6 +2924,32 @@
       }
 
       tbody.innerHTML = records.map(r => {
+        // 未打刻行は背景色・バッジで視覚的に区別する
+        if (r.is_absent) {
+          return `
+            <tr style="background:#fff5f5;opacity:0.85">
+              <td style="color:#9ca3af;font-size:0.82rem">${escHtml(r.date || '―')}</td>
+              <td style="font-weight:600;color:#c0392b">${escHtml(r.name || '―')}</td>
+              <td style="font-size:0.82rem;color:GrayText">${escHtml(r.type || '―')}</td>
+              <td>―</td>
+              <td>―</td>
+              <td>―</td>
+              <td>―</td>
+              <td style="font-size:0.78rem;color:#9ca3af">
+                ${r.scheduled_end ? `所定終業: ${escHtml(r.scheduled_end)}` : ''}
+              </td>
+              <td>
+                <div style="display:flex;gap:0.3rem;align-items:center">
+                  <span class="badge badge-red" style="font-size:0.7rem">未打刻</span>
+                  <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em"
+                    onclick="openEditModal(null, '${escHtml(r.employee_id)}', '${escHtml(r.date)}')">
+                    代理入力
+                  </button>
+                </div>
+              </td>
+            </tr>`;
+        }
+
         const workMin = calcWorkMinutes(r.time_in, r.time_out);
         const workStr = workMin > 0 ? formatMinutes(workMin) : '―';
 
@@ -2920,52 +2982,44 @@
     /**
      * 打刻修正 / 新規登録モーダルを開く。
      *
-     * @param {Object|null} record
-     *   - null          → 新規登録モード（スタッフ・日付を選択させる）
-     *   - Object        → 編集モード（既存レコードの値を流し込む）
+     * @param {Object|null} record       - null=新規, Object=編集
+     * @param {string}      [presetEmpId]  - 未打刻行の「代理入力」時：事前セットする employee_id
+     * @param {string}      [presetDate]   - 未打刻行の「代理入力」時：事前セットする日付
      */
-    function openEditModal(record) {
+    function openEditModal(record, presetEmpId, presetDate) {
       const isNew = !record;
 
-      // モードをフラグに保存する（保存時に振り分けに使う）
       document.getElementById('modal-edit-mode').value = isNew ? 'add' : 'edit';
-
-      // タイトルを切り替える
       document.getElementById('modal-edit-title').textContent =
         isNew ? '打刻を新規登録' : '打刻修正';
 
-      // 新規モード：スタッフ選択・日付入力を表示する
-      const isNewDisplay = isNew ? '' : 'none';
       document.getElementById('modal-edit-staff-select-wrap').style.display  = isNew ? '' : 'none';
       document.getElementById('modal-edit-date-input-wrap').style.display    = isNew ? '' : 'none';
       document.getElementById('modal-edit-target-display').style.display     = isNew ? 'none' : '';
-      // 編集モード時のみ日付入力欄を表示する（新規は date-input-wrap 側を使う）
       document.getElementById('modal-edit-date-wrap').style.display          = isNew ? 'none' : '';
 
       if (isNew) {
-        // 新規モード：最新のスタッフ一覧を GAS から取得してプルダウンを生成する。
-        // キャッシュ（adminState.staffList）を使うとスタッフ追加後に反映されないため
-        // モーダルを開くたびに最新データを取得する。
+        // スタッフ一覧を取得してプルダウンを生成する
         const select = document.getElementById('modal-edit-staff-select');
         select.innerHTML = '<option value="">読み込み中...</option>';
 
         callGAS('admin_staff_list', { type: 'all' }).then(r => {
           if (r.success) adminState.staffList = r.data.staff || [];
           select.innerHTML = '<option value="">選択してください</option>';
-          adminState.staffList
-            // K-6: 利用者フィルタを廃止。職員・利用者ともに打刻対象のため全員表示する。
-            .forEach(s => {
-              const opt = document.createElement('option');
-              opt.value       = s.id;
-              opt.textContent = `${s.name}（${s.type || '―'}）`;
-              select.appendChild(opt);
-            });
+          adminState.staffList.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value       = s.id;
+            opt.textContent = `${s.name}（${s.type || '―'}）`;
+            // 未打刻行から来た場合: 対象スタッフを事前選択する
+            if (presetEmpId && s.id === presetEmpId) opt.selected = true;
+            select.appendChild(opt);
+          });
         });
 
-        // 日付は今日をデフォルトにする
-        document.getElementById('modal-edit-date-input').value = todayString();
+        // 日付: 未打刻行から来た場合は対象日付、それ以外は今日
+        document.getElementById('modal-edit-date-input').value =
+          presetDate ? presetDate.replace(/\//g, '-') : todayString();
 
-        // フォームをクリアする
         document.getElementById('modal-edit-status').value  = '出勤';
         document.getElementById('modal-edit-timein').value  = '';
         document.getElementById('modal-edit-timeout').value = '';
@@ -2975,20 +3029,15 @@
         document.getElementById('modal-edit-reason').value  = '';
 
       } else {
-        // 編集モード：既存レコードの値を流し込む
         document.getElementById('modal-edit-target').textContent =
           `${record.name}  ／  ${record.date}`;
         document.getElementById('modal-edit-employee-id').value = record.employee_id || '';
-        // date は YYYY/MM/DD で返ってくる場合がある。
-        // <input type="date"> は YYYY-MM-DD 形式を要求するため変換する。
         const dateVal = (record.date || '').replace(/\//g, '-');
         document.getElementById('modal-edit-date').value        = dateVal;
         document.getElementById('modal-edit-status').value      = record.status      || '出勤';
         document.getElementById('modal-edit-timein').value      = record.time_in     || '';
         document.getElementById('modal-edit-timeout').value     = record.time_out    || '';
         document.getElementById('modal-edit-break').value       = record.break_minutes != null ? record.break_minutes : '';
-        // 弁当: record.lunch は boolean（true=要、false=不要）。
-        // 編集時は日付のみを読み込み、弁当は既存データの値を設定する（「不要」固定にしない）。
         document.getElementById('modal-edit-lunch').value       = String(record.lunch ?? false);
         document.getElementById('modal-edit-memo').value        = record.memo        || '';
         document.getElementById('modal-edit-reason').value      = '';
@@ -3124,8 +3173,6 @@
       // 表示対象の判定:
       //   ① 有給・補填予定・補填完了 → 常に表示（承認フロー対象）
       //   ② 早退・遅刻・休み で reason に「補填日時:」を含む → 補填ありのため表示
-      //      ※ submitRequest で reasonFull に「【補填日時: ...】」が付与されて保存される
-      //   ③ 早退・遅刻・休みで補填なし → 申請即反映のため承認一覧には不要（非表示）
       const filtered = requests.filter(r => {
         const isApprovalType  = r.type === '有給' || r.type === '補填' ||
                                 r.type === '補填予定' || r.type === '補填完了';
@@ -3153,14 +3200,11 @@
         const statusLabel = labelMap[req.status] || req.status || '―';
 
         // 補填情報を reason から抽出して表示用に整形する
-        // 例: "私用のため 【補填日時: 2026-05-01 12:00 30分】" → 理由と補填日時を分離して表示
-        const reasonMain = (req.reason || '').replace(/【補填日時:.*?】/g, '').trim();
+        const reasonMain  = (req.reason || '').replace(/【補填日時:.*?】/g, '').trim();
         const fillupMatch = (req.reason || '').match(/【補填日時:(.*?)】/);
         const fillupInfo  = fillupMatch ? fillupMatch[1].trim() : '';
 
-        // 承認フローが必要なケース:
-        //   ① 種別が補填予定・補填完了
-        //   ② 早退・遅刻・休みで補填ありの申請（補填日時が含まれる場合）
+        // 承認ボタンは補填ありの pending 申請にのみ表示する
         const needsAction = req.status === 'pending' &&
           (req.type === '補填予定' || req.type === '補填完了' || fillupInfo);
         const actionHtml = needsAction
@@ -3170,7 +3214,6 @@
              </div>`
           : '―';
 
-        // 理由カラム: 補填日時がある場合は折りたたんでtitleで全文表示
         const reasonDisplay = fillupInfo
           ? `${escHtml(reasonMain)}<br><span style="font-size:0.75rem;color:#065f46">🔄 補填: ${escHtml(fillupInfo)}</span>`
           : escHtml(req.reason || '―');
@@ -4057,11 +4100,13 @@
     function openAdminDeadlineForm(deadline) {
       const isNew = !deadline || !deadline.id;
       document.getElementById('admin-deadline-form-title').textContent = isNew ? '案件を追加' : '案件を編集';
-      document.getElementById('admin-deadline-form-id').value       = isNew ? '' : (deadline.id       || '');
-      document.getElementById('admin-deadline-form-name').value     = isNew ? '' : (deadline.name     || '');
-      document.getElementById('admin-deadline-form-deadline').value = isNew ? '' : (deadline.deadline || '');
-      document.getElementById('admin-deadline-form-status').value   = isNew ? '' : (deadline.status   || '');
-      document.getElementById('admin-deadline-form-memo').value     = isNew ? '' : (deadline.memo     || '');
+      document.getElementById('admin-deadline-form-id').value         = isNew ? '' : (deadline.id       || '');
+      document.getElementById('admin-deadline-form-copy-source').value = '';  // コピー元IDは空
+      document.getElementById('admin-deadline-form-name').value       = isNew ? '' : (deadline.name     || '');
+      document.getElementById('admin-deadline-form-deadline').value   = isNew ? '' : (deadline.deadline || '');
+      // #11: statusはdatalist付きinputになったのでvalueを直接セットする
+      document.getElementById('admin-deadline-form-status').value     = isNew ? '' : (deadline.status   || '');
+      document.getElementById('admin-deadline-form-memo').value       = isNew ? '' : (deadline.memo     || '');
 
       // スタッフ選択肢を最新状態で生成する
       const staffSel = document.getElementById('admin-deadline-form-staff');
@@ -4070,8 +4115,43 @@
         const opt = document.createElement('option');
         opt.value       = s.id;
         opt.textContent = s.name;
-        // 編集時は employee_id が一致する選択肢を selected にする
         if (!isNew && deadline.employee_id === s.id) opt.selected = true;
+        staffSel.appendChild(opt);
+      });
+
+      const wrap = document.getElementById('admin-deadline-form-wrap');
+      wrap.style.display = '';
+      wrap.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    /**
+     * 案件をコピーして「追加」フォームを開く。
+     * #12: 既存案件をベースに新規案件を作れる機能。
+     *       ID は空（新規として保存）、案件名に「（コピー）」を付与する。
+     *       過去データを引き継ぎつつ案件名・担当者・納品日だけ変えれば即登録できる。
+     *
+     * @param {Object} deadline - コピー元の案件データ
+     */
+    function copyAdminDeadline(deadline) {
+      document.getElementById('admin-deadline-form-title').textContent = '案件を追加（コピー）';
+      // IDを空にすることで upsert_deadline が新規作成モードになる
+      document.getElementById('admin-deadline-form-id').value          = '';
+      document.getElementById('admin-deadline-form-copy-source').value = deadline.id || '';
+      // 案件名に「（コピー）」を付与してコピー元と区別しやすくする
+      document.getElementById('admin-deadline-form-name').value        = `${deadline.name || ''}（コピー）`;
+      // 納品日・ステータス・補足はそのまま引き継ぐ（変更箇所だけ編集すればよい）
+      document.getElementById('admin-deadline-form-deadline').value    = deadline.deadline || '';
+      document.getElementById('admin-deadline-form-status').value      = deadline.status   || '';
+      document.getElementById('admin-deadline-form-memo').value        = deadline.memo     || '';
+
+      // スタッフ選択肢を生成しコピー元担当者を初期選択する
+      const staffSel = document.getElementById('admin-deadline-form-staff');
+      staffSel.innerHTML = '<option value="">選択してください</option>';
+      (adminState.staffList || []).forEach(s => {
+        const opt = document.createElement('option');
+        opt.value       = s.id;
+        opt.textContent = s.name;
+        if (deadline.employee_id === s.id) opt.selected = true;
         staffSel.appendChild(opt);
       });
 
@@ -4222,9 +4302,12 @@
               font-size:0.78rem;color:GrayText" title="${escHtml(d.memo || '')}">
               ${escHtml(d.memo || '―')}</td>
             <td>
-              <div style="display:flex;gap:0.3rem">
+              <div style="display:flex;gap:0.3rem;flex-wrap:wrap">
                 <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em"
                   onclick="openAdminDeadlineForm(${escJson(d)})">編集</button>
+                <!-- #12: コピーして追加 → フォームに値をセット。案件名に「(コピー)」を付与してIDは空にする -->
+                <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em;color:#0369a1;border-color:#0369a1"
+                  onclick="copyAdminDeadline(${escJson(d)})">コピー</button>
                 <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em;color:#c0392b;border-color:#c0392b"
                   onclick="deleteAdminDeadline('${escHtml(d.id)}')">削除</button>
               </div>
@@ -4290,7 +4373,9 @@
             // A-6: 名字のみ
             const lastName = (ev.name || '').split(/[\s\u3000]/)[0];
             const label    = `${lastName}・${(ev.title || '').substring(0, 6)}`;
-            return `<span class="admin-cal-event ${ev.done ? '' : 'admin-ev-補填予定'}"
+            // 納期イベントは admin-ev-納期（ピンク）を使う。
+            // 以前は admin-ev-補填予定（緑）を流用していたため補填と色が被っていた。
+            return `<span class="admin-cal-event ${ev.done ? '' : 'admin-ev-納期'}"
               style="${ev.done ? 'background:#f3f4f6;color:GrayText;text-decoration:line-through' : ''}"
               title="${escHtml(ev.name)}：${escHtml(ev.title)}${ev.client ? '（' + ev.client + '）' : ''}"
               >${escHtml(label)}</span>`;
@@ -4436,9 +4521,9 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- Uploader がアップロード時に v1.2.7 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.8 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.7</div>
+  <div class="version-badge" id="app-version">v1.2.8</div>
 
 </body>
 </html>
