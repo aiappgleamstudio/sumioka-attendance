@@ -2445,7 +2445,6 @@
           ).join('');
 
           // A-5: 欠勤=赤、遅刻=黄、早退=オレンジ、補填予定=緑、補填完了=青
-          // バッジ幅はテキスト幅に合わせて可変（display:inline-block）
           const evHtml = dayEvs.slice(0, 3).map(ev => {
             const typeClassMap = {
               '欠勤'    : 'admin-ev-欠勤',
@@ -2457,9 +2456,24 @@
             };
             const cls   = typeClassMap[ev.type] || 'admin-ev-欠勤';
             const label = nameLabel(ev.name);
+
+            // 遅刻・早退はクリックで時刻詳細を表示する。
+            // time_in（遅刻の出勤予定）・time_out（早退の退勤予定）・time（申請の時刻）を
+            // JSON エスケープしてデータ属性に埋め込み、showCalEventDetail() で読み出す。
+            const evData = escHtml(JSON.stringify({
+              name   : ev.name,
+              type   : ev.type,
+              date   : ev.target_date,
+              time_in : ev.time_in  || '',
+              time_out: ev.time_out || '',
+              time    : ev.time     || '',
+              reason  : ev.reason   || '',
+            }));
+            const isClickable = ['遅刻','早退','欠勤','休み','補填予定','補填完了'].includes(ev.type);
             return `<span class="admin-cal-event ${escHtml(cls)}"
-              style="display:inline-block;width:auto"
+              style="display:inline-block;width:auto;${isClickable ? 'cursor:pointer' : ''}"
               title="${escHtml(ev.name)}：${escHtml(ev.type)}"
+              ${isClickable ? `onclick="event.stopPropagation();showCalEventDetail(${evData})"` : ''}
               >${escHtml(label)}</span>`;
           }).join('');
 
@@ -2477,6 +2491,71 @@
       }
 
       tbody.innerHTML = html;
+    }
+
+    /**
+     * カレンダーイベントをクリックしたときに詳細をトースト風モーダルで表示する。
+     * 遅刻 → 出勤予定時刻、早退 → 退勤予定時刻を表示する。
+     *
+     * @param {Object} ev - イベントデータ（name, type, date, time_in, time_out, time, reason）
+     */
+    function showCalEventDetail(ev) {
+      // 既存のポップオーバーがあれば閉じる
+      const existing = document.getElementById('cal-event-popover');
+      if (existing) existing.remove();
+
+      // 時刻の表示ロジック:
+      //   遅刻 → 出勤予定時刻（time_in または time）
+      //   早退 → 退勤予定時刻（time_out または time）
+      //   欠勤・休み → 時刻なし
+      let timeLabel = '';
+      if (ev.type === '遅刻') {
+        const t = ev.time_in || ev.time;
+        timeLabel = t ? `出勤予定: ${t}` : '出勤予定時刻 未登録';
+      } else if (ev.type === '早退') {
+        const t = ev.time_out || ev.time;
+        timeLabel = t ? `退勤予定: ${t}` : '退勤予定時刻 未登録';
+      }
+
+      const reasonText = (ev.reason || '').replace(/【補填日時:.*?】/g, '').trim();
+      const fillupMatch = (ev.reason || '').match(/【補填日時:(.*?)】/);
+      const fillupText  = fillupMatch ? `補填: ${fillupMatch[1].trim()}` : '';
+
+      const popover = document.createElement('div');
+      popover.id = 'cal-event-popover';
+      popover.style.cssText = `
+        position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+        background:Canvas; border:1px solid GrayText; border-radius:10px;
+        padding:1.25rem 1.5rem; min-width:240px; max-width:340px;
+        box-shadow:0 8px 24px rgba(0,0,0,0.18); z-index:9999;
+        font-size:0.88rem; line-height:1.6;
+      `;
+      popover.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+          <strong style="font-size:0.95rem">${escHtml(ev.name)}</strong>
+          <button onclick="document.getElementById('cal-event-popover').remove()"
+            style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:GrayText;padding:0 0.2em">✕</button>
+        </div>
+        <div style="margin-bottom:0.35rem">
+          <span style="font-size:0.75rem;background:#f3f4f6;padding:0.1em 0.5em;border-radius:3px">${escHtml(ev.type)}</span>
+          <span style="font-size:0.82rem;color:GrayText;margin-left:0.5rem">${escHtml(ev.date)}</span>
+        </div>
+        ${timeLabel ? `<div style="font-weight:700;color:#1d4ed8;margin:0.5rem 0">${escHtml(timeLabel)}</div>` : ''}
+        ${reasonText ? `<div style="color:GrayText;font-size:0.82rem">${escHtml(reasonText)}</div>` : ''}
+        ${fillupText ? `<div style="color:#065f46;font-size:0.78rem;margin-top:0.35rem">🔄 ${escHtml(fillupText)}</div>` : ''}
+      `;
+
+      document.body.appendChild(popover);
+
+      // 背景クリックで閉じる
+      const backdrop = document.createElement('div');
+      backdrop.style.cssText = 'position:fixed;inset:0;z-index:9998;';
+      backdrop.id = 'cal-event-backdrop';
+      backdrop.onclick = () => {
+        popover.remove();
+        backdrop.remove();
+      };
+      document.body.appendChild(backdrop);
     }
 
     /**
@@ -4521,9 +4600,9 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- Uploader がアップロード時に v1.2.8 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.9 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.8</div>
+  <div class="version-badge" id="app-version">v1.2.9</div>
 
 </body>
 </html>
