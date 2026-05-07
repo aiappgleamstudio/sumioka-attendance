@@ -841,6 +841,7 @@ p:last-child { margin-bottom: 0; }
 
 .kintai-tabs {
   display: flex;
+  justify-content: center;   /* タブを中央寄せ */
   border-bottom: 1px solid GrayText;
   margin-bottom: 1.25rem;
   overflow-x: auto;
@@ -911,8 +912,22 @@ p:last-child { margin-bottom: 0; }
   vertical-align: top;
   border: 1px solid GrayText;
   padding: 0.3rem 0.25rem;
-  min-height: 60px;
-  overflow: hidden; /* 内容がはみ出さないよう切り取る */
+  /* イベント3行分 + 日付行を常に確保する */
+  height: 5.8rem;
+  overflow: hidden;
+}
+
+/* 日付数字の行 */
+.calendar-date-row {
+  margin-bottom: 0.2rem;
+}
+
+/* イベントが入るコンテナ: 3行分を常に占有する */
+.calendar-events-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-height: 4.2rem;
 }
 
 .calendar-day-num {
@@ -1972,6 +1987,24 @@ p:last-child { margin-bottom: 0; }
         <span class="balance-banner-value" id="display-balance">読み込み中...</span>
       </div>
 
+      <!-- 打刻ルール通知（常時表示） -->
+      <!-- 運用上の重要ルールを毎回確認できるよう打刻ボタンの直上に配置する -->
+      <div style="
+        background: #fffbeb;
+        border: 1px solid #fbbf24;
+        border-radius: 6px;
+        padding: 0.65rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.82rem;
+        line-height: 1.6;
+        color: #78350f;
+      ">
+        <div style="font-weight: 700; margin-bottom: 0.25rem;">打刻ルール</div>
+        <div>給与は <strong>15分単位</strong> で計算されます。</div>
+        <div>1秒でも遅れた場合、給与の発生は <strong>15分後から</strong> になります。</div>
+        <div style="margin-top:0.25rem;color:#92400e">例：9:01 に出勤打刻 → 9:15 から給与発生</div>
+      </div>
+
       <!-- 出勤・退勤カードを PC では横並びにする -->
       <div class="checkin-grid">
       <!-- 出勤カード -->
@@ -2620,7 +2653,7 @@ p:last-child { margin-bottom: 0; }
 
         <!-- ヒーロー -->
         <div style="text-align:center;padding:1.5rem 0 1rem">
-          <div style="font-size:2rem;margin-bottom:0.4rem">📋</div>
+          <div style="font-size:2rem;margin-bottom:0.4rem"></div>
           <p style="font-size:1rem;font-weight:700;margin-bottom:0.25rem">らくらく勤怠入力</p>
           <p style="font-size:0.82rem;color:GrayText">毎日の打刻をかんたんに</p>
         </div>
@@ -2629,7 +2662,7 @@ p:last-child { margin-bottom: 0; }
         <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
           margin-bottom:1rem;background:Canvas">
           <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
-            🕘 出勤・退勤の打刻
+            出勤・退勤の打刻
           </p>
           <div style="font-size:0.88rem;line-height:1.8;color:CanvasText">
             <p>① <strong>「打刻」タブ</strong>を開く</p>
@@ -2638,9 +2671,17 @@ p:last-child { margin-bottom: 0; }
             <p>④ 帰る前に休憩時間・業務報告を入力して
               <strong>「退勤打刻」</strong>を押す</p>
           </div>
-          <div style="margin-top:0.85rem;padding:0.65rem 0.85rem;
+          <!-- 15分ルールを明記 -->
+          <div style="margin-top:0.85rem;padding:0.75rem 0.85rem;
+            background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;font-size:0.82rem;color:#78350f;line-height:1.6">
+            <div style="font-weight:700;margin-bottom:0.2rem">給与計算ルール（重要）</div>
+            <div>給与は <strong>15分単位</strong> で計算されます。</div>
+            <div>1秒でも遅れた場合、給与の発生は <strong>15分後から</strong> になります。</div>
+            <div style="margin-top:0.2rem;color:#92400e">例：9:01 に打刻 → 9:15 から給与発生</div>
+          </div>
+          <div style="margin-top:0.6rem;padding:0.65rem 0.85rem;
             background:#fff8e1;border-radius:6px;font-size:0.8rem;color:#92400e">
-            💡 押し忘れに気づいたら、すぐに管理者に連絡してください。
+            押し忘れに気づいたら、すぐに管理者に連絡してください。
           </div>
         </div>
 
@@ -2648,7 +2689,7 @@ p:last-child { margin-bottom: 0; }
         <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
           margin-bottom:1rem;background:Canvas">
           <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
-            📅 休み・遅刻・早退の申請
+            休み・遅刻・早退の申請
           </p>
           <div style="font-size:0.88rem;line-height:1.8">
             <p>① <strong>「申請」タブ</strong>を開く</p>
@@ -2662,7 +2703,7 @@ p:last-child { margin-bottom: 0; }
         <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
           margin-bottom:1rem;background:Canvas">
           <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
-            🗓 その他の機能
+            その他の機能
           </p>
           <div style="font-size:0.88rem;line-height:1.9">
             <p><strong>カレンダー</strong>：全員の休み・遅刻・早退と担当案件の納期を確認</p>
@@ -2701,9 +2742,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.12 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.13 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.12</div>
+  <div class="version-badge" id="app-version">v1.2.13</div>
 
 
   <script>
@@ -3363,7 +3404,7 @@ p:last-child { margin-bottom: 0; }
         // 弁当要否を表示する
         const lunchEl = document.getElementById('display-checkin-lunch');
         if (lunchEl) {
-          const lunchLabel = state.lunch === true  ? '🍱 弁当：要'
+          const lunchLabel = state.lunch === true  ? '弁当：要'
                            : state.lunch === false ? '弁当：不要'
                            : '';
           lunchEl.textContent = lunchLabel;
@@ -3839,7 +3880,7 @@ p:last-child { margin-bottom: 0; }
             if (ev.type === '会社休日' || ev.type === '会社') {
               label = ev.name || '会社休日';
             } else if (ev.type === '納期') {
-              // 案件名を先頭8文字で表示（📋絵文字は非表示）
+              // 案件名を先頭8文字で表示
               label = (ev.title || ev.name || '').slice(0, 8);
             } else {
               const parts        = (ev.name || '').split(/[\s\u3000]/);
@@ -3878,7 +3919,9 @@ p:last-child { margin-bottom: 0; }
             ? `<div style="font-size:0.62rem;color:GrayText">他${dayEvs.length - 3}件</div>`
             : '';
 
-          html += `<td>${dayNumHtml}${evHtml}${moreHtml}</td>`;
+          // 構造: [日付行] / [イベント行]
+          // 日付とイベントを行で分けることで視認性を確保する
+          html += `<td><div class="calendar-date-row">${dayNumHtml}</div><div class="calendar-events-row">${evHtml}${moreHtml}</div></td>`;
           dayCount++;
         }
         html += '</tr>';
@@ -3906,8 +3949,8 @@ p:last-child { margin-bottom: 0; }
       if (ev.type === '納期') {
         // 納期イベントの詳細: 案件名・フェーズ・担当・状況・補足を表示
         const doneLabel = ev.deadline_done
-          ? '<span style="color:#065f46;font-weight:700">✅ 完了済</span>'
-          : '<span style="color:#c2410c;font-weight:700">⏳ 予定</span>';
+          ? '<span style="color:#065f46;font-weight:700;border:1px solid #065f46;border-radius:3px;padding:0.1em 0.4em;font-size:0.8em">完了済</span>'
+          : '<span style="color:#c2410c;font-weight:700;border:1px solid #c2410c;border-radius:3px;padding:0.1em 0.4em;font-size:0.8em">予定</span>';
         bodyHtml = `
           <div style="margin-bottom:0.3rem">
             <strong style="font-size:0.95rem">${escHtml(ev.title || ev.name)}</strong>
@@ -3950,7 +3993,7 @@ p:last-child { margin-bottom: 0; }
         box-shadow:0 8px 24px rgba(0,0,0,0.18);z-index:9999;font-size:0.88rem;line-height:1.6;
       `;
       const closeBtn = `<button onclick="document.getElementById('kintai-cal-popover').remove();document.getElementById('kintai-cal-backdrop')?.remove()"
-        style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:GrayText;padding:0 0.2em;flex-shrink:0">✕</button>`;
+        style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:GrayText;padding:0 0.2em;flex-shrink:0"> ×</button>`;
       popover.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0.6rem">
           <strong>${escHtml(ev.type === '納期' ? (ev.title || ev.name) : ev.name)}</strong>
@@ -4141,7 +4184,7 @@ p:last-child { margin-bottom: 0; }
         approved: 'background:#d1fae5;color:#065f46;border:1px solid #34d399',
         rejected: 'background:#fee2e2;color:#991b1b;border:1px solid #f87171',
       };
-      const statusLabel = { pending: '⏳ 承認待ち', approved: '✅ 承認済み', rejected: '❌ 却下' };
+      const statusLabel = { pending: '承認待ち', approved: '承認済み', rejected: '却下' };
 
       el.innerHTML = requests.map(r => {
         const sStyle = statusStyle[r.status] || statusStyle.pending;
@@ -4163,7 +4206,7 @@ p:last-child { margin-bottom: 0; }
         // 承認済みの場合は承認者・承認日時を表示
         const approvedHtml = r.status === 'approved' && r.approved_by
           ? `<div style="font-size:0.75rem;color:#065f46;margin-top:0.25rem">
-               ✓ 承認: ${escHtml(r.approved_at ? r.approved_at.slice(0,10) : '')}
+               承認: ${escHtml(r.approved_at ? r.approved_at.slice(0,10) : '')}
              </div>`
           : '';
 
@@ -4189,7 +4232,7 @@ p:last-child { margin-bottom: 0; }
               ${timeLabel ? ` / ${timeLabel}` : ''}
               ${reasonMain ? ` / ${escHtml(reasonMain)}` : ''}
             </div>
-            ${fillupInfo ? `<div style="font-size:0.75rem;color:#065f46;margin-top:0.2rem">🔄 補填: ${escHtml(fillupInfo)}</div>` : ''}
+            ${fillupInfo ? `<div style="font-size:0.75rem;color:#065f46;margin-top:0.2rem">補填: ${escHtml(fillupInfo)}</div>` : ''}
             ${approvedHtml}
             ${rejectedHtml}
           </div>
@@ -4944,7 +4987,7 @@ p:last-child { margin-bottom: 0; }
             ? `<div style="font-size:0.62rem;color:GrayText">他${evs.length - 3}件</div>`
             : '';
 
-          html += `<td>${dayNumHtml}${evsHtml}${moreHtml}</td>`;
+          html += `<td><div class="calendar-date-row">${dayNumHtml}</div><div class="calendar-events-row">${evsHtml}${moreHtml}</div></td>`;
           dayCount++;
         }
         html += '</tr>';
