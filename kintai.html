@@ -75,13 +75,28 @@ body {
   background: #f5f5f5;
 }
 
-#screen-login,
+#screen-login {
+  width: 100%;
+  max-width: 440px;
+  margin: 40px auto;
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
 #screen-main {
   width: 100%;
-  max-width: 480px;
-  margin: 40px auto;
-  padding: 20px;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem;
   box-sizing: border-box;
+}
+
+@media (max-width: 600px) {
+  #screen-login,
+  #screen-main {
+    padding: 1rem 0.75rem;
+    margin: 0 auto;
+  }
 }
 
 a {
@@ -108,7 +123,7 @@ img {
 
 .sumioka-container {
   width: 100%;
-  max-width: 800px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 0 1rem;
 }
@@ -601,6 +616,21 @@ p:last-child { margin-bottom: 0; }
   }
 }
 
+/* 打刻タブ: 出勤・退勤カードを PC 幅で横並びにする
+   狭い画面（スマホ）では縦積みを維持する */
+.checkin-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;  /* デフォルト: 縦積み */
+  align-items: start;
+}
+
+@media (min-width: 640px) {
+  .checkin-grid {
+    grid-template-columns: 1fr 1fr;  /* PC: 出勤・退勤を横並び */
+  }
+}
+
 /* ============================================================
    打刻画面 固有スタイル
    ============================================================ */
@@ -934,6 +964,24 @@ p:last-child { margin-bottom: 0; }
   padding: 1.25rem;
   margin-bottom: 1rem;
   background: Canvas;
+}
+
+/* 申請タブ: PC 幅でフォーム（左）と履歴（右）を横並びにする */
+.requests-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 720px) {
+  .requests-layout {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* PC では margin-top を抑えて左右が揃って見えるようにする */
+  .requests-history-col p {
+    margin-top: 0;
+  }
 }
 
 .request-history-item {
@@ -1924,6 +1972,8 @@ p:last-child { margin-bottom: 0; }
         <span class="balance-banner-value" id="display-balance">読み込み中...</span>
       </div>
 
+      <!-- 出勤・退勤カードを PC では横並びにする -->
+      <div class="checkin-grid">
       <!-- 出勤カード -->
       <div class="kintai-card" id="card-checkin">
         <div class="kintai-card-title">出勤</div>
@@ -2028,6 +2078,7 @@ p:last-child { margin-bottom: 0; }
           <p class="status-text" id="checkout-status">出勤打刻後に入力できます</p>
         </div>
       </div>
+      </div><!-- /.checkin-grid -->
 
     </div><!-- /#panel-checkin -->
 
@@ -2083,7 +2134,10 @@ p:last-child { margin-bottom: 0; }
          承認フローは廃止。申請即カレンダー反映。
          ============================================================ -->
     <div class="kintai-tab-panel" id="panel-requests">
+      <div class="requests-layout">
 
+        <!-- 左: 申請フォーム -->
+        <div class="requests-form-col">
       <!-- 申請フォーム（1枚のカードに統合） -->
       <div class="request-form-card">
 
@@ -2192,10 +2246,12 @@ p:last-child { margin-bottom: 0; }
           id="btn-submit-absence">申請を送信</button>
 
       </div><!-- /.request-form-card -->
+        </div><!-- /.requests-form-col -->
 
-      <!-- 申請履歴 -->
+        <!-- 右: 申請履歴 -->
+        <div class="requests-history-col">
       <p style="font-size:0.82rem;font-weight:600;color:GrayText;
-        text-transform:uppercase;letter-spacing:0.06em;margin:1.5rem 0 0.85rem">
+        text-transform:uppercase;letter-spacing:0.06em;margin:0 0 0.85rem">
         申請履歴
       </p>
       <div id="request-history-list">
@@ -2203,7 +2259,9 @@ p:last-child { margin-bottom: 0; }
           読み込み中...
         </div>
       </div>
+        </div><!-- /.requests-history-col -->
 
+      </div><!-- /.requests-layout -->
     </div><!-- /#panel-requests -->
 
     <!-- ============================================================
@@ -2558,7 +2616,7 @@ p:last-child { margin-bottom: 0; }
          タブ7: 使い方
          ============================================================ -->
     <div class="kintai-tab-panel" id="panel-howto">
-      <div style="max-width:480px;margin:0 auto;padding-bottom:2rem">
+      <div style="max-width:720px;margin:0 auto;padding-bottom:2rem">
 
         <!-- ヒーロー -->
         <div style="text-align:center;padding:1.5rem 0 1rem">
@@ -2643,9 +2701,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.11 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.12 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.11</div>
+  <div class="version-badge" id="app-version">v1.2.12</div>
 
 
   <script>
