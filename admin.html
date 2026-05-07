@@ -159,9 +159,10 @@
     /* ── タブコンテンツ共通 ── */
 
     .admin-content {
-      padding: 1.5rem;
-      max-width: 900px;
+      padding: 1.5rem 2rem;
+      max-width: 1400px;
       margin: 0 auto;
+      box-sizing: border-box;
     }
 
     /* 各タブパネルは非表示がデフォルト */
@@ -193,7 +194,7 @@
 
     .summary-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 0.85rem;
       margin-bottom: 1.5rem;
     }
@@ -455,6 +456,13 @@
 
       .summary-grid {
         grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    /* 中画面（タブレット）：適度な余白を確保 */
+    @media (min-width: 601px) and (max-width: 1024px) {
+      .admin-content {
+        padding: 1.5rem 1.5rem;
       }
     }
 
@@ -4672,9 +4680,9 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- Uploader がアップロード時に v1.2.10 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.11 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.10</div>
+  <div class="version-badge" id="app-version">v1.2.11</div>
 
 </body>
 </html>
