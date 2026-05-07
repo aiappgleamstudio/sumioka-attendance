@@ -120,10 +120,10 @@
 
     .admin-tabs {
       display: flex;
+      justify-content: center;   /* タブを中央寄せ */
       border-bottom: 1px solid GrayText;
       background-color: Canvas;
       overflow-x: auto;
-      /* スクロールバーを非表示にしつつスクロール可能にする */
       scrollbar-width: none;
       -ms-overflow-style: none;
     }
@@ -533,8 +533,25 @@
       vertical-align: top;
       border: 1px solid GrayText;
       padding: 0.25rem 0.2rem;
-      min-height: 56px;
-      overflow: hidden; /* セル内テキストがはみ出さないよう切り取る */
+      /* イベント3行分 + 日付行を常に確保する。
+         1行 ≒ 1.1rem(font-size) × 1.5(line-height) = 1.65rem。
+         日付行: 1.2rem、イベント3行: 3 × 1.5rem = 4.5rem、合計 ≒ 5.7rem */
+      height: 5.8rem;
+      overflow: hidden;
+    }
+
+    /* 日付数字の行 */
+    .admin-cal-date-row {
+      margin-bottom: 0.2rem;
+    }
+
+    /* イベントが入るコンテナ: 3行分を常に占有する */
+    .admin-cal-events-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+      /* イベント未登録でもこの高さを確保して枠を揃える */
+      min-height: 4.2rem;
     }
 
     .admin-cal-day-num {
@@ -1070,7 +1087,7 @@
         <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
           margin-bottom:0.85rem;background:Canvas">
           <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
-            📊 勤務データの確認
+            勤務データの確認
           </p>
           <div style="font-size:0.86rem;line-height:1.9">
             <p><strong>ダッシュボード</strong>：本日の出退勤状況・弁当注文数・未打刻スタッフをリアルタイムで把握</p>
@@ -1083,7 +1100,7 @@
         <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
           margin-bottom:0.85rem;background:Canvas">
           <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
-            ✏️ データの修正・承認
+            データの修正・承認
           </p>
           <div style="font-size:0.86rem;line-height:1.9">
             <p><strong>打刻修正</strong>：勤怠一覧の「修正」ボタンで時刻を書き換え → 修正理由を入力して「保存」（監査ログに記録されます）</p>
@@ -1092,7 +1109,7 @@
           </div>
           <div style="margin-top:0.75rem;padding:0.6rem 0.85rem;background:#fff8e1;
             border-radius:6px;font-size:0.8rem;color:#92400e">
-            💡 修正理由は必ず入力してください。空欄では保存できません。
+            修正理由は必ず入力してください。空欄では保存できません。
           </div>
         </div>
 
@@ -1100,7 +1117,7 @@
         <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
           margin-bottom:0.85rem;background:Canvas">
           <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
-            ⚙️ 各種設定
+            各種設定
           </p>
           <div style="font-size:0.86rem;line-height:1.9">
             <p><strong>会社休日登録</strong>：カレンダータブでカレンダー上の日付をクリックして選択 → 名称を入力して「休日を登録」</p>
@@ -1115,7 +1132,7 @@
         <!-- 一括ダミー登録 -->
         <div style="padding:1rem;background:#f0f9ff;border:1px solid #93c5fd;border-radius:6px;margin-bottom:1rem">
           <p style="font-size:0.83rem;color:#1d4ed8;margin-bottom:0.75rem">
-            📋 <strong>ダミー勤怠データ一括登録</strong><br>
+            <strong>ダミー勤怠データ一括登録</strong><br>
             指定月の全スタッフ分のダミー勤怠データを登録します。導入前のUI確認・テスト用途専用です。
           </p>
           <div style="display:flex;gap:0.65rem;align-items:center;flex-wrap:wrap">
@@ -1133,7 +1150,7 @@
         <!-- テストデータ一括リセット -->
         <div style="padding:1rem;background:#fff5f5;border:1px solid #fca5a5;border-radius:6px">
           <p style="font-size:0.83rem;color:#c0392b;margin-bottom:0.75rem">
-            ⚠️ <strong>テストデータのリセット</strong><br>
+            <strong>テストデータのリセット</strong><br>
             出退勤記録・申請管理・タスク管理・納期管理の全データを削除します。<br>
             人員マスタ・会社カレンダー・給与設定は削除されません。<strong>本番運用後は使用しないでください。</strong>
           </p>
@@ -1224,7 +1241,7 @@
           <button class="sumioka-btn sumioka-btn-primary" id="btn-payroll-calc"
             style="align-self:flex-end">給与計算を実行</button>
           <button class="sumioka-btn" id="btn-payroll-settings"
-            style="align-self:flex-end">⚙ 給与設定</button>
+            style="align-self:flex-end">給与設定</button>
         </div>
 
         <!-- ── サマリーカード ── -->
@@ -2509,8 +2526,10 @@
             : '';
 
           // A-11: 日付セルをクリックで会社カレンダー選択トグル
+          // 構造: [日付行] / [イベント行（会社休日 + 申請イベント）]
           html += `<td onclick="toggleCalendarDate('${dateStr}')" style="cursor:pointer">
-            ${dayNumHtml}${compHtml}${evHtml}${moreHtml}
+            <div class="admin-cal-date-row">${dayNumHtml}</div>
+            <div class="admin-cal-events-row">${compHtml}${evHtml}${moreHtml}</div>
           </td>`;
           dayCount++;
         }
@@ -2562,7 +2581,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
           <strong style="font-size:0.95rem">${escHtml(ev.name)}</strong>
           <button onclick="document.getElementById('cal-event-popover').remove()"
-            style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:GrayText;padding:0 0.2em">✕</button>
+            style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:GrayText;padding:0 0.2em"> ×</button>
         </div>
         <div style="margin-bottom:0.35rem">
           <span style="font-size:0.75rem;background:#f3f4f6;padding:0.1em 0.5em;border-radius:3px">${escHtml(ev.type)}</span>
@@ -2570,7 +2589,7 @@
         </div>
         ${timeLabel ? `<div style="font-weight:700;color:#1d4ed8;margin:0.5rem 0">${escHtml(timeLabel)}</div>` : ''}
         ${reasonText ? `<div style="color:GrayText;font-size:0.82rem">${escHtml(reasonText)}</div>` : ''}
-        ${fillupText ? `<div style="color:#065f46;font-size:0.78rem;margin-top:0.35rem">🔄 ${escHtml(fillupText)}</div>` : ''}
+        ${fillupText ? `<div style="color:#065f46;font-size:0.78rem;margin-top:0.35rem">補填: ${escHtml(fillupText.replace("補填: ",""))}</div>` : ''}
       `;
 
       document.body.appendChild(popover);
@@ -2888,7 +2907,7 @@
         panel.innerHTML = `
           <div style="padding:2rem;text-align:center;color:var(--color-error,#dc2626);">
             <p style="font-size:1rem;font-weight:700;margin-bottom:1rem;">
-              ⚠️ ダッシュボードの読み込みに失敗しました
+              ダッシュボードの読み込みに失敗しました
             </p>
             <p style="font-size:0.82rem;color:var(--color-text-sub,#64748b);margin-bottom:1.5rem;">
               ${result.error_detail || result.error_message || ''}
@@ -2972,7 +2991,7 @@
       const tbody = document.getElementById('dash-absent-body');
 
       if (staff.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">全員出勤済みです ✓</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">全員出勤済み</td></tr>';
         return;
       }
 
@@ -3324,7 +3343,7 @@
           : '―';
 
         const reasonDisplay = fillupInfo
-          ? `${escHtml(reasonMain)}<br><span style="font-size:0.75rem;color:#065f46">🔄 補填: ${escHtml(fillupInfo)}</span>`
+          ? `${escHtml(reasonMain)}<br><span style="font-size:0.75rem;color:#065f46">補填: ${escHtml(fillupInfo)}</span>`
           : escHtml(req.reason || '―');
 
         return `
@@ -4680,9 +4699,9 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- Uploader がアップロード時に v1.2.11 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.12 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.11</div>
+  <div class="version-badge" id="app-version">v1.2.12</div>
 
 </body>
 </html>
