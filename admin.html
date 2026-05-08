@@ -1041,14 +1041,30 @@
       <section class="tab-panel" id="panel-staff">
         <div class="tab-loading" id="loading-staff">読み込み中...</div>
 
-        <!-- 区分切り替え + 追加ボタン -->
-        <div class="filter-row" style="margin-bottom:1rem">
+        <!-- 区分切り替え + フィルタ + 追加ボタン -->
+        <div class="filter-row" style="margin-bottom:1rem;flex-wrap:wrap">
           <div class="filter-group">
             <span class="filter-label">区分</span>
-            <select class="sumioka-input" id="staff-filter-type" style="width:120px">
+            <select class="sumioka-input" id="staff-filter-type" style="width:110px">
               <option value="all">全員</option>
               <option value="user">利用者</option>
               <option value="staff">職員</option>
+            </select>
+          </div>
+          <!-- v2.0.0: 拠点フィルタ。STAFF_LOCATIONS 定数と同期して動的に生成する -->
+          <div class="filter-group">
+            <span class="filter-label">拠点</span>
+            <select class="sumioka-input" id="staff-filter-location" style="width:110px">
+              <option value="">全拠点</option>
+              <!-- JS で動的に生成 -->
+            </select>
+          </div>
+          <!-- v2.0.0: 職種フィルタ。STAFF_JOB_TYPES 定数と同期して動的に生成する -->
+          <div class="filter-group">
+            <span class="filter-label">職種</span>
+            <select class="sumioka-input" id="staff-filter-job-type" style="width:110px">
+              <option value="">全職種</option>
+              <!-- JS で動的に生成 -->
             </select>
           </div>
           <button class="sumioka-btn sumioka-btn-primary" id="btn-staff-search"
@@ -1064,6 +1080,8 @@
               <tr>
                 <th>氏名</th>
                 <th>区分</th>
+                <th>拠点</th>
+                <th>職種</th>
                 <th>PIN</th>
                 <th>雇用形態</th>
                 <th>所定終業</th>
@@ -1073,7 +1091,7 @@
               </tr>
             </thead>
             <tbody id="staff-body">
-              <tr><td colspan="8" class="empty-state">読み込み中...</td></tr>
+              <tr><td colspan="10" class="empty-state">読み込み中...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1701,6 +1719,69 @@
           placeholder="例：5,000" min="0">
       </div>
 
+      <!-- ============================================================
+           v2.0.0 追加: 拠点・職種・社会保険設定
+           給与計算の保険料控除に直結するため、別セクションとして視覚的に分離する。
+           ============================================================ -->
+      <div style="border-top:1px solid GrayText;margin:1rem 0 0.75rem;padding-top:0.85rem">
+        <p style="font-size:0.8rem;font-weight:700;color:GrayText;margin-bottom:0.75rem;
+          letter-spacing:0.03em">所属・社会保険設定</p>
+
+        <!-- 拠点・職種を横並びに配置 -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem">
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="modal-staff-location">
+              拠点
+              <!-- 選択肢は STAFF_LOCATIONS 定数で管理。追加は JS 定数を編集する。 -->
+            </label>
+            <select class="sumioka-input" id="modal-staff-location">
+              <!-- JS で STAFF_LOCATIONS から動的に生成 -->
+            </select>
+          </div>
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="modal-staff-job-type">
+              職種
+              <!-- 選択肢は STAFF_JOB_TYPES 定数で管理。追加は JS 定数を編集する。 -->
+            </label>
+            <select class="sumioka-input" id="modal-staff-job-type">
+              <!-- JS で STAFF_JOB_TYPES から動的に生成 -->
+            </select>
+          </div>
+        </div>
+
+        <!-- 社会保険チェックボックス4つ -->
+        <!-- 各フラグは給与計算時に個別の保険料を算出するために使用する。
+             チェックなし → その保険料は 0 円として計算される。 -->
+        <div class="sumioka-form-group">
+          <label class="sumioka-label">社会保険加入状況</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem 1.2rem;margin-top:0.3rem">
+            <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.88rem;cursor:pointer;
+              padding:0.4rem 0.6rem;border:1px solid GrayText;border-radius:5px">
+              <input type="checkbox" id="modal-staff-ins-health" style="accent-color:Highlight">
+              <span>健康保険</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.88rem;cursor:pointer;
+              padding:0.4rem 0.6rem;border:1px solid GrayText;border-radius:5px">
+              <input type="checkbox" id="modal-staff-ins-care" style="accent-color:Highlight">
+              <span>介護保険 <span style="font-size:0.72rem;color:GrayText">（40歳以上）</span></span>
+            </label>
+            <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.88rem;cursor:pointer;
+              padding:0.4rem 0.6rem;border:1px solid GrayText;border-radius:5px">
+              <input type="checkbox" id="modal-staff-ins-pension" style="accent-color:Highlight">
+              <span>厚生年金</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.88rem;cursor:pointer;
+              padding:0.4rem 0.6rem;border:1px solid GrayText;border-radius:5px">
+              <input type="checkbox" id="modal-staff-ins-employment" style="accent-color:Highlight">
+              <span>雇用保険</span>
+            </label>
+          </div>
+          <p style="font-size:0.75rem;color:GrayText;margin-top:0.4rem">
+            チェックした保険のみ給与から控除されます
+          </p>
+        </div>
+      </div>
+
       <div class="modal-footer">
         <button class="sumioka-btn" id="modal-staff-cancel">キャンセル</button>
         <button class="sumioka-btn sumioka-btn-primary" id="modal-staff-save">保存</button>
@@ -1717,6 +1798,11 @@
       <p class="modal-title">給与設定</p>
 
       <p class="section-title">社会保険料率（本人負担・%）</p>
+      <!-- ※ 各保険への加入はスタッフ個別に設定します（スタッフ管理タブ）。
+           ここでは加入している場合の料率のみ設定します。 -->
+      <p style="font-size:0.75rem;color:GrayText;margin-bottom:0.5rem">
+        ※ 各スタッフの保険加入状況は「スタッフ管理」タブから個別に設定してください
+      </p>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem">
         <div class="sumioka-form-group">
@@ -1739,13 +1825,6 @@
           <input class="sumioka-input" type="number" id="ps-employment"
             step="0.01" min="0" placeholder="0.60">
         </div>
-      </div>
-
-      <div class="sumioka-form-group" style="margin-top:0.5rem">
-        <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;cursor:pointer">
-          <input type="checkbox" id="ps-care-enabled">
-          介護保険を徴収する（40歳以上スタッフに適用）
-        </label>
       </div>
 
       <p class="section-title">割増賃金率（%）</p>
@@ -1884,6 +1963,37 @@
     const SESSION_KEY = 'admin_session';
 
     // ============================================================
+    // v2.0.0 拠点・職種マスタ定数
+    // ============================================================
+
+    /**
+     * 拠点の選択肢。
+     * この配列を編集するだけでフォーム・フィルタの選択肢が全て更新される。
+     *
+     * 将来的に GAS 側の設定シートに移行する場合は、
+     * この定数を API から取得した値で上書きすれば既存 UI はそのまま動く設計。
+     *
+     * @type {string[]}
+     */
+    const STAFF_LOCATIONS = [
+      '半田',
+      '名古屋',
+      // ここに追加するだけでフォーム・フィルタに反映される
+    ];
+
+    /**
+     * 職種の選択肢。
+     * STAFF_LOCATIONS と同じ拡張設計。
+     *
+     * @type {string[]}
+     */
+    const STAFF_JOB_TYPES = [
+      'PC作業',
+      '軽作業',
+      // ここに追加するだけでフォーム・フィルタに反映される
+    ];
+
+    // ============================================================
     // 状態管理
     // ============================================================
 
@@ -1946,6 +2056,12 @@
 
       // 勤怠一覧フィルタの初期値を今日にする
       document.getElementById('att-filter-date').value = todayString();
+
+      // v2.0.0: 拠点・職種の選択肢を定数から動的生成する。
+      // ここで生成することで、STAFF_LOCATIONS / STAFF_JOB_TYPES を変更するだけで
+      // フィルタ・フォームの両方に反映される。
+      _buildLocationOptions();
+      _buildJobTypeOptions();
 
       // 保存済みセッションがあれば自動ログイン
       const session = SumiokaStorage.load(SESSION_KEY);
@@ -3452,12 +3568,17 @@
 
     /**
      * スタッフ一覧を取得してテーブルに描画する。
+     * v2.0.0: 拠点・職種フィルタを GAS に送信してサーバー側で絞り込む。
      */
     async function loadStaff() {
       setTabLoading('staff', true);
 
-      const type   = document.getElementById('staff-filter-type').value;
-      const result = await callGAS('admin_staff_list', { type });
+      const type     = document.getElementById('staff-filter-type').value;
+      const location = document.getElementById('staff-filter-location').value;
+      const jobType  = document.getElementById('staff-filter-job-type').value;
+
+      // GAS 側の adminStaffList は data オブジェクトで受け取る設計に変更済み
+      const result = await callGAS('admin_staff_list', { type, location, job_type: jobType });
 
       setTabLoading('staff', false);
 
@@ -3475,6 +3596,7 @@
      * 最新のスタッフ一覧で更新する。ログイン直後に1回だけ呼ぶ。
      */
     async function loadStaffListForFilter() {
+      // type: 'all' で全スタッフを取得。拠点・職種フィルタはかけない。
       const result = await callGAS('admin_staff_list', { type: 'all' });
       if (!result.success) return;
 
@@ -3492,7 +3614,7 @@
 
     /**
      * スタッフ一覧テーブルを描画する。
-     * 各行に「編集」「削除」ボタンを設置する。
+     * v2.0.0: 拠点・職種列を追加。社保加入状況をアイコンで表示。
      *
      * @param {Array} staff
      */
@@ -3500,7 +3622,7 @@
       const tbody = document.getElementById('staff-body');
 
       if (staff.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">スタッフデータがありません</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="empty-state">スタッフデータがありません</td></tr>';
         return;
       }
 
@@ -3512,14 +3634,27 @@
           ? `${Number(s.hourly_wage || 0).toLocaleString()}円/h`
           : '―';
 
+        // 社保加入状況をまとめて短縮表示する（明細はモーダルで確認）
+        const insLabels = [
+          s.ins_health     ? '健' : null,
+          s.ins_care       ? '介' : null,
+          s.ins_pension    ? '年' : null,
+          s.ins_employment ? '雇' : null,
+        ].filter(Boolean);
+        const insDisplay = insLabels.length > 0
+          ? `<span style="font-size:0.72rem;color:#065f46">${insLabels.join('・')}</span>`
+          : '<span style="font-size:0.72rem;color:GrayText">なし</span>';
+
         return `
           <tr>
             <td>${escHtml(s.name || '―')}</td>
             <td>${escHtml(s.type || '―')}</td>
+            <td>${escHtml(s.location || '―')}</td>
+            <td>${escHtml(s.job_type || '―')}</td>
             <td>${escHtml(s.pin  || '―')}</td>
             <td>${escHtml(s.employment || '―')}</td>
             <td>${fmtTime(s.scheduled_end)}</td>
-            <td>${wageLabel}</td>
+            <td>${wageLabel}<br>${insDisplay}</td>
             <td>${s.is_admin ? '<span class="badge badge-blue">管理者</span>' : '―'}</td>
             <td>
               <div class="action-btn-group">
@@ -3537,8 +3672,59 @@
     // ── スタッフ モーダル ──
 
     /**
+     * 拠点の選択肢を STAFF_LOCATIONS 定数から動的に生成する。
+     *
+     * フィルタセレクトとモーダルセレクトの両方を更新する。
+     * DOMContentLoaded 時に1回だけ呼ぶ。
+     * STAFF_LOCATIONS に値を追加するだけで全 UI に反映される。
+     */
+    function _buildLocationOptions() {
+      // フィルタ用セレクト（全拠点オプション付き）
+      const filterEl = document.getElementById('staff-filter-location');
+      STAFF_LOCATIONS.forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value       = loc;
+        opt.textContent = loc;
+        filterEl.appendChild(opt);
+      });
+
+      // モーダル用セレクト（空欄なし・必ず1つ選択される）
+      const modalEl = document.getElementById('modal-staff-location');
+      modalEl.innerHTML = ''; // 既存オプションをクリア
+      STAFF_LOCATIONS.forEach(loc => {
+        const opt = document.createElement('option');
+        opt.value       = loc;
+        opt.textContent = loc;
+        modalEl.appendChild(opt);
+      });
+    }
+
+    /**
+     * 職種の選択肢を STAFF_JOB_TYPES 定数から動的に生成する。
+     * _buildLocationOptions と同じ設計。
+     */
+    function _buildJobTypeOptions() {
+      const filterEl = document.getElementById('staff-filter-job-type');
+      STAFF_JOB_TYPES.forEach(jt => {
+        const opt = document.createElement('option');
+        opt.value       = jt;
+        opt.textContent = jt;
+        filterEl.appendChild(opt);
+      });
+
+      const modalEl = document.getElementById('modal-staff-job-type');
+      modalEl.innerHTML = '';
+      STAFF_JOB_TYPES.forEach(jt => {
+        const opt = document.createElement('option');
+        opt.value       = jt;
+        opt.textContent = jt;
+        modalEl.appendChild(opt);
+      });
+    }
+
+    /**
      * スタッフ追加/編集モーダルを開く。
-     * v1.4.0: 氏名を「姓」「名」の2欄に分割。
+     * v2.0.0: 拠点・職種セレクト・社保チェックボックスを追加。
      *
      * @param {Object|null} staff - null なら新規追加モード
      */
@@ -3554,13 +3740,11 @@
 
       document.getElementById('modal-staff-id').value = isNew ? '' : (staff.id || '');
 
-      // 氏名を姓・名に分割して設定する。
-      // 既存データが「姓 名」の結合形式で来た場合はスペースで分割する。
+      // 氏名を姓・名に分割して設定する
       if (isNew) {
         document.getElementById('modal-staff-last-name').value  = '';
         document.getElementById('modal-staff-first-name').value = '';
       } else {
-        // GASが last_name / first_name を個別に返す場合と name を返す場合の両方に対応
         const lastName  = staff.last_name  || (staff.name ? staff.name.split(/[\s\u3000]+/)[0] : '');
         const firstName = staff.first_name || (staff.name ? staff.name.split(/[\s\u3000]+/).slice(1).join(' ') : '');
         document.getElementById('modal-staff-last-name').value  = lastName;
@@ -3570,16 +3754,14 @@
       document.getElementById('modal-staff-pin').value             = isNew ? '' : (staff.pin || '');
       document.getElementById('modal-staff-password').value        = ''; // 常に空で開く
 
-      // K-3: 雇用形態は職員/利用者の2択。既存データが他の値なら空に倒す
+      // 雇用形態は職員/利用者の2択
       const empValue = isNew ? '' : (staff.employment || '');
       document.getElementById('modal-staff-employment').value =
         ['職員', '利用者'].includes(empValue) ? empValue : '';
 
-      // 勤務曜日チェックボックスを設定する。
-      // 新規追加時は月〜金（5日間）をデフォルトでチェック。
-      // 編集時はスタッフのデータに合わせる。
+      // 勤務曜日チェックボックス（新規: 月〜金デフォルト、編集: 既存データ）
       const workDays = isNew
-        ? ['月', '火', '水', '木', '金']  // 月〜金デフォルト
+        ? ['月', '火', '水', '木', '金']
         : (Array.isArray(staff.work_days) ? staff.work_days : []);
       document.querySelectorAll('input[name="modal-work-day"]').forEach(cb => {
         cb.checked = workDays.includes(cb.value);
@@ -3588,10 +3770,25 @@
       document.getElementById('modal-staff-scheduled-start').value = isNew ? '10:00' : (staff.scheduled_start || '');
       document.getElementById('modal-staff-scheduled-end').value   = isNew ? '15:00' : (staff.scheduled_end   || '');
       document.getElementById('modal-staff-wage-type').value       = isNew ? '時給'  : (staff.wage_type    || '');
-      // 新規追加時は時給のデフォルトを 1150 に設定する（地域最低賃金水準）
       document.getElementById('modal-staff-hourly-wage').value     = isNew ? '1150'  : (staff.hourly_wage  || '');
       document.getElementById('modal-staff-monthly-wage').value    = isNew ? ''      : (staff.monthly_wage || '');
       document.getElementById('modal-staff-transport').value       = isNew ? ''      : (staff.transport_fee || '');
+
+      // ── v2.0.0: 拠点・職種を設定 ──────────────────────────────
+      // セレクト要素は DOMContentLoaded 時に _buildLocationOptions / _buildJobTypeOptions
+      // で生成済みなので、ここでは値を選択するだけでよい。
+      const locationEl = document.getElementById('modal-staff-location');
+      const jobTypeEl  = document.getElementById('modal-staff-job-type');
+      locationEl.value = isNew ? (STAFF_LOCATIONS[0] || '') : (staff.location || '');
+      jobTypeEl.value  = isNew ? (STAFF_JOB_TYPES[0] || '') : (staff.job_type || '');
+
+      // ── v2.0.0: 社保チェックボックスを設定 ──────────────────────
+      // 新規追加時は全チェックなし（安全側のデフォルト）。
+      // 個別の加入状況は管理者が確認してからチェックする運用。
+      document.getElementById('modal-staff-ins-health').checked     = isNew ? false : !!staff.ins_health;
+      document.getElementById('modal-staff-ins-care').checked       = isNew ? false : !!staff.ins_care;
+      document.getElementById('modal-staff-ins-pension').checked    = isNew ? false : !!staff.ins_pension;
+      document.getElementById('modal-staff-ins-employment').checked = isNew ? false : !!staff.ins_employment;
 
       document.getElementById('modal-edit-staff').classList.remove('hidden');
     }
@@ -3603,7 +3800,7 @@
 
     /**
      * スタッフ追加/更新を GAS に送信する。
-     * v1.4.0: 氏名を姓・名の2フィールドで送信。勤務曜日チェックボックスを収集して送信。
+     * v2.0.0: 拠点・職種・社保フラグを staffData に追加。
      */
     async function saveStaffModal() {
       const id           = document.getElementById('modal-staff-id').value;
@@ -3624,6 +3821,14 @@
         document.querySelectorAll('input[name="modal-work-day"]:checked')
       ).map(cb => cb.value);
 
+      // v2.0.0: 拠点・職種・社保フラグを収集する
+      const location      = document.getElementById('modal-staff-location').value;
+      const jobType       = document.getElementById('modal-staff-job-type').value;
+      const insHealth     = document.getElementById('modal-staff-ins-health').checked;
+      const insCare       = document.getElementById('modal-staff-ins-care').checked;
+      const insPension    = document.getElementById('modal-staff-ins-pension').checked;
+      const insEmployment = document.getElementById('modal-staff-ins-employment').checked;
+
       const isNew = !id;
 
       // バリデーション
@@ -3640,7 +3845,6 @@
       }
 
       const staffData = {
-        // 姓・名を個別フィールドで送信する。GAS側で「姓 名」として保存する。
         last_name        : lastName,
         first_name       : firstName,
         pin,
@@ -3652,8 +3856,16 @@
         hourly_wage      : hourlyWage   ? Number(hourlyWage)   : null,
         monthly_wage     : monthlyWage  ? Number(monthlyWage)  : null,
         transport_fee    : transportFee ? Number(transportFee) : 0,
-        work_days        : workDays,     // チェックボックスで選択した曜日配列
-        scheduled_hours  : null,         // K-3: 廃止。GAS側の既存フィールドは null で送信
+        work_days        : workDays,
+        scheduled_hours  : null,
+
+        // v2.0.0 追加: 拠点・職種・社保フラグ
+        location         : location,
+        job_type         : jobType,
+        ins_health       : insHealth,
+        ins_care         : insCare,
+        ins_pension      : insPension,
+        ins_employment   : insEmployment,
       };
 
       const btn    = document.getElementById('modal-staff-save');
@@ -3673,7 +3885,7 @@
 
       showToast(isNew ? 'スタッフを追加しました。' : 'スタッフ情報を更新しました。', 'success');
       closeStaffModal();
-      loadStaff(); // 一覧を再取得して反映する
+      loadStaff();
     }
 
     /**
@@ -3899,30 +4111,32 @@
     /**
      * 給与設定モーダルを開く。
      * 保存済みの設定値をフォームに反映する。
+     * v2.0.0: care_insurance_enabled（グローバル介護保険フラグ）を廃止。
+     *         スタッフ個別の ins_care フラグで管理するため不要になった。
      */
     async function openPayrollSettings() {
-      // 未取得なら取得する
       if (!adminState.payrollSettings) {
         await loadPayrollSettingsFromGAS();
       }
 
       const s = adminState.payrollSettings || {};
 
-      document.getElementById('ps-health').value      = s.health_insurance_rate     ?? 4.99;
-      document.getElementById('ps-care').value        = s.care_insurance_rate       ?? 0.80;
+      // v2.0.0: デフォルト値を愛知県協会けんぽ2024年度に更新
+      document.getElementById('ps-health').value      = s.health_insurance_rate     ?? 5.00;
+      document.getElementById('ps-care').value        = s.care_insurance_rate       ?? 0.90;
       document.getElementById('ps-pension').value     = s.pension_rate              ?? 9.15;
       document.getElementById('ps-employment').value  = s.employment_insurance_rate ?? 0.60;
       document.getElementById('ps-overtime').value    = s.overtime_rate             ?? 25;
       document.getElementById('ps-holiday').value     = s.holiday_rate              ?? 35;
       document.getElementById('ps-latenight').value   = s.late_night_rate           ?? 50;
       document.getElementById('ps-lunch').value       = s.lunch_price               ?? 150;
-      document.getElementById('ps-care-enabled').checked = !!s.care_insurance_enabled;
 
       document.getElementById('modal-payroll-settings').classList.remove('hidden');
     }
 
     /**
      * 給与設定を GAS に保存する。
+     * v2.0.0: care_insurance_enabled を送信しないよう変更。
      */
     async function savePayrollSettings() {
       const settings = {
@@ -3934,7 +4148,7 @@
         holiday_rate              : Number(document.getElementById('ps-holiday').value),
         late_night_rate           : Number(document.getElementById('ps-latenight').value),
         lunch_price               : Number(document.getElementById('ps-lunch').value),
-        care_insurance_enabled    : document.getElementById('ps-care-enabled').checked,
+        // care_insurance_enabled は廃止。スタッフ個別の ins_care で管理する。
       };
 
       showLoading('設定を保存中...');
@@ -3946,7 +4160,7 @@
         return;
       }
 
-      adminState.payrollSettings = settings; // ローカルにも反映する
+      adminState.payrollSettings = settings;
       showToast('給与設定を保存しました。', 'success');
       document.getElementById('modal-payroll-settings').classList.add('hidden');
     }
@@ -4699,9 +4913,9 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- Uploader がアップロード時に v1.2.12 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.13 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.12</div>
+  <div class="version-badge" id="app-version">v1.2.13</div>
 
 </body>
 </html>
