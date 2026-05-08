@@ -1808,12 +1808,12 @@
         <div class="sumioka-form-group">
           <label class="sumioka-label" for="ps-health">健康保険率</label>
           <input class="sumioka-input" type="number" id="ps-health"
-            step="0.01" min="0" placeholder="4.99">
+            step="0.001" min="0" placeholder="5.015">
         </div>
         <div class="sumioka-form-group">
           <label class="sumioka-label" for="ps-care">介護保険率（40歳以上）</label>
           <input class="sumioka-input" type="number" id="ps-care"
-            step="0.01" min="0" placeholder="0.80">
+            step="0.001" min="0" placeholder="0.795">
         </div>
         <div class="sumioka-form-group">
           <label class="sumioka-label" for="ps-pension">厚生年金率</label>
@@ -1821,9 +1821,36 @@
             step="0.01" min="0" placeholder="9.15">
         </div>
         <div class="sumioka-form-group">
-          <label class="sumioka-label" for="ps-employment">雇用保険率</label>
+          <label class="sumioka-label" for="ps-employment">雇用保険率（本人）</label>
           <input class="sumioka-input" type="number" id="ps-employment"
-            step="0.01" min="0" placeholder="0.60">
+            step="0.01" min="0" placeholder="0.55">
+        </div>
+      </div>
+
+      <p class="section-title">社会保険料率（会社負担・%）</p>
+      <p style="font-size:0.75rem;color:GrayText;margin-bottom:0.5rem">
+        健康保険・介護保険・厚生年金は労使折半のため本人と同率。雇用保険は会社が二事業分を追加負担。
+      </p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem">
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="ps-health-company">健康保険率（会社）</label>
+          <input class="sumioka-input" type="number" id="ps-health-company"
+            step="0.001" min="0" placeholder="5.015">
+        </div>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="ps-care-company">介護保険率（会社）</label>
+          <input class="sumioka-input" type="number" id="ps-care-company"
+            step="0.001" min="0" placeholder="0.795">
+        </div>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="ps-pension-company">厚生年金率（会社）</label>
+          <input class="sumioka-input" type="number" id="ps-pension-company"
+            step="0.01" min="0" placeholder="9.15">
+        </div>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="ps-employment-company">雇用保険率（会社）</label>
+          <input class="sumioka-input" type="number" id="ps-employment-company"
+            step="0.01" min="0" placeholder="0.90">
         </div>
       </div>
 
@@ -4057,6 +4084,7 @@
         `${p.name} さんの給与明細（${p.year_month}）`;
 
       // 明細行を構築する
+      // 本人控除・会社負担を並べて表示することで、労務コストの全体像を把握できる。
       const rows = [
         ['【勤怠】', ''],
         ['出勤日数',     `${p.work_days}日`],
@@ -4073,7 +4101,7 @@
         ...(p.incentive_items || []).map(inc => [`　└ ${inc.label}`, `${Number(inc.amount).toLocaleString()}円`]),
         ['総支給額',     `${Number(p.total_gross).toLocaleString()}円`],
         ['', ''],
-        ['【控除】', ''],
+        ['【控除（本人負担）】', ''],
         ['健康保険',     `${Number(p.health_insurance).toLocaleString()}円`],
         ['介護保険',     `${Number(p.care_insurance).toLocaleString()}円`],
         ['厚生年金',     `${Number(p.pension).toLocaleString()}円`],
@@ -4081,6 +4109,13 @@
         ['社会保険料計', `${Number(p.social_insurance_total).toLocaleString()}円`],
         ['所得税（源泉）', `${Number(p.income_tax).toLocaleString()}円`],
         ['弁当代控除',   `${Number(p.lunch_deduction).toLocaleString()}円`],
+        ['', ''],
+        ['【会社負担】', ''],
+        ['健康保険',     `${Number(p.health_insurance_company     || 0).toLocaleString()}円`],
+        ['介護保険',     `${Number(p.care_insurance_company       || 0).toLocaleString()}円`],
+        ['厚生年金',     `${Number(p.pension_company              || 0).toLocaleString()}円`],
+        ['雇用保険',     `${Number(p.employment_insurance_company || 0).toLocaleString()}円`],
+        ['会社負担計',   `${Number(p.social_insurance_total_company || 0).toLocaleString()}円`],
         ['', ''],
         ['【差引支給額】', `${Number(p.net_pay).toLocaleString()}円`],
       ];
@@ -4121,34 +4156,46 @@
 
       const s = adminState.payrollSettings || {};
 
-      // v2.0.0: デフォルト値を愛知県協会けんぽ2024年度に更新
-      document.getElementById('ps-health').value      = s.health_insurance_rate     ?? 5.00;
-      document.getElementById('ps-care').value        = s.care_insurance_rate       ?? 0.90;
+      // 本人負担率（2025年度愛知県デフォルト）
+      document.getElementById('ps-health').value      = s.health_insurance_rate     ?? 5.015;
+      document.getElementById('ps-care').value        = s.care_insurance_rate       ?? 0.795;
       document.getElementById('ps-pension').value     = s.pension_rate              ?? 9.15;
-      document.getElementById('ps-employment').value  = s.employment_insurance_rate ?? 0.60;
-      document.getElementById('ps-overtime').value    = s.overtime_rate             ?? 25;
-      document.getElementById('ps-holiday').value     = s.holiday_rate              ?? 35;
-      document.getElementById('ps-latenight').value   = s.late_night_rate           ?? 50;
-      document.getElementById('ps-lunch').value       = s.lunch_price               ?? 150;
+      document.getElementById('ps-employment').value  = s.employment_insurance_rate ?? 0.55;
+
+      // 会社負担率
+      document.getElementById('ps-health-company').value     = s.health_insurance_rate_company     ?? 5.015;
+      document.getElementById('ps-care-company').value       = s.care_insurance_rate_company       ?? 0.795;
+      document.getElementById('ps-pension-company').value    = s.pension_rate_company              ?? 9.15;
+      document.getElementById('ps-employment-company').value = s.employment_insurance_rate_company ?? 0.90;
+
+      document.getElementById('ps-overtime').value    = s.overtime_rate   ?? 25;
+      document.getElementById('ps-holiday').value     = s.holiday_rate    ?? 35;
+      document.getElementById('ps-latenight').value   = s.late_night_rate ?? 50;
+      document.getElementById('ps-lunch').value       = s.lunch_price     ?? 150;
 
       document.getElementById('modal-payroll-settings').classList.remove('hidden');
     }
 
     /**
      * 給与設定を GAS に保存する。
-     * v2.0.0: care_insurance_enabled を送信しないよう変更。
      */
     async function savePayrollSettings() {
       const settings = {
+        // 本人負担率
         health_insurance_rate     : Number(document.getElementById('ps-health').value),
         care_insurance_rate       : Number(document.getElementById('ps-care').value),
         pension_rate              : Number(document.getElementById('ps-pension').value),
         employment_insurance_rate : Number(document.getElementById('ps-employment').value),
-        overtime_rate             : Number(document.getElementById('ps-overtime').value),
-        holiday_rate              : Number(document.getElementById('ps-holiday').value),
-        late_night_rate           : Number(document.getElementById('ps-latenight').value),
-        lunch_price               : Number(document.getElementById('ps-lunch').value),
-        // care_insurance_enabled は廃止。スタッフ個別の ins_care で管理する。
+        // 会社負担率
+        health_insurance_rate_company     : Number(document.getElementById('ps-health-company').value),
+        care_insurance_rate_company       : Number(document.getElementById('ps-care-company').value),
+        pension_rate_company              : Number(document.getElementById('ps-pension-company').value),
+        employment_insurance_rate_company : Number(document.getElementById('ps-employment-company').value),
+        // 割増・その他
+        overtime_rate   : Number(document.getElementById('ps-overtime').value),
+        holiday_rate    : Number(document.getElementById('ps-holiday').value),
+        late_night_rate : Number(document.getElementById('ps-latenight').value),
+        lunch_price     : Number(document.getElementById('ps-lunch').value),
       };
 
       showLoading('設定を保存中...');
