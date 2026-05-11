@@ -1767,6 +1767,21 @@
             チェックした保険のみ給与から控除されます
           </p>
         </div>
+
+        <!-- 管理者権限フラグ。ONにすると admin.html にログインできるようになる。
+             誤操作防止のため、意図的に社保セクションと分けて単独で配置する。 -->
+        <div class="sumioka-form-group">
+          <label class="sumioka-label">管理者権限</label>
+          <label style="display:inline-flex;align-items:center;gap:0.5rem;font-size:0.88rem;
+            cursor:pointer;padding:0.45rem 0.75rem;border:1px solid GrayText;border-radius:5px;
+            margin-top:0.3rem">
+            <input type="checkbox" id="modal-staff-is-admin" style="accent-color:Highlight">
+            <span>管理者ダッシュボードへのログインを許可する</span>
+          </label>
+          <p style="font-size:0.75rem;color:#c0392b;margin-top:0.4rem">
+            ⚠ ONにすると勤怠・スタッフ・給与データへのアクセス権が付与されます
+          </p>
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -3807,6 +3822,9 @@
       document.getElementById('modal-staff-ins-pension').checked    = isNew ? false : !!staff.ins_pension;
       document.getElementById('modal-staff-ins-employment').checked = isNew ? false : !!staff.ins_employment;
 
+      // 管理者権限フラグ: 新規はデフォルト OFF（最小権限の原則）
+      document.getElementById('modal-staff-is-admin').checked = isNew ? false : !!staff.is_admin;
+
       document.getElementById('modal-edit-staff').classList.remove('hidden');
     }
 
@@ -3846,6 +3864,9 @@
       const insPension    = document.getElementById('modal-staff-ins-pension').checked;
       const insEmployment = document.getElementById('modal-staff-ins-employment').checked;
 
+      // 管理者権限フラグを収集する（GAS側の adminUpdateStaff / adminAddStaff は is_admin を受け取り保存済み）
+      const isAdmin = document.getElementById('modal-staff-is-admin').checked;
+
       const isNew = !id;
 
       // バリデーション
@@ -3883,6 +3904,9 @@
         ins_care         : insCare,
         ins_pension      : insPension,
         ins_employment   : insEmployment,
+
+        // 管理者権限フラグ
+        is_admin         : isAdmin,
       };
 
       const btn    = document.getElementById('modal-staff-save');
@@ -4744,9 +4768,8 @@
       const arr = [...deadlines];
 
       arr.sort((a, b) => {
-        // GAS が返すキー: name=担当者名, title=案件名
-        if (sortKey === 'name')     return (a.name  || '').localeCompare(b.name  || '', 'ja');
-        if (sortKey === 'title')    return (a.title  || '').localeCompare(b.title || '', 'ja');
+        if (sortKey === 'name')     return (a.assignee || '').localeCompare(b.assignee || '', 'ja');
+        if (sortKey === 'title')    return (a.name     || '').localeCompare(b.name     || '', 'ja');
         if (sortKey === 'progress') return (b.progress || 0) - (a.progress || 0); // 進捗降順
         // デフォルト: 納品日順
         const na = a.deadline || '', nb = b.deadline || '';
@@ -4775,8 +4798,8 @@
 
         return `
           <tr style="${rowStyle}">
-            <td style="font-size:0.85rem">${escHtml(d.name  || '―')}</td>
-            <td style="font-weight:600">${escHtml(d.title || '―')}</td>
+            <td style="font-size:0.85rem">${escHtml(d.assignee || '―')}</td>
+            <td style="font-weight:600">${escHtml(d.name || '―')}</td>
             <td style="white-space:nowrap;font-size:0.85rem">${escHtml(nd || '―')} ${daysLabel}</td>
             <td style="color:${statusColor};font-weight:600;font-size:0.85rem">${escHtml(d.status || '―')}</td>
             <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
