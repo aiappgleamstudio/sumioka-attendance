@@ -1541,15 +1541,29 @@
         </select>
       </div>
 
-      <!-- 出勤・退勤を横並びに -->
+      <!-- 出勤・退勤を横並びに。
+           クリアボタン: 打刻済みの時刻を片方だけ消す操作をサポートする。
+           新規モードでは不要のため JS で表示制御する。 -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem">
         <div class="sumioka-form-group">
           <label class="sumioka-label" for="modal-edit-timein">出勤時刻</label>
-          <input class="sumioka-input" type="time" id="modal-edit-timein">
+          <div style="display:flex;gap:0.4rem;align-items:center">
+            <input class="sumioka-input" type="time" id="modal-edit-timein" style="flex:1">
+            <!-- 編集モード時のみ表示。クリックで出勤時刻を空にして即保存する -->
+            <button class="sumioka-btn sumioka-btn-danger" id="btn-clear-timein"
+              style="font-size:0.72rem;padding:0.25em 0.6em;display:none"
+              title="出勤時刻を削除する">削除</button>
+          </div>
         </div>
         <div class="sumioka-form-group">
           <label class="sumioka-label" for="modal-edit-timeout">退勤時刻</label>
-          <input class="sumioka-input" type="time" id="modal-edit-timeout">
+          <div style="display:flex;gap:0.4rem;align-items:center">
+            <input class="sumioka-input" type="time" id="modal-edit-timeout" style="flex:1">
+            <!-- 編集モード時のみ表示。クリックで退勤時刻を空にして即保存する -->
+            <button class="sumioka-btn sumioka-btn-danger" id="btn-clear-timeout"
+              style="font-size:0.72rem;padding:0.25em 0.6em;display:none"
+              title="退勤時刻を削除する">削除</button>
+          </div>
         </div>
       </div>
 
@@ -1717,6 +1731,34 @@
         <label class="sumioka-label" for="modal-staff-transport">交通費（月額・円）</label>
         <input class="sumioka-input" type="number" id="modal-staff-transport"
           placeholder="例：5,000" min="0">
+      </div>
+
+      <!-- ============================================================
+           v3.0.0 追加: 管理権限ロール設定
+           空（一般スタッフ） = Admin ログイン不可
+           一般職員          = Admin ログイン可・給与タブ非表示
+           給与計算担当       = Admin ログイン可・給与タブ表示
+           社長              = 全機能
+           ============================================================ -->
+      <div style="border-top:1px solid GrayText;margin:1rem 0 0.75rem;padding-top:0.85rem">
+        <p style="font-size:0.8rem;font-weight:700;color:GrayText;margin-bottom:0.75rem;
+          letter-spacing:0.03em">Admin 権限設定</p>
+        <div class="sumioka-form-group">
+          <label class="sumioka-label" for="modal-staff-admin-role">管理権限ロール</label>
+          <select class="sumioka-input" id="modal-staff-admin-role">
+            <!-- 空 = Admin ログイン不可の一般スタッフ -->
+            <option value="">なし（Adminログイン不可）</option>
+            <!-- 一般職員: ログイン可だが給与タブは非表示 -->
+            <option value="一般職員">一般職員（給与情報非表示）</option>
+            <!-- 給与計算担当: 給与タブ含め表示。スタッフ削除は社長のみ -->
+            <option value="給与計算担当">給与計算担当（給与情報表示）</option>
+            <!-- 社長: 全機能 -->
+            <option value="社長">社長（全機能）</option>
+          </select>
+          <p class="sumioka-input-hint">
+            「なし」のスタッフは Kintai のみ使用できます
+          </p>
+        </div>
       </div>
 
       <!-- ============================================================
@@ -2037,6 +2079,7 @@
     const adminState = {
       employeeId          : '',
       name                : '',
+      adminRole           : '',  // v3.0.0: '社長' | '給与計算担当' | '一般職員' | ''
       staffList           : [],
       payrollData         : [],
       payrollSettings     : null,
@@ -2150,6 +2193,14 @@
       document.getElementById('modal-edit-attendance').addEventListener('click', e => {
         if (e.target === e.currentTarget) closeEditModal();
       });
+
+      // v3.0.0: 出勤・退勤の単独クリアボタン
+      // クリックで対象フィールドを空にして即 GAS に送信する。
+      // 理由入力欄が空の場合はまず理由を入れるよう促す。
+      document.getElementById('btn-clear-timein').addEventListener('click',
+        () => clearAttendanceField('time_in'));
+      document.getElementById('btn-clear-timeout').addEventListener('click',
+        () => clearAttendanceField('time_out'));
 
       // ── スタッフ追加/編集モーダル ──
       document.getElementById('modal-staff-cancel').addEventListener('click', closeStaffModal);
@@ -2302,11 +2353,12 @@
 
       const { employee } = result.data;
 
-      // 管理者フラグを確認する。一般スタッフはアクセス拒否
-      if (!employee.is_admin) {
-        // 【修正①】権限なしは「ログイン権限がありません。」で明示する。
-        // 旧: 「PIN またはパスワードが正しくありません。」と同じ文言で混乱を招いていた。
-        showLoginError('ログイン権限がありません。');
+      // v3.0.0: admin_role ベースで権限チェックする。
+      // admin_role が空 = 一般スタッフ = Admin ログイン不可。
+      // GAS 側でも弾いているが、フロントでも明示的にチェックする（多重防御）。
+      const role = employee.admin_role || '';
+      if (!role) {
+        showLoginError('ログイン権限がありません。管理者にお問い合わせください。');
         return;
       }
 
@@ -2317,9 +2369,10 @@
       SumiokaStorage.save(SESSION_KEY, {
         employeeId : employee.id,
         name       : employee.name,
+        adminRole  : role,  // v3.0.0: 権限ロールもセッションに保存する
       });
 
-      applySession({ employeeId: employee.id, name: employee.name });
+      applySession({ employeeId: employee.id, name: employee.name, adminRole: role });
       await loadInitialData();
     }
 
@@ -2365,28 +2418,47 @@
 
     /**
      * セッション情報を adminState に適用して管理者画面へ切り替える。
-     * A-1: リロード時のタブ復元のため localStorage に保存されたタブに遷移する。
      *
-     * @param {{ employeeId: string, name: string }} session
+     * v3.0.0: adminRole を受け取り、権限に応じてタブ表示を制御する。
+     *   - '社長'          : 全タブ表示。削除ボタンあり。
+     *   - '給与計算担当'   : 給与タブ表示。削除ボタンなし。
+     *   - '一般職員'       : 給与タブ非表示。削除ボタンなし。
+     *
+     * @param {{ employeeId: string, name: string, adminRole: string }} session
      */
     function applySession(session) {
       adminState.employeeId = session.employeeId;
       adminState.name       = session.name;
+      adminState.adminRole  = session.adminRole || '';
 
       document.getElementById('admin-display-name').textContent = session.name;
       showScreen('admin');
 
+      // v3.0.0: 権限ロールに応じてタブの表示/非表示を制御する。
+      // 給与タブは '社長' と '給与計算担当' のみ表示する。
+      // '一般職員' には給与情報を見せない。
+      const canSeePayroll = ['社長', '給与計算担当'].includes(adminState.adminRole);
+      const payrollTab = document.querySelector('.admin-tab[data-tab="payroll"]');
+      if (payrollTab) {
+        payrollTab.style.display = canSeePayroll ? '' : 'none';
+      }
+
+      // v3.0.0: スタッフ削除ボタンは '社長' のみ表示する。
+      // renderStaffTable で動的生成するため、フラグをステートに持たせて制御する。
+      // （renderStaffTable 内で adminState.adminRole を参照する）
+
       // 【修正③】初期タブを 'attendance'（勤怠一覧）に変更する。
-      // 旧: 'dashboard' が初期表示だったが、現場では勤怠一覧を最初に確認する運用が多いため変更。
       // リロード時は localStorage に保存されたタブを優先する（last-tab 復元は維持）。
       const savedTab = SumiokaStorage.load('admin_active_tab') || 'attendance';
+      // 給与タブが非表示なのに savedTab が 'payroll' だった場合はフォールバック
+      const effectiveTab = (!canSeePayroll && savedTab === 'payroll') ? 'attendance' : savedTab;
       document.querySelectorAll('.admin-tab').forEach(t => {
-        t.classList.toggle('active', t.dataset.tab === savedTab);
+        t.classList.toggle('active', t.dataset.tab === effectiveTab);
       });
       document.querySelectorAll('.tab-panel').forEach(p => {
-        p.classList.toggle('active', p.id === `panel-${savedTab}`);
+        p.classList.toggle('active', p.id === `panel-${effectiveTab}`);
       });
-      adminState._restoredTab = savedTab;
+      adminState._restoredTab = effectiveTab;
     }
 
     /**
@@ -2397,7 +2469,7 @@
       if (!ok) return;
 
       SumiokaStorage.remove(SESSION_KEY);
-      Object.assign(adminState, { employeeId: '', name: '', staffList: [] });
+      Object.assign(adminState, { employeeId: '', name: '', adminRole: '', staffList: [] });
 
       document.getElementById('input-pin').value      = '';
       document.getElementById('input-password').value = '';
@@ -3314,12 +3386,72 @@
         document.getElementById('modal-edit-reason').value      = '';
       }
 
+      // 編集モード時のみクリアボタンを表示する。
+      // 新規モードでは打刻がないためクリア操作は不要。
+      const isEdit = !isNew;
+      document.getElementById('btn-clear-timein').style.display  = isEdit ? '' : 'none';
+      document.getElementById('btn-clear-timeout').style.display = isEdit ? '' : 'none';
+
       document.getElementById('modal-edit-attendance').classList.remove('hidden');
     }
 
     /** 打刻修正 / 新規登録モーダルを閉じる */
     function closeEditModal() {
       document.getElementById('modal-edit-attendance').classList.add('hidden');
+    }
+
+    /**
+     * 出勤時刻または退勤時刻を単独でクリアして GAS に即送信する。
+     *
+     * なぜ「保存」ボタンと別の関数か:
+     *   通常の保存は attendance_data 全体を上書きするため、
+     *   意図せず他フィールドに影響を及ぼす可能性がある。
+     *   クリアは GAS 側の adminClearAttendanceField が既存レコードを読んで
+     *   指定フィールドのみ空にする設計のため、安全に部分更新できる。
+     *
+     * @param {'time_in'|'time_out'} field - クリアするフィールド名
+     */
+    async function clearAttendanceField(field) {
+      // 理由が未入力の場合は先に入力を促す（監査ログに残すため必須）
+      const reason = document.getElementById('modal-edit-reason').value.trim();
+      if (!reason) {
+        showToast('先に「修正・登録理由」を入力してください。', 'warning');
+        document.getElementById('modal-edit-reason').focus();
+        return;
+      }
+
+      const employeeId = document.getElementById('modal-edit-employee-id').value;
+      const date       = document.getElementById('modal-edit-date').value;
+      if (!employeeId || !date) {
+        showToast('対象スタッフまたは日付が取得できませんでした。', 'error');
+        return;
+      }
+
+      const fieldLabel = field === 'time_in' ? '出勤時刻' : '退勤時刻';
+      const ok = await confirm(`${fieldLabel}を削除してよいですか？\n（この操作は取り消せません）`);
+      if (!ok) return;
+
+      showLoading(`${fieldLabel}を削除中...`);
+
+      const result = await callGAS('admin_clear_attendance_field', {
+        employee_id : employeeId,
+        date        : date,
+        clear_field : field,
+        admin_id    : adminState.employeeId,
+        reason      : reason,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast(`${fieldLabel}を削除しました。`, 'success');
+      closeEditModal();
+      // 一覧を再取得して画面に反映する
+      loadAttendance();
     }
 
     /**
@@ -3682,13 +3814,29 @@
             <td>${escHtml(s.employment || '―')}</td>
             <td>${fmtTime(s.scheduled_end)}</td>
             <td>${wageLabel}<br>${insDisplay}</td>
-            <td>${s.is_admin ? '<span class="badge badge-blue">管理者</span>' : '―'}</td>
+            <td>${(() => {
+              // v3.0.0: admin_role を色分けバッジで表示する
+              const role = s.admin_role || (s.is_admin ? '社長' : '');
+              const roleMap = {
+                '社長'       : { label: '社長',       color: '#7c3aed', bg: '#ede9fe' },
+                '給与計算担当': { label: '給与計算担当', color: '#1d4ed8', bg: '#dbeafe' },
+                '一般職員'   : { label: '一般職員',    color: '#065f46', bg: '#d1fae5' },
+              };
+              const r = roleMap[role];
+              return r
+                ? `<span style="font-size:0.72rem;font-weight:700;padding:0.15em 0.5em;
+                    border-radius:3px;color:${r.color};background:${r.bg}">${escHtml(r.label)}</span>`
+                : '―';
+            })()}</td>
             <td>
               <div class="action-btn-group">
                 <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
                   onclick="openStaffModal(${escJson(s)})">編集</button>
-                <button class="btn-reject" style="font-size:0.78rem"
-                  onclick="deleteStaff('${escHtml(s.id)}', '${escHtml(s.name)}')">削除</button>
+                ${/* 削除ボタンは社長のみ表示。給与担当・一般職員は誤操作防止のため非表示 */
+                  adminState.adminRole === '社長'
+                  ? `<button class="btn-reject" style="font-size:0.78rem"
+                      onclick="deleteStaff('${escHtml(s.id)}', '${escHtml(s.name)}')">削除</button>`
+                  : ''}
               </div>
             </td>
           </tr>
@@ -3817,6 +3965,16 @@
       document.getElementById('modal-staff-ins-pension').checked    = isNew ? false : !!staff.ins_pension;
       document.getElementById('modal-staff-ins-employment').checked = isNew ? false : !!staff.ins_employment;
 
+      // v3.0.0: 管理権限ロールを設定する。
+      // 旧データ(is_admin: true)が来た場合は '社長' にフォールバックする。
+      const adminRoleEl = document.getElementById('modal-staff-admin-role');
+      if (isNew) {
+        adminRoleEl.value = '';
+      } else {
+        const role = staff.admin_role || (staff.is_admin ? '社長' : '');
+        adminRoleEl.value = ['社長', '給与計算担当', '一般職員'].includes(role) ? role : '';
+      }
+
       document.getElementById('modal-edit-staff').classList.remove('hidden');
     }
 
@@ -3856,6 +4014,9 @@
       const insPension    = document.getElementById('modal-staff-ins-pension').checked;
       const insEmployment = document.getElementById('modal-staff-ins-employment').checked;
 
+      // v3.0.0: 管理権限ロールを収集する
+      const adminRole = document.getElementById('modal-staff-admin-role').value;
+
       const isNew = !id;
 
       // バリデーション
@@ -3893,6 +4054,9 @@
         ins_care         : insCare,
         ins_pension      : insPension,
         ins_employment   : insEmployment,
+
+        // v3.0.0 追加: 管理権限ロール
+        admin_role       : adminRole,
       };
 
       const btn    = document.getElementById('modal-staff-save');
