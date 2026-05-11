@@ -1392,28 +1392,28 @@
                 <option value="">選択してください</option>
               </select>
             </div>
+            <!-- フェーズ入力欄（Kintaiと同じ phases[] 構造で保存する）
+                 各フェーズ行に「カレンダー表示」チェックを持たせ、
+                 チェックされたフェーズのみ担当者のKintaiカレンダーに表示される。
+                 デフォルト: 「納品」を含むフェーズ名のみ ON。 -->
             <div class="sumioka-form-group">
-              <label class="sumioka-label">納品日</label>
-              <input class="sumioka-input" type="date" id="admin-deadline-form-deadline">
-            </div>
-            <div class="sumioka-form-group">
-              <label class="sumioka-label">進捗
-                <span style="font-size:0.72rem;color:GrayText;font-weight:400">
-                  ▼から選択、または直接入力できます
-                </span>
-              </label>
-              <!-- #11: selectをdatalist付きinputに変更して手入力も許容する -->
-              <input class="sumioka-input" type="text" id="admin-deadline-form-status"
-                list="deadline-status-list"
-                placeholder="例：先方確認中、入稿済、印刷中 など"
-                autocomplete="off">
-              <datalist id="deadline-status-list">
-                <option value="未着手">
-                <option value="進行中">
-                <option value="先方確認中">
-                <option value="修正中">
-                <option value="納品済">
-              </datalist>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">
+                <label class="sumioka-label" style="margin-bottom:0">フェーズ</label>
+                <button type="button" id="btn-admin-phase-add"
+                  style="font-size:0.75rem;padding:0.2em 0.7em;background:none;
+                    border:1px solid Highlight;color:Highlight;border-radius:3px;cursor:pointer">
+                  + フェーズを追加
+                </button>
+              </div>
+              <!-- ヘッダー行 -->
+              <div style="display:flex;gap:0.4rem;margin-bottom:0.2rem;padding:0 0.1rem">
+                <span style="flex:1;min-width:80px;font-size:0.72rem;color:GrayText">フェーズ名</span>
+                <span style="width:140px;font-size:0.72rem;color:GrayText">日付</span>
+                <span style="flex:1;min-width:60px;font-size:0.72rem;color:GrayText">補足</span>
+                <span style="width:64px;font-size:0.72rem;color:GrayText;text-align:center">カレンダー</span>
+                <span style="width:32px"></span>
+              </div>
+              <div id="admin-deadline-phases-wrap"></div>
             </div>
             <div class="sumioka-form-group">
               <label class="sumioka-label">補足
@@ -1421,21 +1421,8 @@
                   連絡先・注意事項・補足説明など
                 </span>
               </label>
-              <!-- #10: 補足欄（旧「メモ」欄）は自由記述。ラベルを「補足」に変更して用途を明確化 -->
               <textarea class="sumioka-textarea" id="admin-deadline-form-memo" rows="3"
                 placeholder="例：担当: 田中 / 入稿データはGoogleDriveの○○フォルダ / 色校正あり"></textarea>
-            </div>
-            <!-- カレンダー表示チェックボックス -->
-            <!-- チェックを外すと担当者の Kintai カレンダーに表示されなくなる -->
-            <div class="sumioka-form-group" style="display:flex;align-items:flex-start;gap:0.6rem;padding:0.75rem;background:#f8fafc;border-radius:6px;border:1px solid #e2e8f0">
-              <input type="checkbox" id="admin-deadline-form-show-cal" checked
-                style="width:1.1rem;height:1.1rem;cursor:pointer;accent-color:Highlight;margin-top:0.1rem;flex-shrink:0">
-              <label for="admin-deadline-form-show-cal" style="cursor:pointer;font-size:0.88rem;line-height:1.4">
-                Kintaiのカレンダーに表示する
-                <span style="font-size:0.75rem;color:GrayText;display:block;margin-top:0.1rem">
-                  チェックを外すと担当者のカレンダーに表示されません
-                </span>
-              </label>
             </div>
             <div style="display:flex;gap:0.65rem;justify-content:flex-end">
               <button class="sumioka-btn" id="btn-admin-deadline-form-cancel">キャンセル</button>
@@ -2208,6 +2195,9 @@
         () => openAdminDeadlineForm(null));
       document.getElementById('btn-admin-deadline-form-cancel').addEventListener('click',
         () => { document.getElementById('admin-deadline-form-wrap').style.display = 'none'; });
+      // フェーズ追加ボタン
+      document.getElementById('btn-admin-phase-add').addEventListener('click',
+        () => adminAddPhaseRow('', false));
       document.getElementById('btn-admin-deadline-form-save').addEventListener('click',
         saveAdminDeadline);
       document.getElementById('taskview-sort').addEventListener('change', renderAdminDeadlineView);
@@ -4486,19 +4476,64 @@
      * Admin納期フォームを開く（新規 or 編集）。
      * スタッフ一覧を取得してセレクトに反映する。
      */
+    /**
+     * Admin 納期フォームにフェーズ行を1行追加する。
+     * Kintai の addPhaseRow と同じ構造・同じクラス名規則を使う
+     *（クラス名のプレフィックスを admin- にして区別する）。
+     *
+     * @param {string}  name        - フェーズ名の初期値
+     * @param {boolean} showOnCal   - カレンダー表示の初期値
+     * @param {Object}  [phase]     - 既存フェーズデータ（日付・補足を設定するため）
+     */
+    function adminAddPhaseRow(name = '', showOnCal = undefined, phase = null) {
+      const wrap = document.getElementById('admin-deadline-phases-wrap');
+      const div  = document.createElement('div');
+      div.style.cssText = 'display:flex;gap:0.4rem;margin-bottom:0.4rem;flex-wrap:wrap;align-items:center';
+
+      // show_on_calendar のデフォルト: 「納品」を含む名前のみ ON
+      const defaultShow = showOnCal !== undefined ? showOnCal : name.includes('納品');
+      const checkedAttr = defaultShow ? 'checked' : '';
+      const dateVal     = phase?.planned_date || '';
+      const noteVal     = phase?.note         || '';
+
+      div.innerHTML = `
+        <input class="sumioka-input admin-phase-name-input" type="text" placeholder="フェーズ名"
+          value="${escHtml(name)}" style="flex:1;min-width:80px;font-size:0.82rem;padding:0.3em 0.5em">
+        <input class="sumioka-input admin-phase-date-input" type="date"
+          value="${escHtml(dateVal)}" style="width:140px;font-size:0.82rem;padding:0.3em 0.5em">
+        <input class="sumioka-input admin-phase-note-input" type="text" placeholder="補足"
+          value="${escHtml(noteVal)}" style="flex:1;min-width:60px;font-size:0.82rem;padding:0.3em 0.5em">
+        <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.78rem;
+          white-space:nowrap;cursor:pointer;width:64px;justify-content:center"
+          title="カレンダーに表示する">
+          <input type="checkbox" class="admin-phase-show-cal-input" ${checkedAttr}
+            style="accent-color:Highlight;width:1rem;height:1rem">
+          カレンダー
+        </label>
+        <button type="button" style="font-size:0.72rem;background:none;border:1px solid #c0392b;
+          color:#c0392b;border-radius:3px;padding:0.15em 0.45em;cursor:pointer;width:32px"
+          onclick="this.parentElement.remove()">削除</button>
+      `;
+      wrap.appendChild(div);
+    }
+
+    /**
+     * Admin 案件フォームを開く（新規 or 編集）。
+     *
+     * v3.0.0: 「納品日」「進捗」単一フィールドを廃止し、
+     *   Kintai と同じ phases[] 構造のフェーズ入力欄に統合した。
+     *   各フェーズに show_on_calendar フラグを持たせ、
+     *   チェックされたフェーズのみ Kintai カレンダーに表示する。
+     *
+     * @param {Object|null} deadline - null=新規, Object=編集対象の案件
+     */
     function openAdminDeadlineForm(deadline) {
       const isNew = !deadline || !deadline.id;
-      document.getElementById('admin-deadline-form-title').textContent = isNew ? '案件を追加' : '案件を編集';
-      document.getElementById('admin-deadline-form-id').value         = isNew ? '' : (deadline.id       || '');
-      document.getElementById('admin-deadline-form-copy-source').value = '';  // コピー元IDは空
-      document.getElementById('admin-deadline-form-name').value       = isNew ? '' : (deadline.name     || '');
-      document.getElementById('admin-deadline-form-deadline').value   = isNew ? '' : (deadline.deadline || '');
-      // #11: statusはdatalist付きinputになったのでvalueを直接セットする
-      document.getElementById('admin-deadline-form-status').value     = isNew ? '' : (deadline.status   || '');
-      document.getElementById('admin-deadline-form-memo').value       = isNew ? '' : (deadline.memo     || '');
-      // カレンダー表示: デフォルトtrue。既存データに show_on_calendar が明示的に false のときのみ外す
-      document.getElementById('admin-deadline-form-show-cal').checked =
-        isNew ? true : (deadline.show_on_calendar !== false);
+      document.getElementById('admin-deadline-form-title').textContent  = isNew ? '案件を追加' : '案件を編集';
+      document.getElementById('admin-deadline-form-id').value           = isNew ? '' : (deadline.id  || '');
+      document.getElementById('admin-deadline-form-copy-source').value  = '';
+      document.getElementById('admin-deadline-form-name').value         = isNew ? '' : (deadline.title || deadline.name || '');
+      document.getElementById('admin-deadline-form-memo').value         = isNew ? '' : (deadline.memo || '');
 
       // スタッフ選択肢を最新状態で生成する
       const staffSel = document.getElementById('admin-deadline-form-staff');
@@ -4511,9 +4546,34 @@
         staffSel.appendChild(opt);
       });
 
-      const wrap = document.getElementById('admin-deadline-form-wrap');
-      wrap.style.display = '';
-      wrap.scrollIntoView({ behavior: 'smooth' });
+      // フェーズ欄を再構築する
+      // 既存案件に phases がない場合（旧Admin作成データ）は
+      // deadline/status から「納品」フェーズを1行自動生成してフォールバックする
+      const wrap = document.getElementById('admin-deadline-phases-wrap');
+      wrap.innerHTML = '';
+      let phases = Array.isArray(deadline?.phases) ? deadline.phases : [];
+      if (!isNew && phases.length === 0 && (deadline.deadline || deadline.status)) {
+        // 旧Admin作成案件: 単一フィールドをフェーズに変換して表示する
+        phases = [{
+          name             : '納品',
+          planned_date     : deadline.deadline || '',
+          note             : deadline.status   || '',
+          show_on_calendar : true,
+          done             : false,
+          done_date        : '',
+          status           : deadline.status   || '未着手',
+        }];
+      }
+      if (isNew) {
+        // 新規: 「納品」フェーズを1行デフォルトで追加する
+        adminAddPhaseRow('納品', true);
+      } else {
+        phases.forEach(p => adminAddPhaseRow(p.name || '', p.show_on_calendar, p));
+      }
+
+      const formWrap = document.getElementById('admin-deadline-form-wrap');
+      formWrap.style.display = '';
+      formWrap.scrollIntoView({ behavior: 'smooth' });
     }
 
     /**
@@ -4524,34 +4584,34 @@
      *
      * @param {Object} deadline - コピー元の案件データ
      */
+    /**
+     * 既存案件をコピーして「追加」フォームを開く。
+     * ID を空にして新規作成モードで開く。案件名に「（コピー）」を付与する。
+     * フェーズは元案件のものを引き継ぐ（done/done_date はリセット）。
+     */
     function copyAdminDeadline(deadline) {
-      document.getElementById('admin-deadline-form-title').textContent = '案件を追加（コピー）';
-      // IDを空にすることで upsert_deadline が新規作成モードになる
-      document.getElementById('admin-deadline-form-id').value          = '';
-      document.getElementById('admin-deadline-form-copy-source').value = deadline.id || '';
-      // 案件名に「（コピー）」を付与してコピー元と区別しやすくする
-      document.getElementById('admin-deadline-form-name').value        = `${deadline.name || ''}（コピー）`;
-      // 納品日・ステータス・補足はそのまま引き継ぐ（変更箇所だけ編集すればよい）
-      document.getElementById('admin-deadline-form-deadline').value    = deadline.deadline || '';
-      document.getElementById('admin-deadline-form-status').value      = deadline.status   || '';
-      document.getElementById('admin-deadline-form-memo').value        = deadline.memo     || '';
-      document.getElementById('admin-deadline-form-show-cal').checked  =
-        deadline.show_on_calendar !== false;
+      // openAdminDeadlineForm で一度フォームを初期化してから上書きする
+      openAdminDeadlineForm(null);
+      document.getElementById('admin-deadline-form-title').textContent  = '案件を追加（コピー）';
+      document.getElementById('admin-deadline-form-copy-source').value  = deadline.id || '';
+      document.getElementById('admin-deadline-form-name').value         = `${deadline.title || deadline.name || ''}（コピー）`;
+      document.getElementById('admin-deadline-form-memo').value         = deadline.memo || '';
 
-      // スタッフ選択肢を生成しコピー元担当者を初期選択する
+      // 担当者: コピー元と同じスタッフを選択状態にする
       const staffSel = document.getElementById('admin-deadline-form-staff');
-      staffSel.innerHTML = '<option value="">選択してください</option>';
-      (adminState.staffList || []).forEach(s => {
-        const opt = document.createElement('option');
-        opt.value       = s.id;
-        opt.textContent = s.name;
-        if (deadline.employee_id === s.id) opt.selected = true;
-        staffSel.appendChild(opt);
-      });
+      Array.from(staffSel.options).forEach(o => { o.selected = o.value === deadline.employee_id; });
 
-      const wrap = document.getElementById('admin-deadline-form-wrap');
-      wrap.style.display = '';
-      wrap.scrollIntoView({ behavior: 'smooth' });
+      // フェーズ: done/done_date をリセットしてコピーする
+      const wrap = document.getElementById('admin-deadline-phases-wrap');
+      wrap.innerHTML = '';
+      const phases = Array.isArray(deadline.phases) ? deadline.phases : [];
+      if (phases.length === 0) {
+        adminAddPhaseRow('納品', true);
+      } else {
+        phases.forEach(p => adminAddPhaseRow(p.name || '', p.show_on_calendar,
+          Object.assign({}, p, { done: false, done_date: '', status: '未着手' })
+        ));
+      }
     }
 
     /** Admin納期フォームを保存する（新規 or 更新）*/
@@ -4565,17 +4625,41 @@
       if (!name)    { showToast('案件名は必須です。', 'warning'); return; }
       if (!staffId) { showToast('担当者を選択してください。', 'warning'); return; }
 
+      // フェーズ欄からデータを収集する
+      const phaseWrap = document.getElementById('admin-deadline-phases-wrap');
+      // 既存案件の phases を引き継いで done/done_date/status を保持する
+      const existDL = (adminState.allDeadlines || []).find(d => d.id === id);
+      const existPhases = Array.isArray(existDL?.phases) ? existDL.phases : [];
+      const phases = Array.from(phaseWrap.children).map((row, ri) => {
+        const nameEl  = row.querySelector('.admin-phase-name-input');
+        const dateEl  = row.querySelector('.admin-phase-date-input');
+        const noteEl  = row.querySelector('.admin-phase-note-input');
+        const calEl   = row.querySelector('.admin-phase-show-cal-input');
+        const phaseName = nameEl?.value.trim() || '';
+        const exist   = existPhases[ri];
+        const showOnCal = calEl ? calEl.checked : phaseName.includes('納品');
+        return {
+          name             : phaseName,
+          planned_date     : dateEl?.value || '',
+          note             : noteEl?.value.trim() || '',
+          show_on_calendar : showOnCal,
+          done             : exist?.done      || false,
+          done_date        : exist?.done_date || '',
+          status           : exist?.status   || '未着手',
+        };
+      }).filter(p => p.name);
+
       showLoading('保存中...');
       const result = await callGAS('upsert_deadline', {
-        deadline_id      : id || undefined,
-        employee_id      : staffId,
-        assignee         : staffName,
-        name,
-        deadline         : document.getElementById('admin-deadline-form-deadline').value || '',
-        status           : document.getElementById('admin-deadline-form-status').value   || '',
-        memo             : document.getElementById('admin-deadline-form-memo').value.trim(),
-        // カレンダー表示フラグ: チェックボックスの状態を送信する
-        show_on_calendar : document.getElementById('admin-deadline-form-show-cal').checked,
+        deadline_id  : id || undefined,
+        employee_id  : staffId,
+        name         : staffName,  // 担当者名（GAS 側で NAME 列に保存）
+        title        : name,       // 案件名（GAS 側で TITLE 列に保存）
+        memo         : document.getElementById('admin-deadline-form-memo').value.trim(),
+        phases,
+        // 旧フィールドとの後方互換（GAS の upsertDeadline が受け取れるよう残す）
+        type         : '単発',
+        recur_mode   : 'manual',
       });
       hideLoading();
 
@@ -4644,20 +4728,7 @@
     }
 
     /**
-     * 管理者用納期一覧テーブルを描画する。
-     *
-     * GAS（adminAllTasks → rowToDeadline）が返すオブジェクト構造:
-     *   d.id          : 案件UUID
-     *   d.title       : 案件名        ← 旧コードは d.name を参照していた（誤り）
-     *   d.name        : 担当者名      ← 旧コードは d.assignee を参照していた（誤り）
-     *   d.employee_id : 担当者ID
-     *   d.phases      : フェーズ配列（各フェーズに planned_date / status 等）
-     *   d.memo        : 補足
-     *   d.progress    : 進捗(0-100)
-     *
-     * 納品日・ステータスは phases の中から「納品」を含む最初のフェーズを優先して表示する。
-     * フェーズが空の場合は '―' にフォールバックする。
-     *
+     * 管理者用納期一覧テーブルを描画する（新9列シート構造対応）。
      * @param {Object[]} deadlines
      */
     function renderAdminDeadlineTable(deadlines) {
@@ -4669,24 +4740,15 @@
         return;
       }
 
-      // 各案件の「代表フェーズ」を取得するヘルパー。
-      // 「納品」を含むフェーズを優先し、なければ最初のフェーズを使う。
-      function getPrimaryPhase(d) {
-        const phases = Array.isArray(d.phases) ? d.phases : [];
-        return phases.find(p => (p.name || '').includes('納品')) || phases[0] || null;
-      }
-
       const sortKey = document.getElementById('taskview-sort').value;
       const arr = [...deadlines];
 
       arr.sort((a, b) => {
-        // ソートキーも正しいフィールド名で比較する
-        if (sortKey === 'name')     return (a.name  || '').localeCompare(b.name  || '', 'ja'); // 担当者名
-        if (sortKey === 'title')    return (a.title || '').localeCompare(b.title || '', 'ja'); // 案件名
-        if (sortKey === 'progress') return (b.progress || 0) - (a.progress || 0);
-        // デフォルト: 代表フェーズの planned_date 順
-        const pa = getPrimaryPhase(a), pb = getPrimaryPhase(b);
-        const na = pa?.planned_date || '', nb = pb?.planned_date || '';
+        if (sortKey === 'name')     return (a.assignee || '').localeCompare(b.assignee || '', 'ja');
+        if (sortKey === 'title')    return (a.name     || '').localeCompare(b.name     || '', 'ja');
+        if (sortKey === 'progress') return (b.progress || 0) - (a.progress || 0); // 進捗降順
+        // デフォルト: 納品日順
+        const na = a.deadline || '', nb = b.deadline || '';
         if (!na && !nb) return 0; if (!na) return 1; if (!nb) return -1;
         return na.localeCompare(nb);
       });
@@ -4697,18 +4759,14 @@
       };
 
       tbody.innerHTML = arr.map(d => {
-        // 代表フェーズから納品日・ステータスを取得する
-        const phase   = getPrimaryPhase(d);
-        const nd      = phase?.planned_date || '';
-        const status  = phase?.status || '';
-
+        const nd       = d.deadline || '';
         const daysLeft = nd ? Math.round((new Date(nd) - new Date(today)) / 86400000) : null;
-        const isAlert  = daysLeft !== null && daysLeft <= 3 && status !== '納品済';
+        const isAlert  = daysLeft !== null && daysLeft <= 3 && d.status !== '納品済';
         const rowStyle = isAlert ? 'background:#fff5f5' : '';
-        const statusColor = statusColorMap[status] || '#6b7280';
+        const statusColor = statusColorMap[d.status] || '#6b7280';
 
         const daysLabel = daysLeft !== null
-          ? (daysLeft < 0   ? `<span style="color:#c0392b;font-size:0.72rem;font-weight:700">超過${Math.abs(daysLeft)}日</span>`
+          ? (daysLeft < 0  ? `<span style="color:#c0392b;font-size:0.72rem;font-weight:700">超過${Math.abs(daysLeft)}日</span>`
            : daysLeft === 0 ? `<span style="color:#c0392b;font-size:0.72rem;font-weight:700">本日</span>`
            : daysLeft <= 3  ? `<span style="color:#c0392b;font-size:0.72rem">残${daysLeft}日</span>`
            : `<span style="color:GrayText;font-size:0.72rem">残${daysLeft}日</span>`)
@@ -4716,10 +4774,10 @@
 
         return `
           <tr style="${rowStyle}">
-            <td style="font-size:0.85rem">${escHtml(d.name  || '―')}</td>
-            <td style="font-weight:600">${escHtml(d.title || '―')}</td>
+            <td style="font-size:0.85rem">${escHtml(d.assignee || '―')}</td>
+            <td style="font-weight:600">${escHtml(d.name || '―')}</td>
             <td style="white-space:nowrap;font-size:0.85rem">${escHtml(nd || '―')} ${daysLabel}</td>
-            <td style="color:${statusColor};font-weight:600;font-size:0.85rem">${escHtml(status || '―')}</td>
+            <td style="color:${statusColor};font-weight:600;font-size:0.85rem">${escHtml(d.status || '―')}</td>
             <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
               font-size:0.78rem;color:GrayText" title="${escHtml(d.memo || '')}">
               ${escHtml(d.memo || '―')}</td>
@@ -4727,6 +4785,7 @@
               <div style="display:flex;gap:0.3rem;flex-wrap:wrap">
                 <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em"
                   onclick="openAdminDeadlineForm(${escJson(d)})">編集</button>
+                <!-- #12: コピーして追加 → フォームに値をセット。案件名に「(コピー)」を付与してIDは空にする -->
                 <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em;color:#0369a1;border-color:#0369a1"
                   onclick="copyAdminDeadline(${escJson(d)})">コピー</button>
                 <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em;color:#c0392b;border-color:#c0392b"
