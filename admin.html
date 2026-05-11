@@ -1769,28 +1769,6 @@
         </div>
       </div>
 
-      <!-- ============================================================
-           v3.0.0 追加: Admin 権限ロール設定
-           空（なし）       = Admin ログイン不可の一般スタッフ
-           一般職員         = Admin ログイン可・給与タブ非表示
-           給与計算担当      = Admin ログイン可・給与タブ表示
-           社長             = 全機能（スタッフ削除も可）
-           ============================================================ -->
-      <div style="border-top:1px solid GrayText;margin:1rem 0 0.75rem;padding-top:0.85rem">
-        <p style="font-size:0.8rem;font-weight:700;color:GrayText;margin-bottom:0.75rem;
-          letter-spacing:0.03em">Admin 権限設定</p>
-        <div class="sumioka-form-group">
-          <label class="sumioka-label" for="modal-staff-admin-role">管理権限ロール</label>
-          <select class="sumioka-input" id="modal-staff-admin-role">
-            <option value="">なし（Adminログイン不可）</option>
-            <option value="一般職員">一般職員（給与情報非表示）</option>
-            <option value="給与計算担当">給与計算担当（給与情報表示）</option>
-            <option value="社長">社長（全機能）</option>
-          </select>
-          <p class="sumioka-input-hint">「なし」のスタッフは Kintai のみ使用できます</p>
-        </div>
-      </div>
-
       <div class="modal-footer">
         <button class="sumioka-btn" id="modal-staff-cancel">キャンセル</button>
         <button class="sumioka-btn sumioka-btn-primary" id="modal-staff-save">保存</button>
@@ -2046,7 +2024,6 @@
     const adminState = {
       employeeId          : '',
       name                : '',
-      adminRole           : '',  // v3.0.0: '社長' | '給与計算担当' | '一般職員' | ''
       staffList           : [],
       payrollData         : [],
       payrollSettings     : null,
@@ -2315,26 +2292,24 @@
 
       const { employee } = result.data;
 
-      // v3.0.0: admin_role ベースで権限チェックする。
-      // admin_role が空 = 一般スタッフ = Admin ログイン不可。
-      // GAS 側でも弾いているが、フロントでも多重防御として確認する。
-      const role = employee.admin_role || '';
-      if (!role) {
-        showLoginError('ログイン権限がありません。管理者にお問い合わせください。');
+      // 管理者フラグを確認する。一般スタッフはアクセス拒否
+      if (!employee.is_admin) {
+        // 【修正①】権限なしは「ログイン権限がありません。」で明示する。
+        // 旧: 「PIN またはパスワードが正しくありません。」と同じ文言で混乱を招いていた。
+        showLoginError('ログイン権限がありません。');
         return;
       }
 
       // エラーをクリア（前回のエラーが残らないよう）
       clearLoginError();
 
-      // セッション保存（adminRole も保存して画面制御に使う）
+      // セッション保存
       SumiokaStorage.save(SESSION_KEY, {
         employeeId : employee.id,
         name       : employee.name,
-        adminRole  : role,
       });
 
-      applySession({ employeeId: employee.id, name: employee.name, adminRole: role });
+      applySession({ employeeId: employee.id, name: employee.name });
       await loadInitialData();
     }
 
@@ -2380,38 +2355,28 @@
 
     /**
      * セッション情報を adminState に適用して管理者画面へ切り替える。
+     * A-1: リロード時のタブ復元のため localStorage に保存されたタブに遷移する。
      *
-     * v3.0.0: adminRole を受け取り、権限に応じてタブ表示を制御する。
-     *   社長          : 全タブ表示。削除ボタンあり。
-     *   給与計算担当   : 給与タブ表示。削除ボタンなし。
-     *   一般職員       : 給与タブ非表示。削除ボタンなし。
-     *
-     * @param {{ employeeId: string, name: string, adminRole: string }} session
+     * @param {{ employeeId: string, name: string }} session
      */
     function applySession(session) {
       adminState.employeeId = session.employeeId;
       adminState.name       = session.name;
-      adminState.adminRole  = session.adminRole || '';
 
       document.getElementById('admin-display-name').textContent = session.name;
       showScreen('admin');
 
-      // 給与タブは社長・給与計算担当のみ表示する
-      const canSeePayroll = ['社長', '給与計算担当'].includes(adminState.adminRole);
-      const payrollTab = document.querySelector('.admin-tab[data-tab="payroll"]');
-      if (payrollTab) payrollTab.style.display = canSeePayroll ? '' : 'none';
-
-      // リロード時は localStorage のタブを優先する。
-      // 給与タブが非表示なのに savedTab が 'payroll' だった場合はフォールバック。
-      const savedTab    = SumiokaStorage.load('admin_active_tab') || 'attendance';
-      const effectiveTab = (!canSeePayroll && savedTab === 'payroll') ? 'attendance' : savedTab;
+      // 【修正③】初期タブを 'attendance'（勤怠一覧）に変更する。
+      // 旧: 'dashboard' が初期表示だったが、現場では勤怠一覧を最初に確認する運用が多いため変更。
+      // リロード時は localStorage に保存されたタブを優先する（last-tab 復元は維持）。
+      const savedTab = SumiokaStorage.load('admin_active_tab') || 'attendance';
       document.querySelectorAll('.admin-tab').forEach(t => {
-        t.classList.toggle('active', t.dataset.tab === effectiveTab);
+        t.classList.toggle('active', t.dataset.tab === savedTab);
       });
       document.querySelectorAll('.tab-panel').forEach(p => {
-        p.classList.toggle('active', p.id === `panel-${effectiveTab}`);
+        p.classList.toggle('active', p.id === `panel-${savedTab}`);
       });
-      adminState._restoredTab = effectiveTab;
+      adminState._restoredTab = savedTab;
     }
 
     /**
@@ -2422,7 +2387,7 @@
       if (!ok) return;
 
       SumiokaStorage.remove(SESSION_KEY);
-      Object.assign(adminState, { employeeId: '', name: '', adminRole: '', staffList: [] });
+      Object.assign(adminState, { employeeId: '', name: '', staffList: [] });
 
       document.getElementById('input-pin').value      = '';
       document.getElementById('input-password').value = '';
@@ -3707,29 +3672,13 @@
             <td>${escHtml(s.employment || '―')}</td>
             <td>${fmtTime(s.scheduled_end)}</td>
             <td>${wageLabel}<br>${insDisplay}</td>
-            <td>${(() => {
-              // v3.0.0: admin_role を色分けバッジで表示する。
-              // 旧データ(is_admin: true)は '社長' にフォールバック。
-              const role = s.admin_role || (s.is_admin ? '社長' : '');
-              const roleMap = {
-                '社長'        : { label: '社長',        color: '#7c3aed', bg: '#ede9fe' },
-                '給与計算担当' : { label: '給与計算担当', color: '#1d4ed8', bg: '#dbeafe' },
-                '一般職員'    : { label: '一般職員',     color: '#065f46', bg: '#d1fae5' },
-              };
-              const r = roleMap[role];
-              return r
-                ? `<span style="font-size:0.72rem;font-weight:700;padding:0.15em 0.5em;
-                    border-radius:3px;color:${r.color};background:${r.bg}">${escHtml(r.label)}</span>`
-                : '―';
-            })()}</td>
+            <td>${s.is_admin ? '<span class="badge badge-blue">管理者</span>' : '―'}</td>
             <td>
               <div class="action-btn-group">
                 <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
                   onclick="openStaffModal(${escJson(s)})">編集</button>
-                ${adminState.adminRole === '社長'
-                  ? `<button class="btn-reject" style="font-size:0.78rem"
-                      onclick="deleteStaff('${escHtml(s.id)}', '${escHtml(s.name)}')">削除</button>`
-                  : ''}
+                <button class="btn-reject" style="font-size:0.78rem"
+                  onclick="deleteStaff('${escHtml(s.id)}', '${escHtml(s.name)}')">削除</button>
               </div>
             </td>
           </tr>
@@ -3858,16 +3807,6 @@
       document.getElementById('modal-staff-ins-pension').checked    = isNew ? false : !!staff.ins_pension;
       document.getElementById('modal-staff-ins-employment').checked = isNew ? false : !!staff.ins_employment;
 
-      // v3.0.0: 管理権限ロールを設定する。
-      // 旧データ(is_admin: true)が来た場合は '社長' にフォールバックする。
-      const adminRoleEl = document.getElementById('modal-staff-admin-role');
-      if (isNew) {
-        adminRoleEl.value = '';
-      } else {
-        const role = staff.admin_role || (staff.is_admin ? '社長' : '');
-        adminRoleEl.value = ['社長', '給与計算担当', '一般職員'].includes(role) ? role : '';
-      }
-
       document.getElementById('modal-edit-staff').classList.remove('hidden');
     }
 
@@ -3944,9 +3883,6 @@
         ins_care         : insCare,
         ins_pension      : insPension,
         ins_employment   : insEmployment,
-
-        // v3.0.0 追加: 管理権限ロール
-        admin_role       : document.getElementById('modal-staff-admin-role').value,
       };
 
       const btn    = document.getElementById('modal-staff-save');
@@ -4808,8 +4744,9 @@
       const arr = [...deadlines];
 
       arr.sort((a, b) => {
-        if (sortKey === 'name')     return (a.assignee || '').localeCompare(b.assignee || '', 'ja');
-        if (sortKey === 'title')    return (a.name     || '').localeCompare(b.name     || '', 'ja');
+        // GAS が返すキー: name=担当者名, title=案件名
+        if (sortKey === 'name')     return (a.name  || '').localeCompare(b.name  || '', 'ja');
+        if (sortKey === 'title')    return (a.title  || '').localeCompare(b.title || '', 'ja');
         if (sortKey === 'progress') return (b.progress || 0) - (a.progress || 0); // 進捗降順
         // デフォルト: 納品日順
         const na = a.deadline || '', nb = b.deadline || '';
@@ -4838,8 +4775,8 @@
 
         return `
           <tr style="${rowStyle}">
-            <td style="font-size:0.85rem">${escHtml(d.assignee || '―')}</td>
-            <td style="font-weight:600">${escHtml(d.name || '―')}</td>
+            <td style="font-size:0.85rem">${escHtml(d.name  || '―')}</td>
+            <td style="font-weight:600">${escHtml(d.title || '―')}</td>
             <td style="white-space:nowrap;font-size:0.85rem">${escHtml(nd || '―')} ${daysLabel}</td>
             <td style="color:${statusColor};font-weight:600;font-size:0.85rem">${escHtml(d.status || '―')}</td>
             <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
