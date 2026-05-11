@@ -2211,15 +2211,26 @@ p:last-child { margin-bottom: 0; }
             </label>
             <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer" id="comp-paid-label">
               <input type="radio" name="compensation-type" value="paid" id="comp-paid">
-              <span>有給消化する</span>
+              <!-- 種別が「休み」→「有給消化する」、「遅刻/早退」→「半日有給を使う」と
+                   absence-type の change ハンドラが動的に書き換える -->
+              <span id="comp-paid-text">有給消化する</span>
             </label>
           </div>
         </div>
 
-        <!-- ⑥ 残有給日数表示（有給を選んだときのみ表示） -->
+        <!-- ⑥ 残有給日数 ＋ 半日有給の時間帯説明（有給を選んだときのみ表示） -->
         <div id="paid-leave-info" style="display:none;background:#f0f7ff;border-radius:6px;
           padding:0.6rem 0.85rem;font-size:0.82rem;color:#1a6bbf;margin-bottom:0.75rem">
           残有給日数：<strong id="paid-leave-remaining">―</strong> 日
+          <!-- 遅刻・早退のときのみ表示する半日有給の時間帯説明
+               （JSで id="paid-leave-halfday-note" の display を切り替える） -->
+          <div id="paid-leave-halfday-note" style="display:none;margin-top:0.4rem;
+            padding:0.4rem 0.6rem;background:#e0eeff;border-radius:4px;
+            font-size:0.79rem;color:#1a4a8a;line-height:1.6">
+            📋 <strong>半日有給の時間帯</strong><br>
+            　午前半休：10:00 〜 12:05<br>
+            　午後半休：12:55 〜 15:00
+          </div>
         </div>
 
         <!-- ⑦ 補填日時入力（「補填する」を選んだときのみ表示） -->
@@ -2661,9 +2672,17 @@ p:last-child { margin-bottom: 0; }
             <div>1秒でも遅れた場合、給与の発生は <strong>15分後から</strong> になります。</div>
             <div style="margin-top:0.2rem;color:#92400e">例：9:01 に打刻 → 9:15 から給与発生</div>
           </div>
-          <div style="margin-top:0.6rem;padding:0.65rem 0.85rem;
-            background:#fff8e1;border-radius:6px;font-size:0.8rem;color:#92400e">
-            押し忘れに気づいたら、すぐに管理者に連絡してください。
+          <!-- 打刻修正・追加は管理者側でのみ行えることを明記
+               【理由】スタッフ側から打刻を変更できると不正操作の抑止が難しくなるため
+                        修正権限を管理者に限定している（仕様） -->
+          <div style="margin-top:0.6rem;padding:0.75rem 0.85rem;
+            background:#fff0f0;border:1px solid #f87171;border-radius:6px;font-size:0.82rem;color:#991b1b;line-height:1.6">
+            <div style="font-weight:700;margin-bottom:0.2rem">⚠️ 打刻の修正・追加について</div>
+            <div>打刻の修正・追加は <strong>管理者側でのみ</strong> 行えます。</div>
+            <div>押し忘れ・間違えに気づいたら、<strong>すぐに管理者へ連絡</strong>してください。</div>
+            <div style="margin-top:0.3rem;color:#7f1d1d;font-size:0.79rem">
+              ※ スタッフ画面から打刻済みのデータを変更することはできません。
+            </div>
           </div>
         </div>
 
@@ -2677,7 +2696,58 @@ p:last-child { margin-bottom: 0; }
             <p>① <strong>「申請」タブ</strong>を開く</p>
             <p>② 種別（休み / 遅刻 / 早退）を選ぶ</p>
             <p>③ 対象日・時刻（遅刻/早退のみ）・理由を入力</p>
-            <p>④ <strong>「申請する」</strong>ボタンを押す → カレンダーに即反映</p>
+            <p>④ 補填・有給消化が必要なら選択する</p>
+            <p>⑤ <strong>「申請する」</strong>ボタンを押す → カレンダーに即反映</p>
+          </div>
+          <!-- 有給（終日・半日）のルールを明記 -->
+          <div style="margin-top:0.85rem;padding:0.75rem 0.85rem;
+            background:#f0f7ff;border:1px solid #93c5fd;border-radius:6px;font-size:0.82rem;color:#1e3a5f;line-height:1.7">
+            <div style="font-weight:700;margin-bottom:0.35rem">📋 有給申請ルール</div>
+            <div style="margin-bottom:0.2rem">
+              <strong>休み（終日）</strong>：「有給消化する」を選択 → 1日分の有給を使用
+            </div>
+            <div style="margin-bottom:0.5rem">
+              <strong>遅刻・早退（半日）</strong>：「半日有給を使う」を選択 → 0.5日分の有給を使用
+            </div>
+            <div style="padding:0.4rem 0.6rem;background:#dbeafe;border-radius:4px;font-size:0.8rem;color:#1a4a8a">
+              🕐 半日有給の対象時間帯<br>
+              　<strong>午前半休</strong>：10:00 〜 12:05<br>
+              　<strong>午後半休</strong>：12:55 〜 15:00
+            </div>
+          </div>
+        </div>
+
+        <!-- 休憩時間の集計ルール -->
+        <!-- 【理由】退勤時に入力した休憩時間が合算されて給与計算に使われることを
+                    スタッフが理解していないとトラブルになりやすいため、具体例で明記する -->
+        <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
+          margin-bottom:1rem;background:Canvas">
+          <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
+            休憩時間の集計ルール
+          </p>
+          <div style="font-size:0.88rem;line-height:1.8;color:CanvasText">
+            <p>退勤打刻のときに入力した休憩時間が <strong>合算</strong> されて実働時間を計算します。</p>
+            <p style="margin-top:0.4rem">途中の細かい休憩（5分・10分など）は <strong>まとめて退勤時に入力</strong> してください。</p>
+          </div>
+          <!-- 具体例：10時〜15時、休憩合計60分 -->
+          <div style="margin-top:0.85rem;padding:0.75rem 0.85rem;
+            background:#f0fdf4;border:1px solid #86efac;border-radius:6px;font-size:0.82rem;color:#14532d;line-height:1.7">
+            <div style="font-weight:700;margin-bottom:0.35rem">📝 入力例</div>
+            <div>出勤 10:00 ／ 退勤 15:00 の日に、</div>
+            <div style="margin:0.3rem 0 0.3rem 1em;font-size:0.8rem;color:#166534">
+              11:00〜11:05（5分）＋ 12:05〜12:55（50分）＋ 13:55〜14:00（5分）<br>
+              → 休憩合計 <strong>60分</strong>
+            </div>
+            <div>退勤時の休憩入力欄に <strong>「60分」</strong> と入力して打刻します。</div>
+            <div style="margin-top:0.4rem;color:#166534;font-size:0.8rem">
+              実働時間：5時間 − 60分 ＝ <strong>4時間（240分）</strong>
+            </div>
+          </div>
+          <!-- 15分単位の給与計算ルールと休憩の関係を補足 -->
+          <div style="margin-top:0.6rem;padding:0.65rem 0.85rem;
+            background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;font-size:0.8rem;color:#78350f;line-height:1.6">
+            給与計算は実働時間を <strong>15分単位（切り捨て）</strong> で行います。<br>
+            例：実働 4時間7分 → <strong>4時間（240分）</strong> として計算
           </div>
         </div>
 
@@ -2724,9 +2794,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.15 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.16 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.15</div>
+  <div class="version-badge" id="app-version">v1.2.16</div>
 
 
   <script>
@@ -2902,14 +2972,29 @@ p:last-child { margin-bottom: 0; }
           timeLabel.textContent = type === '遅刻' ? '出勤予定時刻' : '退勤予定時刻';
         }
 
-        // 有給消化ラジオボタン：休みのときのみ表示
-        if (paidLabel) paidLabel.style.display = type === '休み' ? '' : 'none';
+        // ── 有給消化ラジオボタンの制御 ──────────────────────────────
+        // 【変更理由】
+        //   遅刻・早退でも半日（午前 10:00〜12:05 / 午後 12:55〜15:00）の
+        //   有給申請が可能になったため、全種別で有給選択肢を表示する。
+        //   ただし休み（終日）と遅刻・早退（半日）では意味が異なるため、
+        //   ラベル文言と補足説明を種別に応じて切り替える。
+        const paidText        = document.getElementById('comp-paid-text');
+        const halfdayNote     = document.getElementById('paid-leave-halfday-note');
+        const isAbsence       = type === '休み';
 
-        // 遅刻・早退で有給を選んでいた場合は「しない」に戻す
-        if (type !== '休み') {
-          const noneRadio = document.getElementById('comp-none');
-          if (noneRadio) noneRadio.checked = true;
-          updateCompensationUI('none');
+        // 有給ラジオボタン：全種別で表示（非表示にしない）
+        if (paidLabel) paidLabel.style.display = '';
+
+        // ラベル文言：休み→「有給消化する」、遅刻/早退→「半日有給を使う」
+        if (paidText) {
+          paidText.textContent = isAbsence ? '有給消化する' : '半日有給を使う';
+        }
+
+        // 半日有給の時間帯説明：有給を選択中かつ遅刻/早退のときのみ表示する。
+        // updateCompensationUI 側でも再評価するため、ここでは現在選択中の値で判定する。
+        const currentComp = document.querySelector('input[name="compensation-type"]:checked')?.value;
+        if (halfdayNote) {
+          halfdayNote.style.display = (!isAbsence && currentComp === 'paid') ? '' : 'none';
         }
       });
 
@@ -3998,14 +4083,24 @@ p:last-child { margin-bottom: 0; }
      * @param {'none'|'fillup'|'paid'} value
      */
     function updateCompensationUI(value) {
-      const fillupWrap   = document.getElementById('fillup-wrap');
-      const paidInfo     = document.getElementById('paid-leave-info');
+      const fillupWrap    = document.getElementById('fillup-wrap');
+      const paidInfo      = document.getElementById('paid-leave-info');
+      const halfdayNote   = document.getElementById('paid-leave-halfday-note');
 
       // 補填入力欄：「補填する」のときのみ表示
       if (fillupWrap) fillupWrap.style.display = value === 'fillup' ? '' : 'none';
 
-      // 有給残日数バナー：「有給消化する」のときのみ表示
+      // 有給残日数バナー：「有給消化する / 半日有給を使う」のときのみ表示
       if (paidInfo) paidInfo.style.display = value === 'paid' ? '' : 'none';
+
+      // 半日有給の時間帯説明：有給選択中かつ遅刻/早退のときのみ表示する。
+      // 【理由】休みの場合は終日有給なので時間帯の説明は不要。
+      //        遅刻・早退は半日有給扱いのため、申請者が時間帯を把握できるよう案内する。
+      if (halfdayNote) {
+        const currentType = document.getElementById('absence-type')?.value;
+        const isHalfday   = currentType === '遅刻' || currentType === '早退';
+        halfdayNote.style.display = (value === 'paid' && isHalfday) ? '' : 'none';
+      }
     }
 
     /**
