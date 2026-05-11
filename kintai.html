@@ -2874,8 +2874,10 @@ p:last-child { margin-bottom: 0; }
       // 時刻選択 datalist を 5分刻みで初期化する（遅刻・早退時刻の入力に使う）
       // 理由: 休憩が1時間ごとに5分あるため5分単位の精度が必要。
       //        datalist により「候補から選択」と「手入力」を両立する。
-      buildAbsenceTimelist('absence-time-list');
-      buildAbsenceTimelist('fillup-time-list');
+      // 遅刻・早退の申請時刻は就業時間内（10:00〜15:00）のみ選択できれば十分
+      buildAbsenceTimelist('absence-time-list', 10, 15);
+      // 補填は通常勤務外の時間帯も使うため、9:00〜16:00 の広めの範囲を用意する
+      buildAbsenceTimelist('fillup-time-list', 9, 16);
 
       // イベントリスナーを設定（bindEventsより前に実行すると一部のイベントが効かないため先に設定）
       bindEvents();
