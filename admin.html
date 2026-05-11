@@ -1768,19 +1768,17 @@
           </p>
         </div>
 
-        <!-- 管理者権限フラグ。ONにすると admin.html にログインできるようになる。
-             誤操作防止のため、意図的に社保セクションと分けて単独で配置する。 -->
+        <!-- 管理者権限ロール。
+             '権限なし' を選ぶと admin_role='' として保存され Admin ログイン不可になる。
+             '社長' / '給与計算担当' / '一般職員' は Admin ログイン可。 -->
         <div class="sumioka-form-group">
-          <label class="sumioka-label">管理者権限</label>
-          <label style="display:inline-flex;align-items:center;gap:0.5rem;font-size:0.88rem;
-            cursor:pointer;padding:0.45rem 0.75rem;border:1px solid GrayText;border-radius:5px;
-            margin-top:0.3rem">
-            <input type="checkbox" id="modal-staff-is-admin" style="accent-color:Highlight">
-            <span>管理者ダッシュボードへのログインを許可する</span>
-          </label>
-          <p style="font-size:0.75rem;color:#c0392b;margin-top:0.4rem">
-            ⚠ ONにすると勤怠・スタッフ・給与データへのアクセス権が付与されます
-          </p>
+          <label class="sumioka-label" for="modal-staff-admin-role">管理者権限</label>
+          <select class="sumioka-input" id="modal-staff-admin-role">
+            <option value="権限なし">権限なし（Admin ログイン不可）</option>
+            <option value="一般職員">一般職員</option>
+            <option value="給与計算担当">給与計算担当</option>
+            <option value="社長">社長</option>
+          </select>
         </div>
       </div>
 
@@ -3687,7 +3685,15 @@
             <td>${escHtml(s.employment || '―')}</td>
             <td>${fmtTime(s.scheduled_end)}</td>
             <td>${wageLabel}<br>${insDisplay}</td>
-            <td>${s.is_admin ? '<span class="badge badge-blue">管理者</span>' : '―'}</td>
+            <td>${(() => {
+              // admin_role の値に応じてバッジ色を変える。
+              // '' = 権限なし（ログイン不可）はグレー表示。
+              const role = s.admin_role || '';
+              if (role === '社長')         return '<span class="badge badge-blue">社長</span>';
+              if (role === '給与計算担当') return '<span class="badge badge-blue">給与計算担当</span>';
+              if (role === '一般職員')     return '<span class="badge" style="background:#e5e7eb;color:#374151">一般職員</span>';
+              return '<span style="color:GrayText;font-size:0.82rem">権限なし</span>';
+            })()}</td>
             <td>
               <div class="action-btn-group">
                 <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
@@ -3822,8 +3828,11 @@
       document.getElementById('modal-staff-ins-pension').checked    = isNew ? false : !!staff.ins_pension;
       document.getElementById('modal-staff-ins-employment').checked = isNew ? false : !!staff.ins_employment;
 
-      // 管理者権限フラグ: 新規はデフォルト OFF（最小権限の原則）
-      document.getElementById('modal-staff-is-admin').checked = isNew ? false : !!staff.is_admin;
+      // 管理者権限ロールを設定する。
+      // admin_role が '' または未定義の場合は '権限なし' を選択する。
+      // 新規追加時は安全側のデフォルトとして '権限なし'。
+      const adminRole = isNew ? '権限なし' : (staff.admin_role || '権限なし');
+      document.getElementById('modal-staff-admin-role').value = adminRole;
 
       document.getElementById('modal-edit-staff').classList.remove('hidden');
     }
@@ -3864,8 +3873,11 @@
       const insPension    = document.getElementById('modal-staff-ins-pension').checked;
       const insEmployment = document.getElementById('modal-staff-ins-employment').checked;
 
-      // 管理者権限フラグを収集する（GAS側の adminUpdateStaff / adminAddStaff は is_admin を受け取り保存済み）
-      const isAdmin = document.getElementById('modal-staff-is-admin').checked;
+      // 管理者権限ロールを収集する。
+      // UI上は '権限なし' と明記するが、GAS（authenticateEmployee）は '' を
+      // ログイン不可の判定値として使うため、保存時に '' に変換する。
+      const adminRoleRaw = document.getElementById('modal-staff-admin-role').value;
+      const adminRole    = adminRoleRaw === '権限なし' ? '' : adminRoleRaw;
 
       const isNew = !id;
 
@@ -3905,8 +3917,8 @@
         ins_pension      : insPension,
         ins_employment   : insEmployment,
 
-        // 管理者権限フラグ
-        is_admin         : isAdmin,
+        // 管理者権限ロール（'' = 権限なし = Admin ログイン不可）
+        admin_role       : adminRole,
       };
 
       const btn    = document.getElementById('modal-staff-save');
