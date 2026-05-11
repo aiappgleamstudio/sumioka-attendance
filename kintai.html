@@ -2724,9 +2724,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.14 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.15 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.14</div>
+  <div class="version-badge" id="app-version">v1.2.15</div>
 
 
   <script>
@@ -4993,11 +4993,26 @@ p:last-child { margin-bottom: 0; }
     }
 
     /** フォームのフェーズ欄に1行追加する */
-    function addPhaseRow(name = '') {
-      const wrap     = document.getElementById('deadline-phases-wrap');
-      const phaseIdx = wrap.children.length;
-      const div      = document.createElement('div');
+    /**
+     * フェーズ行を1行追加する。
+     *
+     * show_on_calendar のデフォルト値:
+     *   フェーズ名に「納品」を含む場合のみ ON、それ以外は OFF。
+     *   ユーザーが名前を入力するたびに JS で動的に切り替えるのは複雑になるため、
+     *   追加時点の name 引数で初期値を決定し、あとは手動で変更してもらう運用とする。
+     *
+     * @param {string} name              - フェーズ名の初期値
+     * @param {boolean} [showOnCal]      - カレンダー表示の初期値（省略時は名前で自動判定）
+     */
+    function addPhaseRow(name = '', showOnCal = undefined) {
+      const wrap = document.getElementById('deadline-phases-wrap');
+      const div  = document.createElement('div');
       div.style.cssText = 'display:flex;gap:0.4rem;margin-bottom:0.4rem;flex-wrap:wrap;align-items:center';
+
+      // show_on_calendar のデフォルト: 「納品」を含む名前のみ ON
+      const defaultShow = showOnCal !== undefined ? showOnCal : name.includes('納品');
+      const checkedAttr = defaultShow ? 'checked' : '';
+
       div.innerHTML = `
         <input class="sumioka-input phase-name-input" type="text" placeholder="フェーズ名"
           value="${escHtml(name)}" style="flex:1;min-width:80px;font-size:0.82rem;padding:0.3em 0.5em">
@@ -5005,6 +5020,12 @@ p:last-child { margin-bottom: 0; }
           style="width:140px;font-size:0.82rem;padding:0.3em 0.5em">
         <input class="sumioka-input phase-note-input" type="text" placeholder="補足"
           style="flex:1;min-width:60px;font-size:0.82rem;padding:0.3em 0.5em">
+        <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.78rem;
+          white-space:nowrap;cursor:pointer" title="カレンダーに表示する">
+          <input type="checkbox" class="phase-show-cal-input" ${checkedAttr}
+            style="accent-color:Highlight;width:1rem;height:1rem">
+          カレンダー
+        </label>
         <button type="button" style="font-size:0.72rem;background:none;border:1px solid #c0392b;
           color:#c0392b;border-radius:3px;padding:0.15em 0.45em;cursor:pointer"
           onclick="this.parentElement.remove()">削除</button>
@@ -5041,6 +5062,11 @@ p:last-child { margin-bottom: 0; }
       phases.forEach(p => {
         const div = document.createElement('div');
         div.style.cssText = 'display:flex;gap:0.4rem;margin-bottom:0.4rem;flex-wrap:wrap;align-items:center';
+        // show_on_calendar: 保存済み値を優先。未設定の場合は「納品」を含む名前のみ ON
+        const showOnCal = p.show_on_calendar !== undefined
+          ? p.show_on_calendar
+          : (p.name || '').includes('納品');
+        const checkedAttr = showOnCal ? 'checked' : '';
         div.innerHTML = `
           <input class="sumioka-input phase-name-input" type="text" placeholder="フェーズ名"
             value="${escHtml(p.name || '')}" style="flex:1;min-width:80px;font-size:0.82rem;padding:0.3em 0.5em">
@@ -5049,6 +5075,12 @@ p:last-child { margin-bottom: 0; }
             style="width:140px;font-size:0.82rem;padding:0.3em 0.5em">
           <input class="sumioka-input phase-note-input" type="text" placeholder="補足"
             value="${escHtml(p.note || '')}" style="flex:1;min-width:60px;font-size:0.82rem;padding:0.3em 0.5em">
+          <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.78rem;
+            white-space:nowrap;cursor:pointer" title="カレンダーに表示する">
+            <input type="checkbox" class="phase-show-cal-input" ${checkedAttr}
+              style="accent-color:Highlight;width:1rem;height:1rem">
+            カレンダー
+          </label>
           <button type="button" style="font-size:0.72rem;background:none;border:1px solid #c0392b;
             color:#c0392b;border-radius:3px;padding:0.15em 0.45em;cursor:pointer"
             onclick="this.parentElement.remove()">削除</button>
@@ -5079,18 +5111,23 @@ p:last-child { margin-bottom: 0; }
       const existPhases = Array.isArray(existDL?.phases) ? existDL.phases : [];
 
       const phases = rows.map((row, ri) => {
-        const nameEl = row.querySelector('.phase-name-input');
-        const dateEl = row.querySelector('.phase-date-input');
-        const noteEl = row.querySelector('.phase-note-input');
-        const name   = nameEl?.value.trim() || '';
-        const exist  = existPhases[ri];
+        const nameEl    = row.querySelector('.phase-name-input');
+        const dateEl    = row.querySelector('.phase-date-input');
+        const noteEl    = row.querySelector('.phase-note-input');
+        const calEl     = row.querySelector('.phase-show-cal-input');
+        const name      = nameEl?.value.trim() || '';
+        const exist     = existPhases[ri];
+        // show_on_calendar: チェックボックスの現在値を保存する。
+        // チェックボックスがない行（旧データ由来）は名前で自動判定する。
+        const showOnCal = calEl ? calEl.checked : name.includes('納品');
         return {
           name,
-          planned_date : dateEl?.value || '',
-          note         : noteEl?.value.trim() || '',
-          done         : exist?.done      || false,
-          done_date    : exist?.done_date || '',
-          status       : exist?.status   || '未着手',
+          planned_date     : dateEl?.value || '',
+          note             : noteEl?.value.trim() || '',
+          show_on_calendar : showOnCal,
+          done             : exist?.done      || false,
+          done_date        : exist?.done_date || '',
+          status           : exist?.status   || '未着手',
         };
       }).filter(p => p.name);
 
