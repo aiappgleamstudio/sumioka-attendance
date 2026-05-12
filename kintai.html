@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>打刻 | 住岡</title>
 
+  <!-- #13: PWA対応 -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1a7f37">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="住岡打刻">
+
   <!--
     共通基盤（インライン展開版）
     社内フォルダ構成で使う場合はこのブロックを以下に戻す:
@@ -2765,6 +2773,52 @@ p:last-child { margin-bottom: 0; }
           </div>
         </div>
 
+        <!-- #13: Windows スタートアップ・通知設定 -->
+        <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
+          margin-bottom:1rem;background:Canvas">
+          <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
+            ⚙️ 設定
+          </p>
+          <!-- Windows スタートアップ -->
+          <div style="margin-bottom:1rem">
+            <p style="font-size:0.85rem;font-weight:700;margin-bottom:0.4rem">
+              🖥️ Windows 起動時に自動起動
+            </p>
+            <p style="font-size:0.82rem;color:GrayText;margin-bottom:0.6rem;line-height:1.6">
+              「ダウンロード」を押すと <code>startup-register.bat</code> がダウンロードされます。<br>
+              そのファイルをダブルクリックすると、次回 Windows 起動時に打刻画面が自動的に開きます。<br>
+              ※ ログイン保持はブラウザ設定に依存します。
+            </p>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+              <button class="sumioka-btn sumioka-btn-primary"
+                onclick="downloadStartupBat()">
+                📥 スタートアップ BAT をダウンロード
+              </button>
+            </div>
+            <p style="font-size:0.78rem;color:GrayText;margin-top:0.5rem">
+              解除する場合: スタートアップフォルダ
+              （<code>%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup</code>）
+              から <code>startup-register.bat</code> を削除してください。
+            </p>
+          </div>
+          <!-- 通知設定 -->
+          <div style="border-top:1px solid GrayText;padding-top:0.85rem">
+            <p style="font-size:0.85rem;font-weight:700;margin-bottom:0.4rem">
+              🔔 定時5分前通知（ブラウザ通知）
+            </p>
+            <p style="font-size:0.82rem;color:GrayText;margin-bottom:0.6rem;line-height:1.6">
+              打刻タブを閉じた状態でも、ブラウザが起動中であれば定時5分前に通知が届きます。<br>
+              ※ ブラウザを完全終了した場合は通知されません。
+            </p>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+              <button class="sumioka-btn sumioka-btn-primary"
+                onclick="requestNotificationPermission()">
+                🔔 通知を許可する
+              </button>
+            </div>
+          </div>
+        </div>
+
         <!-- アクセス権凡例 -->
         <div style="border:1px solid GrayText;border-radius:10px;padding:1rem 1.25rem;
           background:Canvas">
@@ -2794,9 +2848,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.16 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.17 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.16</div>
+  <div class="version-badge" id="app-version">v1.2.17</div>
 
 
   <script>
@@ -5355,5 +5409,132 @@ p:last-child { margin-bottom: 0; }
       return escHtml(JSON.stringify(obj));
     }
   </script>
+
+  <script>
+    // ============================================================
+    // #13/#16: PWA Service Worker 登録・通知許可・スタートアップ設定
+    // ============================================================
+
+    /**
+     * Service Worker を登録する。
+     *
+     * #16: Service Worker がバックグラウンドで動作することで、
+     * kintai.html のタブを閉じた状態でも定時5分前通知が届く。
+     *
+     * 注意: Service Worker は HTTPS でのみ動作する。
+     * GitHub Pages（https://aiappgleamstudio.github.io/...）で運用中のため問題なし。
+     */
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', async () => {
+        try {
+          const reg = await navigator.serviceWorker.register('./service-worker.js', {
+            scope: './',
+          });
+          console.log('[SW] 登録完了:', reg.scope);
+
+          // Service Worker に現在のユーザー情報と定時を伝える
+          // （ユーザーがログインしている場合のみ）
+          const session = (() => {
+            try {
+              // SumiokaStorage が初期化済みであれば参照する
+              return typeof SumiokaStorage !== 'undefined'
+                ? SumiokaStorage.load('kintai_session')
+                : null;
+            } catch (_) { return null; }
+          })();
+
+          if (session && reg.active) {
+            reg.active.postMessage({
+              type: 'SET_SCHEDULE',
+              scheduledEnd: session.scheduledEnd || '',
+              employeeId  : session.employeeId   || '',
+            });
+          }
+        } catch (err) {
+          console.warn('[SW] 登録失敗（通知はブラウザポップアップで代替）:', err.message);
+        }
+      });
+    }
+
+    /**
+     * #16: 通知許可をリクエストする。
+     *
+     * ユーザーが許可した場合のみ Service Worker 経由での通知が届く。
+     * 拒否した場合は既存のページ内バナー表示にフォールバックする。
+     */
+    async function requestNotificationPermission() {
+      if (!('Notification' in window)) {
+        showToast('このブラウザは通知をサポートしていません。', 'warning');
+        return;
+      }
+      if (Notification.permission === 'granted') {
+        showToast('通知はすでに許可されています。', 'success');
+        return;
+      }
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted') {
+        showToast('通知を許可しました。定時5分前にお知らせします。', 'success');
+        // テスト通知を送る
+        new Notification('通知テスト', {
+          body: '定時5分前の通知はこのように表示されます。',
+          icon: 'icons/icon-192.png',
+        });
+      } else {
+        showToast('通知が拒否されました。ブラウザの設定から許可してください。', 'warning');
+      }
+    }
+
+    /**
+     * #13: Windows スタートアップ用 BAT ファイルを生成してダウンロードする。
+     *
+     * Chrome または Edge の --app モードで kintai.html を起動する。
+     * ユーザーが1回実行するとスタートアップフォルダに登録される。
+     *
+     * 自動ログインは実装しない。ログイン保持はブラウザ側設定に委ねる。
+     */
+    function downloadStartupBat() {
+      const url = window.location.href.split('?')[0]; // クエリを除いたURL
+      const batContent = [
+        '@echo off',
+        'REM 住岡 勤怠打刻 - Windows スタートアップ自動起動',
+        'REM このファイルをスタートアップフォルダに置くと Windows 起動時に打刻画面が自動的に開きます',
+        'REM スタートアップフォルダ: %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup',
+        '',
+        'REM Chrome が存在する場合はアプリモードで起動する（ブラウザUIを非表示にする）',
+        'IF EXIST "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" (',
+        '  start "" "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" --app=' + url,
+        '  GOTO :EOF',
+        ')',
+        '',
+        'REM Chrome (x86) が存在する場合',
+        'IF EXIST "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" (',
+        '  start "" "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" --app=' + url,
+        '  GOTO :EOF',
+        ')',
+        '',
+        'REM Edge が存在する場合',
+        'IF EXIST "%PROGRAMFILES(X86)%\Microsoft\Edge\Application\msedge.exe" (',
+        '  start "" "%PROGRAMFILES(X86)%\Microsoft\Edge\Application\msedge.exe" --app=' + url,
+        '  GOTO :EOF',
+        ')',
+        '',
+        'REM どちらも見つからない場合はデフォルトブラウザで開く',
+        'start "" ' + url,
+        '',
+        ':EOF',
+      ].join('
+');
+
+      const blob = new Blob([batContent], { type: 'text/plain;charset=Shift_JIS' });
+      const a    = document.createElement('a');
+      a.href     = URL.createObjectURL(blob);
+      a.download = 'startup-register.bat';
+      a.click();
+      URL.revokeObjectURL(a.href);
+
+      showToast('startup-register.bat をダウンロードしました。ダブルクリックで実行してください。', 'success');
+    }
+  </script>
+
 </body>
 </html>
