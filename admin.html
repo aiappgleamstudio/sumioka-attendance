@@ -994,8 +994,8 @@
           <div class="filter-group">
             <span class="filter-label">ステータス</span>
             <select class="sumioka-input" id="req-filter-status" style="width:130px">
-              <option value="pending">承認待ち</option>
               <option value="all">全件</option>
+              <option value="pending">承認待ち</option>
               <option value="approved">承認済み</option>
               <option value="rejected">却下済み</option>
             </select>
@@ -1014,6 +1014,10 @@
           </div>
           <button class="sumioka-btn sumioka-btn-primary" id="btn-req-search"
             style="align-self:flex-end">絞り込み</button>
+          <!-- #14: 欠席登録ボタン（社長のみ表示） -->
+          <button class="sumioka-btn" id="btn-absence-register"
+            style="align-self:flex-end;display:none"
+            onclick="openAbsenceStatusModal()">欠席・在宅登録</button>
         </div>
 
         <div class="admin-table-wrap">
@@ -1022,6 +1026,7 @@
               <tr>
                 <th>申請日</th>
                 <th>氏名</th>
+                <th>申請種別</th>
                 <th>種別</th>
                 <th>対象日</th>
                 <th>時間</th>
@@ -1031,7 +1036,7 @@
               </tr>
             </thead>
             <tbody id="req-body">
-              <tr><td colspan="8" class="empty-state">読み込み中...</td></tr>
+              <tr><td colspan="9" class="empty-state">読み込み中...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1101,7 +1106,71 @@
       <section class="tab-panel" id="panel-howto">
         <p class="section-title">管理者ガイド</p>
 
-        <!-- 日常確認 -->
+        <!-- 権限別できること -->
+        <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
+          margin-bottom:1rem;background:Canvas">
+          <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
+            🔑 権限別できること
+          </p>
+          <div style="overflow-x:auto">
+            <table style="width:100%;font-size:0.82rem;border-collapse:collapse">
+              <thead>
+                <tr style="background:Canvas;border-bottom:2px solid GrayText">
+                  <th style="text-align:left;padding:0.4rem 0.6rem">機能</th>
+                  <th style="text-align:center;padding:0.4rem 0.6rem">管理者（社長）</th>
+                  <th style="text-align:center;padding:0.4rem 0.6rem">給与担当</th>
+                  <th style="text-align:center;padding:0.4rem 0.6rem">一般職員</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom:1px solid GrayText">
+                  <td style="padding:0.4rem 0.6rem">ダッシュボード</td>
+                  <td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td>
+                </tr>
+                <tr style="border-bottom:1px solid GrayText">
+                  <td style="padding:0.4rem 0.6rem">勤怠管理（閲覧）</td>
+                  <td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td>
+                </tr>
+                <tr style="border-bottom:1px solid GrayText">
+                  <td style="padding:0.4rem 0.6rem">勤怠管理（編集）</td>
+                  <td style="text-align:center">✅</td><td style="text-align:center">❌</td><td style="text-align:center">❌</td>
+                </tr>
+                <tr style="border-bottom:1px solid GrayText">
+                  <td style="padding:0.4rem 0.6rem">スタッフ管理（閲覧）</td>
+                  <td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td>
+                </tr>
+                <tr style="border-bottom:1px solid GrayText">
+                  <td style="padding:0.4rem 0.6rem">スタッフ管理（追加・編集・削除）</td>
+                  <td style="text-align:center">✅</td><td style="text-align:center">❌</td><td style="text-align:center">❌</td>
+                </tr>
+                <tr style="border-bottom:1px solid GrayText">
+                  <td style="padding:0.4rem 0.6rem">申請管理（承認・却下）</td>
+                  <td style="text-align:center">✅</td><td style="text-align:center">❌</td><td style="text-align:center">❌</td>
+                </tr>
+                <tr style="border-bottom:1px solid GrayText">
+                  <td style="padding:0.4rem 0.6rem">納期管理</td>
+                  <td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">✅</td>
+                </tr>
+                <tr style="border-bottom:1px solid GrayText">
+                  <td style="padding:0.4rem 0.6rem">給与計算</td>
+                  <td style="text-align:center">✅</td><td style="text-align:center">✅</td><td style="text-align:center">❌</td>
+                </tr>
+                <tr style="border-bottom:1px solid GrayText">
+                  <td style="padding:0.4rem 0.6rem">給与設定</td>
+                  <td style="text-align:center">✅</td><td style="text-align:center">❌</td><td style="text-align:center">❌</td>
+                </tr>
+                <tr>
+                  <td style="padding:0.4rem 0.6rem">システム設定・テストデータ</td>
+                  <td style="text-align:center">✅</td><td style="text-align:center">❌</td><td style="text-align:center">❌</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin-top:0.75rem;font-size:0.78rem;color:GrayText">
+            ※ 権限はスタッフ管理タブの「管理者権限」列で設定します。<br>
+            ※ UI上の制御に加え、API側でも権限チェックを行います。
+          </p>
+        </div>
         <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
           margin-bottom:0.85rem;background:Canvas">
           <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
@@ -1946,6 +2015,44 @@
        Phase 2: 却下理由入力モーダル（申請管理タブから呼び出す）
        却下ボタン押下 → このモーダルで理由を入力 → 送信
        ============================================================ -->
+  <!-- ============================================================
+       #14: 欠席・在宅・外出登録モーダル（申請管理タブから呼び出す）
+       Discord Webhook 連携の手動登録UI。将来的にWebhook経由でも同じAPIを呼ぶ。
+       ============================================================ -->
+  <div class="modal-overlay hidden" id="modal-absence-status">
+    <div class="modal-card" style="max-width:420px">
+      <p class="modal-title">欠席・在宅・外出の登録</p>
+      <div class="sumioka-form-group">
+        <label class="sumioka-label">担当者</label>
+        <select class="sumioka-input" id="modal-abs-staff"></select>
+      </div>
+      <div class="sumioka-form-group">
+        <label class="sumioka-label">日付</label>
+        <input class="sumioka-input" type="date" id="modal-abs-date">
+      </div>
+      <div class="sumioka-form-group">
+        <label class="sumioka-label">ステータス</label>
+        <select class="sumioka-input" id="modal-abs-status">
+          <option value="absent">欠席</option>
+          <option value="paid_leave">有給</option>
+          <option value="substitute_holiday">補填休</option>
+          <option value="holiday">会社休日</option>
+          <option value="remote">在宅</option>
+          <option value="outing">外出</option>
+        </select>
+      </div>
+      <div class="sumioka-form-group">
+        <label class="sumioka-label">備考（任意）</label>
+        <input class="sumioka-input" type="text" id="modal-abs-note"
+          placeholder="Discord連絡内容など">
+      </div>
+      <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1rem">
+        <button class="sumioka-btn" id="modal-abs-cancel">キャンセル</button>
+        <button class="sumioka-btn sumioka-btn-primary" id="modal-abs-save">登録</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay hidden" id="modal-reject-reason">
     <div class="modal" style="max-width:400px">
       <p class="modal-title">申請を却下する</p>
@@ -2269,6 +2376,17 @@
         handleBulkInsertDummy);
       // ダミー登録月の初期値を今月にする
       document.getElementById('dummy-insert-month').value = ym;
+
+      // ── #14: 欠席・在宅・外出登録モーダル ──
+      document.getElementById('modal-abs-cancel').addEventListener('click', () => {
+        document.getElementById('modal-absence-status').classList.add('hidden');
+      });
+      document.getElementById('modal-absence-status').addEventListener('click', e => {
+        if (e.target === e.currentTarget) {
+          e.currentTarget.classList.add('hidden');
+        }
+      });
+      document.getElementById('modal-abs-save').addEventListener('click', saveAbsenceStatus);
     }
 
     // ============================================================
@@ -2317,12 +2435,18 @@
       clearLoginError();
 
       // セッション保存
+      // admin_role をセッションに保存する（権限制御UIで使用する）
       SumiokaStorage.save(SESSION_KEY, {
         employeeId : employee.id,
         name       : employee.name,
+        adminRole  : employee.admin_role || '',
       });
 
-      applySession({ employeeId: employee.id, name: employee.name });
+      applySession({
+        employeeId : employee.id,
+        name       : employee.name,
+        adminRole  : employee.admin_role || '',
+      });
       await loadInitialData();
     }
 
@@ -2372,15 +2496,30 @@
      *
      * @param {{ employeeId: string, name: string }} session
      */
+    /**
+     * セッション情報を adminState に適用して管理者画面へ切り替える。
+     * #2: admin_role に応じてタブの表示/非表示・操作ボタンの有効/無効を制御する。
+     *
+     * 権限マトリクス:
+     *   社長            : 全機能利用可
+     *   給与計算担当    : 給与タブのみ + 閲覧系（スタッフ追加・編集・削除・申請承認は不可）
+     *   一般職員        : 給与タブ非表示、スタッフ追加・編集・削除不可、申請承認不可
+     *
+     * @param {{ employeeId: string, name: string, adminRole: string }} session
+     */
     function applySession(session) {
       adminState.employeeId = session.employeeId;
       adminState.name       = session.name;
+      // admin_role を adminState に保存する（他の関数からも参照できるようにする）
+      adminState.adminRole  = session.adminRole || '';
 
       document.getElementById('admin-display-name').textContent = session.name;
       showScreen('admin');
 
+      // #2: 権限に応じたUI制御を適用する
+      applyRoleBasedUI(adminState.adminRole);
+
       // 【修正③】初期タブを 'attendance'（勤怠一覧）に変更する。
-      // 旧: 'dashboard' が初期表示だったが、現場では勤怠一覧を最初に確認する運用が多いため変更。
       // リロード時は localStorage に保存されたタブを優先する（last-tab 復元は維持）。
       const savedTab = SumiokaStorage.load('admin_active_tab') || 'attendance';
       document.querySelectorAll('.admin-tab').forEach(t => {
@@ -2390,6 +2529,73 @@
         p.classList.toggle('active', p.id === `panel-${savedTab}`);
       });
       adminState._restoredTab = savedTab;
+    }
+
+    /**
+     * #2: 管理者権限ロールに応じてUIを制御する。
+     *
+     * 非表示だけでなくボタンの disabled 制御も行う。
+     * API側でも権限チェックしているため、UI制御は二重防御として機能する。
+     *
+     * @param {string} role - '社長' | '給与計算担当' | '一般職員'
+     */
+    function applyRoleBasedUI(role) {
+      const isAdmin   = role === '社長';
+      const isPayroll = role === '給与計算担当';
+      const isGeneral = role === '一般職員';
+
+      // ── タブの表示制御 ──
+      // 給与タブ: 社長・給与計算担当のみ表示
+      const payrollTab = document.querySelector('.admin-tab[data-tab="payroll"]');
+      if (payrollTab) {
+        payrollTab.style.display = (isAdmin || isPayroll) ? '' : 'none';
+      }
+
+      // ── スタッフ管理: 追加・編集・削除ボタンの制御 ──
+      // 社長のみ操作可能。給与担当・一般職員は閲覧のみ。
+      const staffAddBtn = document.getElementById('btn-staff-add');
+      if (staffAddBtn) {
+        staffAddBtn.style.display = isAdmin ? '' : 'none';
+      }
+
+      // ── 給与設定ボタン: 社長のみ ──
+      const payrollSettingsBtn = document.getElementById('btn-payroll-settings');
+      if (payrollSettingsBtn) {
+        payrollSettingsBtn.style.display = isAdmin ? '' : 'none';
+      }
+
+      // ── テストデータ・使い方タブの操作: 社長のみ ──
+      const resetBtn = document.getElementById('btn-reset-test-data');
+      if (resetBtn) {
+        resetBtn.disabled      = !isAdmin;
+        resetBtn.style.opacity = isAdmin ? '' : '0.4';
+      }
+
+      // ── 欠席登録ボタン: 社長のみ表示 ──
+      const absenceRegBtn = document.getElementById('btn-absence-register');
+      if (absenceRegBtn) {
+        absenceRegBtn.style.display = isAdmin ? '' : 'none';
+      }
+
+      // ── ロールバッジをヘッダーに表示する ──
+      const roleLabelMap = {
+        '社長'       : { text: '管理者', color: '#1a7f37' },
+        '給与計算担当': { text: '給与担当', color: '#1d4ed8' },
+        '一般職員'   : { text: '一般職員', color: '#6b7280' },
+      };
+      const roleInfo = roleLabelMap[role] || { text: role || '不明', color: '#6b7280' };
+      let roleBadge = document.getElementById('admin-role-badge');
+      if (!roleBadge) {
+        roleBadge = document.createElement('span');
+        roleBadge.id = 'admin-role-badge';
+        roleBadge.style.cssText =
+          'font-size:0.72rem;font-weight:700;padding:0.15em 0.55em;border-radius:4px;' +
+          'color:#fff;margin-left:0.5rem;vertical-align:middle';
+        const nameEl = document.getElementById('admin-display-name');
+        if (nameEl) nameEl.parentNode.insertBefore(roleBadge, nameEl.nextSibling);
+      }
+      roleBadge.textContent        = roleInfo.text;
+      roleBadge.style.background   = roleInfo.color;
     }
 
     /**
@@ -3437,29 +3643,24 @@
 
     /**
      * 申請一覧テーブルを描画する。
-     * 承認待ちの申請には「承認」「却下」ボタンを表示する。
+     *
+     * v2.1.0 修正:
+     *   - #4: 初期表示は「全件」のため全申請を表示する（フィルタなし）
+     *   - #6: 申請日を YYYY-MM-DD HH:mm 形式で表示（ISO形式を排除）
+     *   - #6: 時間欄に request_time / late_time / early_leave_time を表示
+     *   - #7: 申請種別（request_kind）と理由（reason）を別列で表示
      *
      * @param {Array} requests
      */
     function renderRequestsTable(requests) {
       const tbody = document.getElementById('req-body');
 
-      // 表示対象の判定:
-      //   ① 有給・補填予定・補填完了 → 常に表示（承認フロー対象）
-      //   ② 早退・遅刻・休み で reason に「補填日時:」を含む → 補填ありのため表示
-      const filtered = requests.filter(r => {
-        const isApprovalType  = r.type === '有給' || r.type === '補填' ||
-                                r.type === '補填予定' || r.type === '補填完了';
-        const hasCompensation = (r.reason || '').includes('補填日時:');
-        return isApprovalType || hasCompensation;
-      });
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">該当する申請がありません</td></tr>';
+      if (requests.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">該当する申請がありません</td></tr>';
         return;
       }
 
-      tbody.innerHTML = filtered.map(req => {
+      tbody.innerHTML = requests.map(req => {
         const badgeMap = {
           pending  : 'badge-yellow',
           approved : 'badge-green',
@@ -3473,14 +3674,29 @@
         const statusClass = badgeMap[req.status] || 'badge-gray';
         const statusLabel = labelMap[req.status] || req.status || '―';
 
+        // #6: 時間欄の表示。遅刻・早退は専用フィールドを優先して使う
+        let timeDisplay = '―';
+        if (req.late_time)        timeDisplay = `遅刻: ${req.late_time}`;
+        else if (req.early_leave_time) timeDisplay = `早退: ${req.early_leave_time}`;
+        else if (req.request_time) timeDisplay = req.request_time;
+
+        // #7: 申請種別区分の日本語マッピング
+        const kindLabelMap = {
+          fillup : '補填あり',
+          paid   : '有給消化',
+          none   : '',
+          ''     : '',
+        };
+        const kindLabel = kindLabelMap[req.request_kind] || escHtml(req.request_kind || '');
+
         // 補填情報を reason から抽出して表示用に整形する
-        const reasonMain  = (req.reason || '').replace(/【補填日時:.*?】/g, '').trim();
+        const reasonMain  = (req.reason || '').replace(/【補填日時:.*?】/g, '').replace(/【有給消化】/g, '').trim();
         const fillupMatch = (req.reason || '').match(/【補填日時:(.*?)】/);
         const fillupInfo  = fillupMatch ? fillupMatch[1].trim() : '';
 
-        // 承認ボタンは補填ありの pending 申請にのみ表示する
+        // 承認ボタンは pending の補填・有給系申請にのみ表示する
         const needsAction = req.status === 'pending' &&
-          (req.type === '補填予定' || req.type === '補填完了' || fillupInfo);
+          (req.type === '補填予定' || req.type === '補填完了' || req.type === '有給' || fillupInfo);
         const actionHtml = needsAction
           ? `<div class="action-btn-group">
                <button class="btn-approve" onclick="handleRequestAction('${escHtml(req.id)}', 'approve')">承認</button>
@@ -3490,15 +3706,16 @@
 
         const reasonDisplay = fillupInfo
           ? `${escHtml(reasonMain)}<br><span style="font-size:0.75rem;color:#065f46">補填: ${escHtml(fillupInfo)}</span>`
-          : escHtml(req.reason || '―');
+          : escHtml(reasonMain || req.reason || '―');
 
         return `
           <tr>
-            <td>${escHtml(req.created_at || '―')}</td>
+            <td style="white-space:nowrap;font-size:0.82rem">${escHtml(req.created_at || '―')}</td>
             <td>${escHtml(req.name || '―')}</td>
+            <td>${kindLabel || '―'}</td>
             <td>${escHtml(req.type || '―')}</td>
-            <td>${escHtml(req.target_date || '―')}</td>
-            <td>${fmtTime(req.time)}</td>
+            <td>${escHtml(String(req.target_date || '').replace(/\//g,'-') || '―')}</td>
+            <td style="white-space:nowrap">${escHtml(timeDisplay)}</td>
             <td style="max-width:160px;font-size:0.82rem"
               title="${escHtml(req.reason || '')}">
               ${reasonDisplay}
@@ -3696,10 +3913,13 @@
             })()}</td>
             <td>
               <div class="action-btn-group">
-                <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
-                  onclick="openStaffModal(${escJson(s)})">編集</button>
-                <button class="btn-reject" style="font-size:0.78rem"
-                  onclick="deleteStaff('${escHtml(s.id)}', '${escHtml(s.name)}')">削除</button>
+                <!-- #2: 編集・削除は社長のみ表示。権限制御はAPIでも行う -->
+                ${adminState.adminRole === '社長' ? `
+                  <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
+                    onclick="openStaffModal(${escJson(s)})">編集</button>
+                  <button class="btn-reject" style="font-size:0.78rem"
+                    onclick="deleteStaff('${escHtml(s.id)}', '${escHtml(s.name)}')">削除</button>
+                ` : `<span style="font-size:0.78rem;color:GrayText">閲覧のみ</span>`}
               </div>
             </td>
           </tr>
@@ -4914,6 +5134,67 @@
     function sortDeadlineView(key) {
       document.getElementById('taskview-sort').value = key;
       renderAdminDeadlineView();
+    }
+
+    // ============================================================
+    // #14: 欠席・在宅・外出ステータス管理
+    // ============================================================
+
+    /**
+     * 欠席・在宅・外出登録モーダルを開く。
+     * スタッフ一覧をセレクトに反映してから表示する。
+     */
+    function openAbsenceStatusModal() {
+      // スタッフセレクトを最新状態で生成する
+      const sel = document.getElementById('modal-abs-staff');
+      sel.innerHTML = '<option value="">選択してください</option>';
+      (adminState.staffList || []).forEach(s => {
+        const opt = document.createElement('option');
+        opt.value       = s.id;
+        opt.textContent = s.name;
+        sel.appendChild(opt);
+      });
+      // 日付を今日にリセット
+      document.getElementById('modal-abs-date').value = todayString();
+      document.getElementById('modal-abs-note').value = '';
+      document.getElementById('modal-absence-status').classList.remove('hidden');
+    }
+
+    /**
+     * 欠席ステータスを GAS に保存する。
+     *
+     * #14: 欠席・在宅・補填休などを登録する。
+     * 登録後はダッシュボードを再読み込みして未打刻一覧から除外されることを確認できる。
+     */
+    async function saveAbsenceStatus() {
+      const staffId   = document.getElementById('modal-abs-staff').value;
+      const staffName = document.getElementById('modal-abs-staff')
+        .options[document.getElementById('modal-abs-staff').selectedIndex]?.textContent || '';
+      const date      = document.getElementById('modal-abs-date').value;
+      const status    = document.getElementById('modal-abs-status').value;
+      const note      = document.getElementById('modal-abs-note').value.trim();
+
+      if (!staffId) { showToast('担当者を選択してください。', 'warning'); return; }
+      if (!date)    { showToast('日付を入力してください。', 'warning');   return; }
+
+      showLoading('登録中...');
+      const result = await callGAS('save_attendance_status', {
+        employee_id : staffId,
+        name        : staffName,
+        date        : date,
+        status      : status,
+        note        : note,
+        created_by  : adminState.employeeId,
+      });
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('登録しました。', 'success');
+      document.getElementById('modal-absence-status').classList.add('hidden');
     }
 
     // ============================================================
