@@ -4444,8 +4444,11 @@
         return;
       }
       if (!employment) { showToast('雇用形態を選択してください。', 'warning'); return; }
-      if (isNew && !password) {
+      // パスワードの空白バリデーション（空白のみは空扱い）
+      const passwordTrimmed = password.trim();
+      if (isNew && !passwordTrimmed) {
         showToast('新規追加時はパスワードが必須です。', 'warning');
+        document.getElementById('modal-staff-password').focus();
         return;
       }
 
@@ -4453,7 +4456,8 @@
         last_name        : lastName,
         first_name       : firstName,
         pin,
-        ...(password ? { password } : {}),
+        // 新規: 必ず含める。更新: 入力があれば更新、空欄なら既存値を維持（GAS側で判定）
+        password         : passwordTrimmed,
         employment_type  : employment,
         scheduled_start  : scheduledStart,
         scheduled_end    : scheduledEnd,
