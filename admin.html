@@ -2856,14 +2856,19 @@
             // 遅刻・早退はクリックで時刻詳細を表示する。
             // time_in（遅刻の出勤予定）・time_out（早退の退勤予定）・time（申請の時刻）を
             // JSON エスケープしてデータ属性に埋め込み、showCalEventDetail() で読み出す。
+            // #6: late_time / early_leave_time / request_time をカレンダー詳細に渡す
             const evData = escHtml(JSON.stringify({
-              name   : ev.name,
-              type   : ev.type,
-              date   : ev.target_date,
-              time_in : ev.time_in  || '',
-              time_out: ev.time_out || '',
-              time    : ev.time     || '',
-              reason  : ev.reason   || '',
+              name             : ev.name,
+              type             : ev.type,
+              date             : ev.target_date,
+              time_in          : ev.time_in          || '',
+              time_out         : ev.time_out         || '',
+              time             : ev.time             || '',
+              reason           : ev.reason           || '',
+              late_time        : ev.late_time        || '',
+              early_leave_time : ev.early_leave_time || '',
+              request_time     : ev.request_time     || '',
+              request_kind     : ev.request_kind     || '',
             }));
             const isClickable = ['遅刻','早退','欠勤','休み','補填予定','補填完了'].includes(ev.type);
             return `<span class="admin-cal-event ${escHtml(cls)}"
@@ -2903,15 +2908,19 @@
       const back = document.getElementById('cal-event-backdrop');
       if (back) back.remove();
 
-      // 時刻フィールドを全て正規化してから表示する（1899問題を確実に回避）
-      const timeIn  = fmtTime(ev.time_in  || ev.time, '');
-      const timeOut = fmtTime(ev.time_out || ev.time, '');
+      // #6: 時刻フィールドを優先順位に従って取得する
+      // late_time → request_time → time_in の順で遅刻時刻を優先する
+      // early_leave_time → request_time → time_out の順で早退時刻を優先する
+      const lateTimeRaw  = ev.late_time        || ev.request_time || ev.time_in  || ev.time || '';
+      const earlyTimeRaw = ev.early_leave_time || ev.request_time || ev.time_out || ev.time || '';
+      const lateTime  = fmtTime(lateTimeRaw,  '');
+      const earlyTime = fmtTime(earlyTimeRaw, '');
 
       let timeLabel = '';
       if (ev.type === '遅刻') {
-        timeLabel = timeIn  ? `出勤予定: ${timeIn}`  : '出勤予定時刻 未登録';
+        timeLabel = lateTime  ? `出勤予定: ${lateTime}`  : '出勤予定時刻 未登録';
       } else if (ev.type === '早退') {
-        timeLabel = timeOut ? `退勤予定: ${timeOut}` : '退勤予定時刻 未登録';
+        timeLabel = earlyTime ? `退勤予定: ${earlyTime}` : '退勤予定時刻 未登録';
       } else if (ev.type === '納期') {
         timeLabel = '';  // 納期は時刻なし
       }
@@ -4752,6 +4761,16 @@
       const dateVal     = phase?.planned_date || '';
       const noteVal     = phase?.note         || '';
 
+      // #8: show_personal_calendar / show_admin_calendar の初期値を取得する
+      const defaultShowPersonal = phase?.show_personal_calendar !== undefined
+        ? !!phase.show_personal_calendar
+        : defaultShow;
+      const defaultShowAdmin = phase?.show_admin_calendar !== undefined
+        ? !!phase.show_admin_calendar
+        : defaultShow;
+      const checkedPersonal = defaultShowPersonal ? 'checked' : '';
+      const checkedAdmin    = defaultShowAdmin    ? 'checked' : '';
+
       div.innerHTML = `
         <input class="sumioka-input admin-phase-name-input" type="text" placeholder="フェーズ名"
           value="${escHtml(name)}" style="flex:1;min-width:80px;font-size:0.82rem;padding:0.3em 0.5em">
@@ -4759,12 +4778,17 @@
           value="${escHtml(dateVal)}" style="width:140px;font-size:0.82rem;padding:0.3em 0.5em">
         <input class="sumioka-input admin-phase-note-input" type="text" placeholder="補足"
           value="${escHtml(noteVal)}" style="flex:1;min-width:60px;font-size:0.82rem;padding:0.3em 0.5em">
-        <label style="display:flex;align-items:center;gap:0.25rem;font-size:0.78rem;
-          white-space:nowrap;cursor:pointer;width:64px;justify-content:center"
-          title="カレンダーに表示する">
-          <input type="checkbox" class="admin-phase-show-cal-input" ${checkedAttr}
-            style="accent-color:Highlight;width:1rem;height:1rem">
-          カレンダー
+        <label style="display:flex;align-items:center;gap:0.2rem;font-size:0.75rem;
+          white-space:nowrap;cursor:pointer;color:#1d4ed8" title="個人カレンダーに表示">
+          <input type="checkbox" class="admin-phase-show-personal-input" ${checkedPersonal}
+            style="accent-color:Highlight;width:0.95rem;height:0.95rem">
+          自分用
+        </label>
+        <label style="display:flex;align-items:center;gap:0.2rem;font-size:0.75rem;
+          white-space:nowrap;cursor:pointer;color:#1a7f37" title="Admin納期カレンダーに表示">
+          <input type="checkbox" class="admin-phase-show-admin-input" ${checkedAdmin}
+            style="accent-color:Highlight;width:0.95rem;height:0.95rem">
+          Admin
         </label>
         <button type="button" style="font-size:0.72rem;background:none;border:1px solid #c0392b;
           color:#c0392b;border-radius:3px;padding:0.15em 0.45em;cursor:pointer;width:32px"
@@ -4890,18 +4914,29 @@
         const nameEl  = row.querySelector('.admin-phase-name-input');
         const dateEl  = row.querySelector('.admin-phase-date-input');
         const noteEl  = row.querySelector('.admin-phase-note-input');
-        const calEl   = row.querySelector('.admin-phase-show-cal-input');
-        const phaseName = nameEl?.value.trim() || '';
-        const exist   = existPhases[ri];
-        const showOnCal = calEl ? calEl.checked : phaseName.includes('納品');
+        const personalEl = row.querySelector('.admin-phase-show-personal-input');
+        const adminEl    = row.querySelector('.admin-phase-show-admin-input');
+        // 旧形式フォールバック: 新チェックボックスが存在しない場合は元の1個に戻す
+        const calEl      = row.querySelector('.admin-phase-show-cal-input');
+        const phaseName  = nameEl?.value.trim() || '';
+        const exist      = existPhases[ri];
+        // #8: 個人カレンダー・Adminカレンダーを個別に取得する
+        const showPersonal = personalEl ? personalEl.checked
+          : (calEl ? calEl.checked : phaseName.includes('納品'));
+        const showAdmin    = adminEl    ? adminEl.checked
+          : (calEl ? calEl.checked : phaseName.includes('納品'));
         return {
-          name             : phaseName,
-          planned_date     : dateEl?.value || '',
-          note             : noteEl?.value.trim() || '',
-          show_on_calendar : showOnCal,
-          done             : exist?.done      || false,
-          done_date        : exist?.done_date || '',
-          status           : exist?.status   || '未着手',
+          name                   : phaseName,
+          planned_date           : dateEl?.value || '',
+          note                   : noteEl?.value.trim() || '',
+          // 後方互換用（旧コードとの互換）
+          show_on_calendar       : showPersonal,
+          // #8: 独立した2フラグ
+          show_personal_calendar : showPersonal,
+          show_admin_calendar    : showAdmin,
+          done                   : exist?.done      || false,
+          done_date              : exist?.done_date || '',
+          status                 : exist?.status   || '未着手',
         };
       }).filter(p => p.name);
 
@@ -5071,9 +5106,15 @@
       (adminState.allDeadlines || []).forEach(d => {
         const phases   = Array.isArray(d.phases) ? d.phases : [];
         // 「納品」を含むフェーズを優先して取得する
-        const deliveryPhase = phases.find(p =>
-          (p.name || '').includes('納品') && p.planned_date
-        );
+        // #8: show_admin_calendar が true のフェーズをAdmin納期カレンダーに表示する
+        // 旧データ（フラグなし）は show_on_calendar → 「納品」を含む名前で判定する
+        const adminVisiblePhases = phases.filter(p => {
+          if (p.show_admin_calendar !== undefined) return !!p.show_admin_calendar;
+          if (p.show_on_calendar   !== undefined) return !!p.show_on_calendar;
+          return (p.name || '').includes('納品');
+        });
+        const deliveryPhase = adminVisiblePhases.find(p => p.planned_date)
+          || phases.find(p => (p.name || '').includes('納品') && p.planned_date);
         const targetDate = deliveryPhase?.planned_date || d.due_date || '';
         if (!targetDate) return;
 
