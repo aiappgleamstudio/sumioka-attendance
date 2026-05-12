@@ -1034,12 +1034,13 @@
                 <th>対象日</th>
                 <th>時間</th>
                 <th>理由</th>
+                <th>補填情報</th>
                 <th>ステータス</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody id="req-body">
-              <tr><td colspan="9" class="empty-state">読み込み中...</td></tr>
+              <tr><td colspan="10" class="empty-state">読み込み中...</td></tr>
             </tbody>
           </table>
         </div>
@@ -2056,6 +2057,80 @@
     </div>
   </div>
 
+
+  <!-- ============================================================
+       申請編集モーダル（Admin が申請内容を修正する）
+       対象フィールド: 対象日・種別・時間・理由・ステータス
+       ============================================================ -->
+  <div class="modal-overlay hidden" id="modal-edit-request">
+    <div class="modal-card" style="max-width:480px">
+      <p class="modal-title">申請内容を編集</p>
+
+      <!-- 申請ID（hidden） -->
+      <input type="hidden" id="mer-id">
+
+      <!-- 申請者（読み取り専用・変更不可） -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label">申請者</label>
+        <div id="mer-name-display"
+          style="padding:0.4rem 0;font-weight:600;font-size:0.9rem;color:CanvasText"></div>
+      </div>
+
+      <!-- 種別 -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="mer-type">種別</label>
+        <select class="sumioka-input" id="mer-type">
+          <option value="休み">休み</option>
+          <option value="遅刻">遅刻</option>
+          <option value="早退">早退</option>
+          <option value="補填予定">補填予定</option>
+          <option value="補填完了">補填完了</option>
+          <option value="有給">有給</option>
+        </select>
+      </div>
+
+      <!-- 対象日 -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="mer-target-date">
+          対象日
+          <span style="color:GrayText;font-weight:400;font-size:0.8rem">
+            （例: 2026-05-11）
+          </span>
+        </label>
+        <input class="sumioka-input" type="date" id="mer-target-date">
+      </div>
+
+      <!-- 時間（遅刻・早退のみ） -->
+      <div class="sumioka-form-group" id="mer-time-wrap">
+        <label class="sumioka-label" for="mer-time" id="mer-time-label">時刻</label>
+        <input class="sumioka-input" type="time" id="mer-time"
+          placeholder="HH:MM">
+      </div>
+
+      <!-- 理由 -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="mer-reason">理由</label>
+        <textarea class="sumioka-textarea" id="mer-reason" rows="2"
+          placeholder="理由を入力"></textarea>
+      </div>
+
+      <!-- ステータス -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="mer-status">ステータス</label>
+        <select class="sumioka-input" id="mer-status">
+          <option value="pending">承認待ち</option>
+          <option value="approved">承認済み</option>
+          <option value="rejected">却下済み</option>
+        </select>
+      </div>
+
+      <div class="modal-footer">
+        <button class="sumioka-btn" id="mer-cancel">キャンセル</button>
+        <button class="sumioka-btn sumioka-btn-primary" id="mer-save">保存</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay hidden" id="modal-reject-reason">
     <div class="modal" style="max-width:400px">
       <p class="modal-title">申請を却下する</p>
@@ -2390,6 +2465,19 @@
         }
       });
       document.getElementById('modal-abs-save').addEventListener('click', saveAbsenceStatus);
+
+      // ── 申請編集モーダル ──
+      document.getElementById('mer-cancel').addEventListener('click', () => {
+        document.getElementById('modal-edit-request').classList.add('hidden');
+      });
+      document.getElementById('modal-edit-request').addEventListener('click', e => {
+        if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
+      });
+      document.getElementById('mer-save').addEventListener('click', saveEditRequest);
+      // 種別変更で時間欄の表示/非表示を切り替える
+      document.getElementById('mer-type').addEventListener('change', () => {
+        updateMerTimeWrap();
+      });
     }
 
     // ============================================================
@@ -2875,7 +2963,7 @@
             const firstInitial = parts[1] ? escHtml(parts[1].charAt(0)) : '';
             if (!firstInitial) return lastName;
             // #14: 名前1文字目を70%フォントで表示する
-            return `${lastName}<span style="font-size:70%">${firstInitial}</span>`;
+            return `${lastName}<span style="font-size:80%;vertical-align:bottom;line-height:1">${firstInitial}</span>`;
           }
 
           const dayNumClass = isToday ? 'today' : (compTitles.length ? 'holiday-company' : '');
@@ -3709,79 +3797,269 @@
      *
      * @param {Array} requests
      */
+    /**
+     * 申請一覧テーブルを描画する。
+     *
+     * 列構成（10列）:
+     *   申請日 | 氏名 | 申請種別 | 種別 | 対象日 | 時間 | 理由 | 補填情報 | ステータス | 操作
+     *
+     * 修正内容:
+     *   - #6: 時間は late_time / early_leave_time / request_time の優先順で表示
+     *   - #6: 旧データ（M〜P列なし）は reason から【補填日時】を抽出してフォールバック
+     *   - #7: 補填情報を理由と完全に別列に分離
+     *   - 承認済みにも「再却下」「取消」ボタンを表示（Admin による訂正を可能にする）
+     */
     function renderRequestsTable(requests) {
       const tbody = document.getElementById('req-body');
 
       if (requests.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">該当する申請がありません</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="empty-state">該当する申請がありません</td></tr>';
         return;
       }
 
       tbody.innerHTML = requests.map(req => {
-        const badgeMap = {
-          pending  : 'badge-yellow',
-          approved : 'badge-green',
-          rejected : 'badge-red',
-        };
-        const labelMap = {
-          pending  : '承認待ち',
-          approved : '承認済み',
-          rejected : '却下済み',
-        };
+        const badgeMap  = { pending:'badge-yellow', approved:'badge-green', rejected:'badge-red' };
+        const labelMap  = { pending:'承認待ち', approved:'承認済み', rejected:'却下済み' };
         const statusClass = badgeMap[req.status] || 'badge-gray';
         const statusLabel = labelMap[req.status] || req.status || '―';
 
-        // #6: 時間欄の表示。遅刻・早退は専用フィールドを優先して使う
-        let timeDisplay = '―';
-        if (req.late_time)        timeDisplay = `遅刻: ${req.late_time}`;
-        else if (req.early_leave_time) timeDisplay = `早退: ${req.early_leave_time}`;
-        else if (req.request_time) timeDisplay = req.request_time;
+        // #6: 時間欄
+        // 優先順: late_time > early_leave_time > request_time > reasonから抽出（旧データ互換）
+        let timeDisplay = '';
+        if (req.late_time)             timeDisplay = req.late_time;
+        else if (req.early_leave_time) timeDisplay = req.early_leave_time;
+        else if (req.request_time)     timeDisplay = req.request_time;
 
-        // #7: 申請種別区分の日本語マッピング
-        const kindLabelMap = {
-          fillup : '補填あり',
-          paid   : '有給消化',
-          none   : '',
-          ''     : '',
-        };
-        const kindLabel = kindLabelMap[req.request_kind] || escHtml(req.request_kind || '');
+        // #7: 申請種別区分（request_kind）の日本語表示
+        // 旧データ（request_kind が空）は reason / type から推定する
+        const kindLabelMap = { fillup:'補填あり', paid:'有給消化', none:'', '':'' };
+        let kindLabel = kindLabelMap[req.request_kind];
+        if (kindLabel === undefined) kindLabel = escHtml(req.request_kind || '');
+        // request_kind が空でも reason に補填・有給の文字があれば表示する（旧データ互換）
+        if (!kindLabel) {
+          if ((req.reason || '').includes('補填日時')) kindLabel = '補填あり';
+          else if ((req.reason || '').includes('有給消化')) kindLabel = '有給消化';
+        }
 
-        // 補填情報を reason から抽出して表示用に整形する
-        const reasonMain  = (req.reason || '').replace(/【補填日時:.*?】/g, '').replace(/【有給消化】/g, '').trim();
+        // #7: 補填情報を reason から抽出して別列に表示する
+        // 旧データは reason に【補填日時: ...】形式で埋め込まれている
+        const reasonMain  = (req.reason || '')
+          .replace(/【補填日時:.*?】/g, '')
+          .replace(/【有給消化】/g, '')
+          .trim();
         const fillupMatch = (req.reason || '').match(/【補填日時:(.*?)】/);
         const fillupInfo  = fillupMatch ? fillupMatch[1].trim() : '';
-
-        // 承認ボタンは pending の補填・有給系申請にのみ表示する
-        const needsAction = req.status === 'pending' &&
-          (req.type === '補填予定' || req.type === '補填完了' || req.type === '有給' || fillupInfo);
-        const actionHtml = needsAction
-          ? `<div class="action-btn-group">
-               <button class="btn-approve" onclick="handleRequestAction('${escHtml(req.id)}', 'approve')">承認</button>
-               <button class="btn-reject"  onclick="handleRequestAction('${escHtml(req.id)}', 'reject')">却下</button>
-             </div>`
+        // 補填情報欄: request_kind=fillup の場合も reason から抽出した値を使う
+        const fillupDisplay = fillupInfo
+          ? `<span style="font-size:0.78rem;color:#065f46">${escHtml(fillupInfo)}</span>`
           : '―';
 
-        const reasonDisplay = fillupInfo
-          ? `${escHtml(reasonMain)}<br><span style="font-size:0.75rem;color:#065f46">補填: ${escHtml(fillupInfo)}</span>`
-          : escHtml(reasonMain || req.reason || '―');
-
+        // 操作ボタン:
+        //   pending      → 承認・却下
+        //   approved     → 取消（pending に戻す）
+        //   rejected     → 再承認
+        //   いずれも Admin は全操作可能にする
+        // 編集ボタンは全ステータス共通で表示する（Admin は常に内容を修正可能）
+        const editBtn = `<button class="sumioka-btn" style="font-size:0.75rem;padding:0.2em 0.5em" onclick="openEditRequestModal(${escJson(req)})">編集</button>`;
+        let actionHtml;
+        if (req.status === 'pending') {
+          actionHtml = `<div class="action-btn-group">
+            ${editBtn}
+            <button class="btn-approve" onclick="handleRequestAction('${escHtml(req.id)}','approve')">承認</button>
+            <button class="btn-reject"  onclick="handleRequestAction('${escHtml(req.id)}','reject')">却下</button>
+          </div>`;
+        } else if (req.status === 'approved') {
+          actionHtml = `<div class="action-btn-group">
+            ${editBtn}
+            <button class="sumioka-btn" style="font-size:0.75rem;padding:0.2em 0.5em;color:#c0392b;border-color:#c0392b"
+              onclick="handleRequestRevert('${escHtml(req.id)}')">取消</button>
+          </div>`;
+        } else if (req.status === 'rejected') {
+          actionHtml = `<div class="action-btn-group">
+            ${editBtn}
+            <button class="btn-approve" onclick="handleRequestAction('${escHtml(req.id)}','approve')">再承認</button>
+          </div>`;
+        } else {
+          actionHtml = editBtn;
+        }
         return `
           <tr>
-            <td style="white-space:nowrap;font-size:0.82rem">${escHtml(req.created_at || '―')}</td>
+            <td style="white-space:nowrap;font-size:0.78rem">${escHtml(req.created_at || '―')}</td>
             <td>${escHtml(req.name || '―')}</td>
-            <td>${kindLabel || '―'}</td>
-            <td>${escHtml(req.type || '―')}</td>
-            <td>${escHtml(String(req.target_date || '').replace(/\//g,'-') || '―')}</td>
-            <td style="white-space:nowrap">${escHtml(timeDisplay)}</td>
-            <td style="max-width:160px;font-size:0.82rem"
-              title="${escHtml(req.reason || '')}">
-              ${reasonDisplay}
+            <td style="font-size:0.82rem">${kindLabel || '―'}</td>
+            <td style="font-size:0.82rem">${escHtml(req.type || '―')}</td>
+            <td style="white-space:nowrap">${escHtml(String(req.target_date||'').replace(/\//g,'-')||'―')}</td>
+            <td style="white-space:nowrap;font-size:0.82rem">${escHtml(timeDisplay||'―')}</td>
+            <td style="max-width:140px;font-size:0.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              title="${escHtml(req.reason||'')}">
+              ${escHtml(reasonMain||'―')}
             </td>
+            <td style="font-size:0.82rem">${fillupDisplay}</td>
             <td><span class="badge ${statusClass}">${statusLabel}</span></td>
             <td>${actionHtml}</td>
           </tr>
         `;
       }).join('');
+    }
+
+    /**
+     * 承認済み申請を「pending（承認待ち）」に戻す取消処理。
+     *
+     * Admin が誤って承認した申請や、後から確認が必要になった申請を
+     * 再審査状態に戻すことができる。
+     * GAS の adminUpdateRequest に action='revert' を送る。
+     *
+     * @param {string} requestId
+     */
+    async function handleRequestRevert(requestId) {
+      const ok = await confirm('この申請を「承認待ち」に戻しますか？');
+      if (!ok) return;
+
+      showLoading('処理中...');
+      const result = await callGAS('admin_update_request', {
+        request_id : requestId,
+        action     : 'revert',
+        admin_id   : adminState.employeeId,
+      });
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+      showToast('申請を承認待ちに戻しました。', 'success');
+      loadRequests();
+    }
+
+    // ============================================================
+    // 申請編集モーダル
+    // ============================================================
+
+    /**
+     * 申請編集モーダルを開く。
+     *
+     * req オブジェクト（renderRequestsTable が保持する申請データ）を受け取り、
+     * 各フォームフィールドに値をセットしてモーダルを表示する。
+     *
+     * 編集できる項目:
+     *   - 種別（type）
+     *   - 対象日（target_date）: 誤入力日付の修正に使う
+     *   - 時間（late_time / early_leave_time / request_time）
+     *   - 理由（reason の純粋なテキスト部分）
+     *   - ステータス
+     *
+     * @param {Object} req - 申請オブジェクト
+     */
+    function openEditRequestModal(req) {
+      // hidden フィールドに申請IDを保存する
+      document.getElementById('mer-id').value = req.id || '';
+
+      // 申請者名（読み取り専用）
+      document.getElementById('mer-name-display').textContent = req.name || '―';
+
+      // 種別
+      document.getElementById('mer-type').value = req.type || '休み';
+
+      // 対象日: YYYY/MM/DD → YYYY-MM-DD に正規化してからセットする
+      const rawDate = String(req.target_date || '').replace(/\//g, '-');
+      document.getElementById('mer-target-date').value = rawDate;
+
+      // 時間: late_time / early_leave_time / request_time の優先順で取得する
+      const timeVal = req.late_time || req.early_leave_time || req.request_time || '';
+      document.getElementById('mer-time').value = timeVal;
+
+      // 理由: 【補填日時:...】【有給消化】タグを除いた純粋な理由テキストをセット
+      const reasonMain = (req.reason || '')
+        .replace(/【補填日時:.*?】/g, '')
+        .replace(/【有給消化】/g, '')
+        .trim();
+      document.getElementById('mer-reason').value = reasonMain;
+
+      // ステータス
+      document.getElementById('mer-status').value = req.status || 'pending';
+
+      // 時間欄の表示切り替え
+      updateMerTimeWrap();
+
+      document.getElementById('modal-edit-request').classList.remove('hidden');
+    }
+
+    /**
+     * 種別に応じて時間欄のラベルと表示/非表示を切り替える。
+     *
+     * 遅刻 → 「出勤時刻」表示
+     * 早退 → 「退勤時刻」表示
+     * その他（休み / 補填など）→ 時間欄を非表示にする
+     */
+    function updateMerTimeWrap() {
+      const type      = document.getElementById('mer-type').value;
+      const timeWrap  = document.getElementById('mer-time-wrap');
+      const timeLabel = document.getElementById('mer-time-label');
+
+      if (type === '遅刻') {
+        timeWrap.style.display  = '';
+        timeLabel.textContent   = '出勤時刻（遅刻）';
+      } else if (type === '早退') {
+        timeWrap.style.display  = '';
+        timeLabel.textContent   = '退勤時刻（早退）';
+      } else {
+        // 休み・補填・有給は時間欄不要
+        timeWrap.style.display  = 'none';
+      }
+    }
+
+    /**
+     * 申請編集モーダルの「保存」を実行する。
+     *
+     * GAS の admin_edit_request アクションへ変更内容を送信する。
+     * 対象日のバリデーション（YYYY-MM-DD 形式チェック）を行い、
+     * 不正な日付（例: 202605-05-11）は保存前にエラーを表示する。
+     */
+    async function saveEditRequest() {
+      const id         = document.getElementById('mer-id').value;
+      const type       = document.getElementById('mer-type').value;
+      const targetDate = document.getElementById('mer-target-date').value.trim();
+      const time       = document.getElementById('mer-time').value.trim();
+      const reason     = document.getElementById('mer-reason').value.trim();
+      const status     = document.getElementById('mer-status').value;
+
+      // 対象日のバリデーション: YYYY-MM-DD 形式であることを確認する
+      // 誤入力（例: 202605-05-11）はここで弾く
+      if (!targetDate) {
+        showToast('対象日を入力してください。', 'warning');
+        return;
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+        showToast(
+          '対象日の形式が正しくありません。YYYY-MM-DD 形式で入力してください。（例: 2026-05-11）',
+          'warning'
+        );
+        document.getElementById('mer-target-date').focus();
+        return;
+      }
+
+      showLoading('保存中...');
+
+      const result = await callGAS('admin_edit_request', {
+        request_id  : id,
+        type        : type,
+        target_date : targetDate,
+        time        : time,
+        reason      : reason,
+        status      : status,
+        admin_id    : adminState.employeeId,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('申請内容を保存しました。', 'success');
+      document.getElementById('modal-edit-request').classList.add('hidden');
+      loadRequests(); // 一覧を再取得して反映する
     }
 
     /**
