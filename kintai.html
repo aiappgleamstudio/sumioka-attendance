@@ -965,6 +965,10 @@ p:last-child { margin-bottom: 0; }
   text-overflow: ellipsis;
   white-space: nowrap;
   cursor: default;
+  /* #14: 背景色をテキスト幅に追従させる */
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
 }
 
 /* カレンダーイベント色（admin.htmlと統一）
@@ -2848,9 +2852,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.17 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.18 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.17</div>
+  <div class="version-badge" id="app-version">v1.2.18</div>
 
 
   <script>
@@ -4006,10 +4010,14 @@ p:last-child { margin-bottom: 0; }
               // 案件名を先頭8文字で表示
               label = (ev.title || ev.name || '').slice(0, 8);
             } else {
-              const parts        = (ev.name || '').split(/[\s\u3000]/);
-              const lastName     = parts[0] || '';
-              const firstInitial = parts[1] ? parts[1].charAt(0) : '';
-              label = lastName + firstInitial;
+              // #14: 苗字は通常サイズ、名前1文字目を70%フォントで表示する
+              const parts        = (ev.name || '').split(/[\s　]/);
+              const nameLast  = escHtml(parts[0] || '');
+              const nameFirst = parts[1] ? escHtml(parts[1].charAt(0)) : '';
+              // innerHTML として使うためHTMLタグを含む文字列を生成する
+              label = nameFirst
+                ? `${nameLast}<span style="font-size:70%">${nameFirst}</span>`
+                : nameLast;
             }
 
             // 遅刻・早退・納期はクリックで詳細表示する
@@ -4031,11 +4039,12 @@ p:last-child { margin-bottom: 0; }
               deadline_done: !!ev.deadline_done,
             })) : '';
 
+            // innerHTML で span タグを活かすため escHtml せずに label をそのまま渡す
             return `<div class="calendar-event ${escHtml(cls)}"
-              style="display:inline-block;width:auto;max-width:100%;${isClickable ? 'cursor:pointer' : ''}"
+              style="display:inline-flex;align-items:center;width:fit-content;max-width:100%;${isClickable ? 'cursor:pointer' : ''}"
               title="${escHtml(ev.title || ev.name || '')}${ev.phase_name ? '：' + ev.phase_name : ''}"
               ${isClickable ? `onclick="showKintaiCalEventDetail(${evData})"` : ''}
-              >${escHtml(label)}</div>`;
+              >${label}</div>`;
           }).join('');
 
           const moreHtml = dayEvs.length > 3
