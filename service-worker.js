@@ -202,8 +202,6 @@ async function sendNotification() {
     const reg = await self.registration;
     await reg.showNotification('まもなく定時です', {
       body   : '退勤打刻を忘れていませんか？',
-      icon   : './icons/icon-192.png',
-      badge  : './icons/icon-192.png',
       tag    : 'sumioka-overtime', // 同タグの重複通知を防ぐ
       requireInteraction: false,   // 自動的に消える
     });
