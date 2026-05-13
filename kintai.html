@@ -3175,13 +3175,13 @@ p:last-child { margin-bottom: 0; }
       SumiokaStorage.save('kintai_session', {
         employeeId   : employee.id,
         name         : employee.name,
-        scheduledEnd : employee.data?.scheduled_end || '',
+        scheduledEnd : employee.scheduled_end || '',
       });
 
       applySession({
         employeeId   : employee.id,
         name         : employee.name,
-        scheduledEnd : employee.data?.scheduled_end || '',
+        scheduledEnd : employee.scheduled_end || '',
       });
 
       await loadTodayRecord();
