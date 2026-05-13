@@ -1017,7 +1017,7 @@
           </div>
           <button class="sumioka-btn sumioka-btn-primary" id="btn-req-search"
             style="align-self:flex-end">絞り込み</button>
-          <!-- #14: 欠席登録ボタン（社長のみ表示） -->
+          <!-- #14: 欠席登録ボタン（管理者のみ表示） -->
           <button class="sumioka-btn" id="btn-absence-register"
             style="align-self:flex-end;display:none"
             onclick="openAbsenceStatusModal()">欠席・在宅登録</button>
@@ -1121,7 +1121,7 @@
               <thead>
                 <tr style="background:Canvas;border-bottom:2px solid GrayText">
                   <th style="text-align:left;padding:0.4rem 0.6rem">機能</th>
-                  <th style="text-align:center;padding:0.4rem 0.6rem">管理者（社長）</th>
+                  <th style="text-align:center;padding:0.4rem 0.6rem">管理者</th>
                   <th style="text-align:center;padding:0.4rem 0.6rem">給与担当</th>
                   <th style="text-align:center;padding:0.4rem 0.6rem">一般職員</th>
                 </tr>
@@ -1843,14 +1843,14 @@
 
         <!-- 管理者権限ロール。
              '権限なし' を選ぶと admin_role='' として保存され Admin ログイン不可になる。
-             '社長' / '給与計算担当' / '一般職員' は Admin ログイン可。 -->
+             '管理者' / '給与計算担当' / '一般職員' は Admin ログイン可。 -->
         <div class="sumioka-form-group">
           <label class="sumioka-label" for="modal-staff-admin-role">管理者権限</label>
           <select class="sumioka-input" id="modal-staff-admin-role">
             <option value="権限なし">権限なし（Admin ログイン不可）</option>
             <option value="一般職員">一般職員</option>
             <option value="給与計算担当">給与計算担当</option>
-            <option value="社長">社長</option>
+            <option value="管理者">管理者</option>
           </select>
         </div>
       </div>
@@ -2609,7 +2609,7 @@
      * #2: admin_role に応じてタブの表示/非表示・操作ボタンの有効/無効を制御する。
      *
      * 権限マトリクス:
-     *   社長            : 全機能利用可
+     *   管理者          : 全機能利用可
      *   給与計算担当    : 給与タブのみ + 閲覧系（スタッフ追加・編集・削除・申請承認は不可）
      *   一般職員        : 給与タブ非表示、スタッフ追加・編集・削除不可、申請承認不可
      *
@@ -2645,10 +2645,10 @@
      * 非表示だけでなくボタンの disabled 制御も行う。
      * API側でも権限チェックしているため、UI制御は二重防御として機能する。
      *
-     * @param {string} role - '社長' | '給与計算担当' | '一般職員'
+     * @param {string} role - '管理者' | '給与計算担当' | '一般職員'
      */
     function applyRoleBasedUI(role) {
-      const isAdmin   = role === '社長';
+      const isAdmin   = role === '管理者';
       const isPayroll = role === '給与計算担当';
       const isGeneral = role === '一般職員';
 
@@ -2687,7 +2687,7 @@
 
       // ── ロールバッジをヘッダーに表示する ──
       const roleLabelMap = {
-        '社長'       : { text: '管理者', color: '#1a7f37' },
+        '管理者'      : { text: '管理者', color: '#1a7f37' },
         '給与計算担当': { text: '給与担当', color: '#1d4ed8' },
         '一般職員'   : { text: '一般職員', color: '#6b7280' },
       };
@@ -4185,7 +4185,7 @@
     function renderStaffTable(staff) {
       const tbody   = document.getElementById('staff-body');
       const myRole  = adminState.adminRole || '';
-      const isAdmin = myRole === '社長';
+      const isAdmin = myRole === '管理者';
       // 給与・社保を表示できるのは社長と給与計算担当のみ
       const canSeeWage = isAdmin || myRole === '給与計算担当';
 
@@ -4219,7 +4219,7 @@
         // 権限バッジ
         const roleBadge = (() => {
           const role = s.admin_role || '';
-          if (role === '社長')         return '<span class="badge badge-blue">社長</span>';
+          if (role === '管理者')         return '<span class="badge badge-blue">管理者</span>';
           if (role === '給与計算担当') return '<span class="badge" style="background:#7c3aed;color:#fff">給与担当</span>';
           if (role === '一般職員')     return '<span class="badge" style="background:#e5e7eb;color:#374151">一般職員</span>';
           return '<span style="color:GrayText;font-size:0.82rem">権限なし</span>';
@@ -4374,7 +4374,7 @@
       // 管理者権限ロールを設定する。
       // admin_role が '' または未定義の場合は '権限なし' を選択する。
       // 新規追加時は安全側のデフォルトとして '権限なし'。
-      const adminRole = isNew ? '権限なし' : (staff.admin_role || '権限なし');
+      const adminRole = isNew ? '' : (staff.admin_role || '');
       document.getElementById('modal-staff-admin-role').value = adminRole;
 
       document.getElementById('modal-edit-staff').classList.remove('hidden');
@@ -4420,7 +4420,7 @@
       // UI上は '権限なし' と明記するが、GAS（authenticateEmployee）は '' を
       // ログイン不可の判定値として使うため、保存時に '' に変換する。
       const adminRoleRaw = document.getElementById('modal-staff-admin-role').value;
-      const adminRole    = adminRoleRaw === '権限なし' ? '' : adminRoleRaw;
+      const adminRole    = adminRoleRaw || '';
 
       const isNew = !id;
 
