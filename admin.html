@@ -2999,9 +2999,14 @@
               '早退'    : 'admin-ev-早退',
               '補填予定': 'admin-ev-補填予定',
               '補填完了': 'admin-ev-補填完了',
+              '納期'    : 'admin-ev-納期',   // シアン（凡例と色を統一）
             };
             const cls   = typeClassMap[ev.type] || 'admin-ev-欠勤';
-            const label = nameLabel(ev.name);
+            // 納期イベントは案件名をそのまま表示する（人名短縮は使わない）
+            // 他のイベントは nameLabel() で「苗字＋名前1文字」に短縮する
+            const label = ev.type === '納期'
+              ? escHtml((ev.title || ev.name || '').substring(0, 10))
+              : nameLabel(ev.name);
 
             // 遅刻・早退はクリックで時刻詳細を表示する。
             // time_in（遅刻の出勤予定）・time_out（早退の退勤予定）・time（申請の時刻）を
@@ -5556,12 +5561,12 @@
 
           const evsHtml = evs.slice(0, 3).map(ev => {
             // A-6: 名字のみ
-            const lastName = (ev.name || '').split(/[\s\u3000]/)[0];
-            const label    = `${lastName}・${(ev.title || '').substring(0, 6)}`;
-            // 納期イベントは admin-ev-納期（ピンク）を使う。
-            // 以前は admin-ev-補填予定（緑）を流用していたため補填と色が被っていた。
-            return `<span class="admin-cal-event ${ev.done ? '' : 'admin-ev-納期'}"
-              style="${ev.done ? 'background:#f3f4f6;color:GrayText;text-decoration:line-through' : ''}"
+            // 案件名を表示する（最大8文字で折り返し防止）
+            const label = (ev.title || ev.name || '').substring(0, 8);
+            // 納期イベントは admin-ev-納期（シアン）を使う（凡例と色を統一）。
+            // 完了済は打ち消し線＋半透明で表現する（色クラスは維持して識別しやすくする）。
+            return `<span class="admin-cal-event admin-ev-納期"
+              style="${ev.done ? 'opacity:0.45;text-decoration:line-through' : ''}"
               title="${escHtml(ev.name)}：${escHtml(ev.title)}${ev.client ? '（' + ev.client + '）' : ''}"
               >${escHtml(label)}</span>`;
           }).join('');
