@@ -4200,8 +4200,20 @@
      *
      * @param {Array} staff
      */
+    /**
+     * スタッフ一覧テーブルを描画する。
+     *
+     * 権限別の表示制御（#2対応）:
+     *   社長          : 全列表示・編集/削除ボタン表示
+     *   給与計算担当  : 全列表示・操作列は「閲覧のみ」
+     *   一般職員      : 給与・社保列を非表示・操作列は「閲覧のみ」
+     */
     function renderStaffTable(staff) {
-      const tbody = document.getElementById('staff-body');
+      const tbody   = document.getElementById('staff-body');
+      const myRole  = adminState.adminRole || '';
+      const isAdmin = myRole === '社長';
+      // 給与・社保を表示できるのは社長と給与計算担当のみ
+      const canSeeWage = isAdmin || myRole === '給与計算担当';
 
       if (staff.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" class="empty-state">スタッフデータがありません</td></tr>';
@@ -4209,23 +4221,43 @@
       }
 
       tbody.innerHTML = staff.map(s => {
-        // 表示する給与額：給与形態に応じて時給 or 月給を出す
-        const wageLabel = s.wage_type === '月給'
+        // 給与表示：canSeeWage が false（一般職員）は「―」に置き換える
+        const wageLabel = !canSeeWage ? '―'
+          : s.wage_type === '月給'
           ? `月${Number(s.monthly_wage || 0).toLocaleString()}円`
           : s.wage_type === '時給'
           ? `${Number(s.hourly_wage || 0).toLocaleString()}円/h`
           : '―';
 
-        // 社保加入状況をまとめて短縮表示する（明細はモーダルで確認）
+        // 社保表示：canSeeWage が false は非表示
         const insLabels = [
           s.ins_health     ? '健' : null,
           s.ins_care       ? '介' : null,
           s.ins_pension    ? '年' : null,
           s.ins_employment ? '雇' : null,
         ].filter(Boolean);
-        const insDisplay = insLabels.length > 0
-          ? `<span style="font-size:0.72rem;color:#065f46">${insLabels.join('・')}</span>`
-          : '<span style="font-size:0.72rem;color:GrayText">なし</span>';
+        const insDisplay = !canSeeWage
+          ? ''
+          : insLabels.length > 0
+          ? `<br><span style="font-size:0.72rem;color:#065f46">${insLabels.join('・')}</span>`
+          : '<br><span style="font-size:0.72rem;color:GrayText">社保なし</span>';
+
+        // 権限バッジ
+        const roleBadge = (() => {
+          const role = s.admin_role || '';
+          if (role === '社長')         return '<span class="badge badge-blue">社長</span>';
+          if (role === '給与計算担当') return '<span class="badge" style="background:#7c3aed;color:#fff">給与担当</span>';
+          if (role === '一般職員')     return '<span class="badge" style="background:#e5e7eb;color:#374151">一般職員</span>';
+          return '<span style="color:GrayText;font-size:0.82rem">権限なし</span>';
+        })();
+
+        // 操作ボタン：社長のみ編集・削除可。それ以外は「閲覧のみ」
+        const actionCell = isAdmin
+          ? `<button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
+               onclick="openStaffModal(${escJson(s)})">編集</button>
+             <button class="btn-reject" style="font-size:0.78rem"
+               onclick="deleteStaff('${escHtml(s.id)}','${escHtml(s.name)}')">削除</button>`
+          : `<span style="font-size:0.78rem;color:GrayText">閲覧のみ</span>`;
 
         return `
           <tr>
@@ -4236,27 +4268,9 @@
             <td>${escHtml(s.pin  || '―')}</td>
             <td>${escHtml(s.employment || '―')}</td>
             <td>${fmtTime(s.scheduled_end)}</td>
-            <td>${wageLabel}<br>${insDisplay}</td>
-            <td>${(() => {
-              // admin_role の値に応じてバッジ色を変える。
-              // '' = 権限なし（ログイン不可）はグレー表示。
-              const role = s.admin_role || '';
-              if (role === '社長')         return '<span class="badge badge-blue">社長</span>';
-              if (role === '給与計算担当') return '<span class="badge badge-blue">給与計算担当</span>';
-              if (role === '一般職員')     return '<span class="badge" style="background:#e5e7eb;color:#374151">一般職員</span>';
-              return '<span style="color:GrayText;font-size:0.82rem">権限なし</span>';
-            })()}</td>
-            <td>
-              <div class="action-btn-group">
-                <!-- #2: 編集・削除は社長のみ表示。権限制御はAPIでも行う -->
-                ${adminState.adminRole === '社長' ? `
-                  <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
-                    onclick="openStaffModal(${escJson(s)})">編集</button>
-                  <button class="btn-reject" style="font-size:0.78rem"
-                    onclick="deleteStaff('${escHtml(s.id)}', '${escHtml(s.name)}')">削除</button>
-                ` : `<span style="font-size:0.78rem;color:GrayText">閲覧のみ</span>`}
-              </div>
-            </td>
+            <td>${wageLabel}${insDisplay}</td>
+            <td>${roleBadge}</td>
+            <td><div class="action-btn-group">${actionCell}</div></td>
           </tr>
         `;
       }).join('');
