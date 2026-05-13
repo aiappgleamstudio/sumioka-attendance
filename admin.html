@@ -3019,8 +3019,16 @@
               early_leave_time : ev.early_leave_time || '',
               request_time     : ev.request_time     || '',
               request_kind     : ev.request_kind     || '',
+              // 納期用フィールド
+              title            : ev.title            || '',
+              phase_name       : ev.phase_name       || '',
+              client           : ev.client           || '',
+              memo             : ev.memo             || '',
+              assignee         : ev.assignee         || '',
+              deadline_done    : !!ev.deadline_done,
+              phase_status     : ev.phase_status     || '',
             }));
-            const isClickable = ['遅刻','早退','欠勤','休み','補填予定','補填完了'].includes(ev.type);
+            const isClickable = ['遅刻','早退','欠勤','休み','補填予定','補填完了','納期'].includes(ev.type);
             // #14: label は nameLabel() が生成する HTML（span タグ含む）なので escHtml しない
             return `<span class="admin-cal-event ${escHtml(cls)}"
               title="${escHtml(ev.name)}：${escHtml(ev.type)}"
@@ -3066,13 +3074,55 @@
       const lateTime  = fmtTime(lateTimeRaw,  '');
       const earlyTime = fmtTime(earlyTimeRaw, '');
 
+      // 納期イベントの場合は専用の詳細表示を生成する
+      if (ev.type === '納期') {
+        const popover = document.createElement('div');
+        popover.id = 'cal-event-popover';
+        popover.style.cssText = `
+          position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+          background:Canvas; border:1px solid GrayText; border-radius:10px;
+          padding:1.25rem 1.5rem; min-width:260px; max-width:360px;
+          box-shadow:0 8px 24px rgba(0,0,0,0.18); z-index:9999;
+          font-size:0.88rem; line-height:1.6;
+        `;
+        const doneStyle  = ev.deadline_done
+          ? 'text-decoration:line-through;color:GrayText'
+          : '';
+        const statusColor = ev.phase_status === '納品済' ? '#065f46'
+          : ev.phase_status === '進行中'  ? '#1d4ed8'
+          : ev.phase_status === '修正中'  ? '#c0392b'
+          : '#6b7280';
+        popover.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
+            <strong style="font-size:0.95rem;${doneStyle}">${escHtml(ev.title || ev.name)}</strong>
+            <button onclick="document.getElementById('cal-event-popover').remove();document.getElementById('cal-event-backdrop').remove()"
+              style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:GrayText;padding:0 0.2em"> ×</button>
+          </div>
+          <div style="margin-bottom:0.5rem">
+            <span style="font-size:0.75rem;background:#cffafe;color:#0e7490;padding:0.1em 0.5em;border-radius:3px">納期</span>
+            <span style="font-size:0.82rem;color:GrayText;margin-left:0.5rem">${escHtml(ev.date)}</span>
+            ${ev.deadline_done ? '<span style="font-size:0.75rem;background:#d1fae5;color:#065f46;padding:0.1em 0.5em;border-radius:3px;margin-left:0.3rem">完了済</span>' : ''}
+          </div>
+          ${ev.phase_name ? `<div style="font-size:0.82rem;margin-bottom:0.3rem">📌 フェーズ: <strong>${escHtml(ev.phase_name)}</strong></div>` : ''}
+          ${ev.assignee   ? `<div style="font-size:0.82rem;margin-bottom:0.3rem">👤 担当: ${escHtml(ev.assignee)}</div>` : ''}
+          ${ev.client     ? `<div style="font-size:0.82rem;margin-bottom:0.3rem">🏢 クライアント: ${escHtml(ev.client)}</div>` : ''}
+          ${ev.phase_status ? `<div style="font-size:0.82rem;color:${statusColor};font-weight:600;margin-bottom:0.3rem">▶ ${escHtml(ev.phase_status)}</div>` : ''}
+          ${ev.memo       ? `<div style="font-size:0.78rem;color:GrayText;margin-top:0.35rem">${escHtml(ev.memo)}</div>` : ''}
+        `;
+        document.body.appendChild(popover);
+        const backdrop = document.createElement('div');
+        backdrop.style.cssText = 'position:fixed;inset:0;z-index:9998;';
+        backdrop.id = 'cal-event-backdrop';
+        backdrop.onclick = () => { popover.remove(); backdrop.remove(); };
+        document.body.appendChild(backdrop);
+        return;
+      }
+
       let timeLabel = '';
       if (ev.type === '遅刻') {
         timeLabel = lateTime  ? `出勤予定: ${lateTime}`  : '出勤予定時刻 未登録';
       } else if (ev.type === '早退') {
         timeLabel = earlyTime ? `退勤予定: ${earlyTime}` : '退勤予定時刻 未登録';
-      } else if (ev.type === '納期') {
-        timeLabel = '';  // 納期は時刻なし
       }
 
       const reasonText = (ev.reason || '').replace(/【補填日時:.*?】/g, '').trim();
@@ -3091,7 +3141,7 @@
       popover.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem">
           <strong style="font-size:0.95rem">${escHtml(ev.name)}</strong>
-          <button onclick="document.getElementById('cal-event-popover').remove()"
+          <button onclick="document.getElementById('cal-event-popover').remove();document.getElementById('cal-event-backdrop').remove()"
             style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:GrayText;padding:0 0.2em"> ×</button>
         </div>
         <div style="margin-bottom:0.35rem">
@@ -5463,17 +5513,8 @@
       // 納品日フェーズ（名前に「納品」を含むフェーズ）の予定日をマップ化する
       // フェーズが見つからない場合は due_date を代替として使う
       const eventMap = {};
-      // デバッグ: allDeadlines の内容を確認する
-      console.log('[renderAdminDeadlineCalendar] allDeadlines:', adminState.allDeadlines);
-
       (adminState.allDeadlines || []).forEach(d => {
         const phases   = Array.isArray(d.phases) ? d.phases : [];
-        // デバッグ: フェーズのshow_admin_calendarを確認する
-        console.log('[renderAdminDeadlineCalendar] title:', d.title, 'phases:', phases.map(p => ({
-          name: p.name,
-          show_admin_calendar: p.show_admin_calendar,
-          planned_date: p.planned_date
-        })));
         // #8: show_admin_calendar が true のフェーズをAdmin納期カレンダーに表示する
         const adminVisiblePhases = phases.filter(p => {
           if (p.show_admin_calendar !== undefined) return !!p.show_admin_calendar;
@@ -5483,7 +5524,6 @@
         const deliveryPhase = adminVisiblePhases.find(p => p.planned_date)
           || phases.find(p => (p.name || '').includes('納品') && p.planned_date);
         const targetDate = deliveryPhase?.planned_date || d.due_date || '';
-        console.log('[renderAdminDeadlineCalendar] targetDate:', targetDate, 'adminVisiblePhases:', adminVisiblePhases.length);
         if (!targetDate) return;
 
         if (!eventMap[targetDate]) eventMap[targetDate] = [];
