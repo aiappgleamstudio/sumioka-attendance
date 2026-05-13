@@ -2545,46 +2545,7 @@
     // #2: callGAS ラッパー（全リクエストに admin_id を自動付与）
     // ============================================================
 
-    /**
-     * GAS を呼び出す。すべてのリクエストに admin_id を自動付与することで
-     * GAS 側の権限チェック（案B）が機能するようにする。
-     *
-     * admin_id は GAS 側で人員マスタを引いて role を確認するために使われる。
-     * フロントから role を送る案Aより安全（送信側が偽装できないため）。
-     *
-     * 使い方: 既存の callGAS(...) をすべてこの関数に置き換える必要はない。
-     * 初期化時に callGAS を差し替えてしまう方式にする。
-     */
-    (function patchCallGASWithAdminId() {
-      // 元の callGAS を保存する
-      const _originalCallGAS = callGAS;
-
-      // callGAS をラップして data に admin_id を自動付与する
-      // ただし 'authenticate' アクションは admin_id を付与しない（ログイン前のため）
-      window.callGAS = function(action, data, opts) {
-        const SKIP_ACTIONS = ['authenticate', 'kintai_authenticate'];
-        if (SKIP_ACTIONS.includes(action)) {
-          return _originalCallGAS(action, data, opts);
-        }
-        // adminState.employeeId が空でない場合のみ付与する
-        const enriched = Object.assign({}, data || {}, {
-          admin_id: adminState.employeeId || (data && data.admin_id) || '',
-        });
-        return _originalCallGAS(action, enriched, opts);
-      };
-    })();
-
-    // ※ patchCallGASWithAdminId() は DOMContentLoaded 内で即時実行される即時関数のため
-    //    bindEvents() 実行前に差し替えが完了している。
-
-    /**
-     * ダミー関数（前の即時実行関数の閉じカッコ処理のため維持）
-     * この関数は呼び出されない。
-     */
-    function _noop() {
-    }
-
-    /**
+   /**
      * ログインカード内にエラーメッセージをインライン表示する。
      * showError（オーバーレイ）の代わりに使用する。
      *
