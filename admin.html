@@ -2276,10 +2276,14 @@
       _buildJobTypeOptions();
 
       // 保存済みセッションがあれば自動ログイン
+      // エラー時はセッションをクリアしてログイン画面に戻す（GASタイムアウト対策）
       const session = SumiokaStorage.load(SESSION_KEY);
       if (session && session.employeeId) {
         applySession(session);
-        loadInitialData();
+        loadInitialData().catch(err => {
+          console.warn('[Admin] 自動ログイン後の初期化に失敗。セッションをクリアします:', err);
+          handleSessionExpired();
+        });
       }
 
       // #2: callGAS に admin_id を自動付与するラッパーを適用する。
@@ -2290,9 +2294,19 @@
           if (action === 'authenticate' || action === 'kintai_authenticate') {
             return _orig(action, data, opts);
           }
-          return _orig(action, Object.assign({}, data || {}, {
+          const enriched = Object.assign({}, data || {}, {
             admin_id: adminState.employeeId || (data && data.admin_id) || '',
-          }), opts);
+          });
+          return _orig(action, enriched, opts).then(function(result) {
+            // GASが「操作者情報が確認できません」を返したらセッション切れと判断して自動クリア
+            if (!result.success &&
+                result.error_detail &&
+                result.error_detail.includes('操作者情報が確認できません')) {
+              console.warn('[callGAS] セッション無効を検出。自動クリアします。');
+              handleSessionExpired();
+            }
+            return result;
+          });
         };
       })();
 
@@ -2707,6 +2721,25 @@
     }
 
     /**
+     * セッション期限切れ・GASエラー時の自動クリア処理。
+     *
+     * ブラウザを閉じずに長時間放置後にページを再表示すると
+     * GASタイムアウトでエラーが出る。自動でセッションをクリアし
+     * ログイン画面へ戻してユーザーに再ログインを促す。
+     */
+    function handleSessionExpired() {
+      SumiokaStorage.remove(SESSION_KEY);
+      adminState.employeeId = '';
+      adminState.name       = '';
+      adminState.adminRole  = '';
+      showScreen('login');
+      // 画面切り替え後にメッセージ表示
+      setTimeout(() => {
+        showLoginError('セッションの有効期限が切れました。再度ログインしてください。');
+      }, 150);
+    }
+
+    /**
      * ログアウト処理。セッションを削除してログイン画面に戻る。
      */
     async function handleLogout() {
@@ -2789,10 +2822,17 @@
      * A-1: データロード完了後、復元タブのデータを読み込む。
      */
     async function loadInitialData() {
-      await Promise.all([
-        loadDashboard(),
-        loadStaffListForFilter(),
-      ]);
+      // GASエラー（タイムアウト・デプロイ変更など）をキャッチしてセッションをクリアする
+      try {
+        await Promise.all([
+          loadDashboard(),
+          loadStaffListForFilter(),
+        ]);
+      } catch (err) {
+        console.warn('[loadInitialData] エラー:', err);
+        handleSessionExpired();
+        throw err; // catch した呼び出し元にも伝播させる
+      }
 
       // 【修正③】初期タブが 'attendance' になったため、判定を 'dashboard' から変更する。
       // attendance タブは loadAttendanceList() をトリガーする。
