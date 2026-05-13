@@ -2819,6 +2819,10 @@ p:last-child { margin-bottom: 0; }
                 onclick="requestNotificationPermission()">
                 🔔 通知を許可する
               </button>
+              <button class="sumioka-btn"
+                onclick="testNotification()">
+                🔔 通知テスト
+              </button>
             </div>
           </div>
         </div>
@@ -2852,9 +2856,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.18 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.19 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.18</div>
+  <div class="version-badge" id="app-version">v1.2.19</div>
 
 
   <script>
@@ -4016,7 +4020,7 @@ p:last-child { margin-bottom: 0; }
               const nameFirst = parts[1] ? escHtml(parts[1].charAt(0)) : '';
               // innerHTML として使うためHTMLタグを含む文字列を生成する
               label = nameFirst
-                ? `${nameLast}<span style="font-size:70%">${nameFirst}</span>`
+                ? `${nameLast}<span style="font-size:80%;vertical-align:bottom;line-height:1">${nameFirst}</span>`
                 : nameLast;
             }
 
@@ -5483,14 +5487,37 @@ p:last-child { margin-bottom: 0; }
       const perm = await Notification.requestPermission();
       if (perm === 'granted') {
         showToast('通知を許可しました。定時5分前にお知らせします。', 'success');
-        // テスト通知を送る
-        new Notification('通知テスト', {
-          body: '定時5分前の通知はこのように表示されます。',
-          icon: 'icons/icon-192.png',
-        });
       } else {
         showToast('通知が拒否されました。ブラウザの設定から許可してください。', 'warning');
       }
+    }
+
+    /**
+     * 通知テスト: 即座に通知を表示して動作確認する。
+     * 通知未許可の場合は許可リクエストを先に行う。
+     */
+    async function testNotification() {
+      if (!('Notification' in window)) {
+        showToast('このブラウザは通知をサポートしていません。', 'warning');
+        return;
+      }
+      // 未許可の場合はまず許可を求める
+      if (Notification.permission !== 'granted') {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') {
+          showToast('通知が拒否されています。ブラウザの設定から許可してください。', 'warning');
+          return;
+        }
+      }
+      // テスト通知を即座に送る
+      const n = new Notification('まもなく定時です', {
+        body : '退勤打刻を忘れていませんか？（テスト通知）',
+        icon : './icons/icon-192.png',
+        tag  : 'sumioka-test',
+      });
+      // 通知クリックで kintai.html にフォーカス
+      n.onclick = () => { window.focus(); n.close(); };
+      showToast('テスト通知を送信しました。', 'success');
     }
 
     /**
