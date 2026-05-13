@@ -2779,6 +2779,54 @@ p:last-child { margin-bottom: 0; }
           </div>
         </div>
 
+        <!-- PIN・パスワード変更カード -->
+        <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
+          margin-bottom:1rem;background:Canvas">
+          <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
+            🔑 PIN・パスワードの変更
+          </p>
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="chg-current-pw">現在のパスワード</label>
+            <input class="sumioka-input" type="password" id="chg-current-pw"
+              placeholder="現在のパスワードを入力" autocomplete="current-password">
+          </div>
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="chg-new-pin">
+              新しいPIN
+              <span style="font-weight:400;color:GrayText;font-size:0.8rem">
+                （変更しない場合は空欄）
+              </span>
+            </label>
+            <input class="sumioka-input" type="text" id="chg-new-pin"
+              placeholder="4桁の数字" maxlength="4" inputmode="numeric"
+              pattern="[0-9]{4}" autocomplete="off">
+          </div>
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="chg-new-pw">
+              新しいパスワード
+              <span style="font-weight:400;color:GrayText;font-size:0.8rem">
+                （変更しない場合は空欄）
+              </span>
+            </label>
+            <input class="sumioka-input" type="password" id="chg-new-pw"
+              placeholder="4文字以上" autocomplete="new-password">
+          </div>
+          <div class="sumioka-form-group">
+            <label class="sumioka-label" for="chg-new-pw-confirm">新しいパスワード（確認）</label>
+            <input class="sumioka-input" type="password" id="chg-new-pw-confirm"
+              placeholder="もう一度入力" autocomplete="new-password">
+          </div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.25rem">
+            <button class="sumioka-btn sumioka-btn-primary" onclick="changeMyCredentials()">
+              変更を保存
+            </button>
+          </div>
+          <p style="font-size:0.78rem;color:GrayText;margin-top:0.5rem">
+            ※ PINまたはパスワードどちらか一方だけの変更も可能です。<br>
+            ※ 変更後は次回ログイン時から新しいPIN・パスワードが有効になります。
+          </p>
+        </div>
+
         <!-- #13: Windows スタートアップ・通知設定 -->
         <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
           margin-bottom:1rem;background:Canvas">
@@ -2858,9 +2906,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.19 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.20 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.19</div>
+  <div class="version-badge" id="app-version">v1.2.20</div>
 
 
   <script>
@@ -5519,6 +5567,74 @@ p:last-child { margin-bottom: 0; }
       // 通知クリックで kintai.html にフォーカス
       n.onclick = () => { window.focus(); n.close(); };
       showToast('テスト通知を送信しました。', 'success');
+    }
+
+    /**
+     * 本人によるPIN・パスワード変更。
+     *
+     * バリデーション:
+     *   - 現在のパスワードは必須（本人確認）
+     *   - 新しいPINは4桁数字のみ
+     *   - 新しいパスワードは4文字以上
+     *   - 新PW と 確認PW が一致すること
+     *   - PIN・PWどちらか片方だけでも変更可能
+     */
+    async function changeMyCredentials() {
+      const currentPw = document.getElementById('chg-current-pw').value.trim();
+      const newPin    = document.getElementById('chg-new-pin').value.trim();
+      const newPw     = document.getElementById('chg-new-pw').value.trim();
+      const newPwConf = document.getElementById('chg-new-pw-confirm').value.trim();
+
+      // バリデーション
+      if (!currentPw) {
+        showToast('現在のパスワードを入力してください。', 'warning');
+        return;
+      }
+      if (!newPin && !newPw) {
+        showToast('新しいPINまたはパスワードを入力してください。', 'warning');
+        return;
+      }
+      if (newPin && !/^\d{4}$/.test(newPin)) {
+        showToast('PINは4桁の数字で入力してください。', 'warning');
+        document.getElementById('chg-new-pin').focus();
+        return;
+      }
+      if (newPw && newPw.length < 4) {
+        showToast('パスワードは4文字以上で入力してください。', 'warning');
+        document.getElementById('chg-new-pw').focus();
+        return;
+      }
+      if (newPw && newPw !== newPwConf) {
+        showToast('新しいパスワードと確認用パスワードが一致しません。', 'warning');
+        document.getElementById('chg-new-pw-confirm').focus();
+        return;
+      }
+
+      showLoading('変更中...');
+      const result = await callKintaiGAS('change_my_credentials', {
+        employee_id      : state.employeeId,
+        current_password : currentPw,
+        new_pin          : newPin  || undefined,
+        new_password     : newPw   || undefined,
+      });
+      hideLoading();
+
+      if (!result.success) {
+        showToast(result.error_message || '変更に失敗しました。', 'error');
+        return;
+      }
+
+      // 変更成功: フォームをクリアして完了メッセージ
+      document.getElementById('chg-current-pw').value    = '';
+      document.getElementById('chg-new-pin').value       = '';
+      document.getElementById('chg-new-pw').value        = '';
+      document.getElementById('chg-new-pw-confirm').value = '';
+
+      const msg = [
+        result.data.changed_pin      ? 'PIN' : '',
+        result.data.changed_password ? 'パスワード' : '',
+      ].filter(Boolean).join('・') + 'を変更しました。';
+      showToast(msg, 'success');
     }
 
     /**
