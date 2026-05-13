@@ -5512,7 +5512,6 @@ p:last-child { margin-bottom: 0; }
       // テスト通知を即座に送る
       const n = new Notification('まもなく定時です', {
         body : '退勤打刻を忘れていませんか？（テスト通知）',
-        icon : './icons/icon-192.png',
         tag  : 'sumioka-test',
       });
       // 通知クリックで kintai.html にフォーカス
@@ -5558,8 +5557,7 @@ p:last-child { margin-bottom: 0; }
         'start "" ' + url,
         '',
         ':EOF',
-      ].join('
-');
+      ].join('\r\n');
 
       const blob = new Blob([batContent], { type: 'text/plain;charset=Shift_JIS' });
       const a    = document.createElement('a');
