@@ -5463,11 +5463,18 @@
       // 納品日フェーズ（名前に「納品」を含むフェーズ）の予定日をマップ化する
       // フェーズが見つからない場合は due_date を代替として使う
       const eventMap = {};
+      // デバッグ: allDeadlines の内容を確認する
+      console.log('[renderAdminDeadlineCalendar] allDeadlines:', adminState.allDeadlines);
+
       (adminState.allDeadlines || []).forEach(d => {
         const phases   = Array.isArray(d.phases) ? d.phases : [];
-        // 「納品」を含むフェーズを優先して取得する
+        // デバッグ: フェーズのshow_admin_calendarを確認する
+        console.log('[renderAdminDeadlineCalendar] title:', d.title, 'phases:', phases.map(p => ({
+          name: p.name,
+          show_admin_calendar: p.show_admin_calendar,
+          planned_date: p.planned_date
+        })));
         // #8: show_admin_calendar が true のフェーズをAdmin納期カレンダーに表示する
-        // 旧データ（フラグなし）は show_on_calendar → 「納品」を含む名前で判定する
         const adminVisiblePhases = phases.filter(p => {
           if (p.show_admin_calendar !== undefined) return !!p.show_admin_calendar;
           if (p.show_on_calendar   !== undefined) return !!p.show_on_calendar;
@@ -5476,6 +5483,7 @@
         const deliveryPhase = adminVisiblePhases.find(p => p.planned_date)
           || phases.find(p => (p.name || '').includes('納品') && p.planned_date);
         const targetDate = deliveryPhase?.planned_date || d.due_date || '';
+        console.log('[renderAdminDeadlineCalendar] targetDate:', targetDate, 'adminVisiblePhases:', adminVisiblePhases.length);
         if (!targetDate) return;
 
         if (!eventMap[targetDate]) eventMap[targetDate] = [];
