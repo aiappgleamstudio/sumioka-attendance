@@ -2282,6 +2282,20 @@
         loadInitialData();
       }
 
+      // #2: callGAS に admin_id を自動付与するラッパーを適用する。
+      // DOMContentLoaded 内で実行することで api.js の callGAS 定義後に確実に適用できる。
+      (function() {
+        const _orig = callGAS;
+        window.callGAS = function(action, data, opts) {
+          if (action === 'authenticate' || action === 'kintai_authenticate') {
+            return _orig(action, data, opts);
+          }
+          return _orig(action, Object.assign({}, data || {}, {
+            admin_id: adminState.employeeId || (data && data.admin_id) || '',
+          }), opts);
+        };
+      })();
+
       bindEvents();
 
       // 今日の日付をヘッダーに表示
@@ -2452,8 +2466,10 @@
       // 一括ダミー登録ボタン
       document.getElementById('btn-bulk-insert-dummy').addEventListener('click',
         handleBulkInsertDummy);
-      // ダミー登録月の初期値を今月にする
-      document.getElementById('dummy-insert-month').value = ym;
+      // ダミー登録月の初期値を今月にする（ymはDOMContentLoadedのスコープ外なので再計算）
+      const _now = new Date();
+      const _ym  = _now.getFullYear() + '-' + String(_now.getMonth() + 1).padStart(2, '0');
+      document.getElementById('dummy-insert-month').value = _ym;
 
       // ── #14: 欠席・在宅・外出登録モーダル ──
       document.getElementById('modal-abs-cancel').addEventListener('click', () => {
@@ -2542,10 +2558,7 @@
     }
 
     // ============================================================
-    // #2: callGAS ラッパー（全リクエストに admin_id を自動付与）
-    // ============================================================
-
-   /**
+    /**
      * ログインカード内にエラーメッセージをインライン表示する。
      * showError（オーバーレイ）の代わりに使用する。
      *
@@ -4517,7 +4530,9 @@
       // 月次レポートと同じ今月を初期値にする
       const today = new Date();
       const ym = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-      document.getElementById('payroll-filter-month').value = ym;
+      const _nowP = new Date();
+      document.getElementById('payroll-filter-month').value =
+        _nowP.getFullYear() + '-' + String(_nowP.getMonth() + 1).padStart(2, '0');
 
       // 設定を読み込んでモーダルのデフォルト値に使うためバックグラウンドで取得する
       loadPayrollSettingsFromGAS();
