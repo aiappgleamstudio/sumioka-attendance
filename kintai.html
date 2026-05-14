@@ -2852,13 +2852,31 @@ p:last-child { margin-bottom: 0; }
             <p style="font-size:0.85rem;font-weight:700;margin-bottom:0.4rem">
               🖥️ Windows 起動時に自動起動
             </p>
-            <p style="font-size:0.82rem;color:GrayText;margin-bottom:0.6rem;line-height:1.6">
-              ① 「ダウンロード」を押す<br>
-              ② ダウンロードされた <code>startup-register.bat</code> をダブルクリックする<br>
-              ③ 黒い画面に「✅ 登録完了」と出たら成功です。Enterキーで閉じる<br>
-              以降、Windows 起動時に打刻画面が自動で開きます。<br>
-              ※ ログイン保持はブラウザ設定に依存します。
+            <!-- スタートアップ設定手順 -->
+            <div style="background:#f0fdf4;border-radius:8px;padding:0.75rem 1rem;
+              margin-bottom:0.75rem;font-size:0.82rem;line-height:1.8">
+              <p style="font-weight:700;margin-bottom:0.3rem">📋 設定手順</p>
+              <p>① 「ダウンロード」ボタンを押す</p>
+              <p>② <code>startup-register.bat</code> をダブルクリックする</p>
+              <p>③ 黒い画面に「登録完了」と出たらEnterキーで閉じる</p>
+              <p>以降、Windows起動時に打刻画面が自動で開きます</p>
+            </div>
+
+            <!-- 動作確認方法 -->
+            <div style="background:#eff6ff;border-radius:8px;padding:0.75rem 1rem;
+              margin-bottom:0.75rem;font-size:0.82rem;line-height:1.8">
+              <p style="font-weight:700;margin-bottom:0.3rem">🔍 再起動なしで動作確認する方法</p>
+              <p>① <strong>Win+R</strong> を押して <code>shell:startup</code> と入力しEnter</p>
+              <p>② <code>sumioka-kintai.bat</code> が存在すれば登録成功</p>
+              <p>③ その <code>sumioka-kintai.bat</code> をダブルクリックすると打刻画面が開く</p>
+            </div>
+
+            <!-- 解除方法 -->
+            <p style="font-size:0.78rem;color:GrayText;margin-bottom:0.6rem;line-height:1.6">
+              解除: <strong>Win+R</strong> → <code>shell:startup</code> → <code>sumioka-kintai.bat</code> を削除<br>
+              ※ ログイン保持はブラウザ設定に依存します
             </p>
+
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
               <button class="sumioka-btn sumioka-btn-primary"
                 onclick="downloadStartupBat()">
@@ -2876,10 +2894,40 @@ p:last-child { margin-bottom: 0; }
             <p style="font-size:0.85rem;font-weight:700;margin-bottom:0.4rem">
               🔔 定時5分前通知（ブラウザ通知）
             </p>
-            <p style="font-size:0.82rem;color:GrayText;margin-bottom:0.6rem;line-height:1.6">
-              打刻タブを閉じた状態でも、ブラウザが起動中であれば定時5分前に通知が届きます。<br>
+
+            <!-- 通知の仕組み説明 -->
+            <p style="font-size:0.82rem;color:GrayText;margin-bottom:0.6rem;line-height:1.7">
+              出勤打刻時に設定した時刻の5分前に通知が届きます。<br>
+              ブラウザが起動中であればタブを閉じていても届きます。<br>
               ※ ブラウザを完全終了した場合は通知されません。
             </p>
+
+            <!-- ステップ説明 -->
+            <div style="background:#f0fdf4;border-radius:8px;padding:0.75rem 1rem;
+              margin-bottom:0.75rem;font-size:0.82rem;line-height:1.8">
+              <p style="font-weight:700;margin-bottom:0.3rem">📋 通知を受け取るための設定手順</p>
+              <p>① 下の「通知を許可する」ボタンを押す</p>
+              <p>② ブラウザのポップアップで「許可」をクリック</p>
+              <p>③ <strong>Windowsの設定 → システム → 通知</strong> を開く</p>
+              <p>④「Google Chrome」または「Microsoft Edge」の通知をオンにする</p>
+              <p>⑤ 出勤打刻時に「退勤通知時刻」を設定して打刻する</p>
+              <p style="color:#6b7280;font-size:0.78rem;margin-top:0.3rem">
+                ※ ブラウザ側とWindows側の両方で許可が必要です
+              </p>
+            </div>
+
+            <!-- 1分後テストの説明 -->
+            <div style="background:#eff6ff;border-radius:8px;padding:0.75rem 1rem;
+              margin-bottom:0.75rem;font-size:0.82rem;line-height:1.8">
+              <p style="font-weight:700;margin-bottom:0.3rem">⏱ 1分後テストの使い方</p>
+              <p>① 「1分後に通知テスト」ボタンを押す</p>
+              <p>② <strong>このタブを閉じる</strong>（ブラウザは閉じない）</p>
+              <p>③ 1分後に通知が届けば設定完了です</p>
+              <p style="color:#6b7280;font-size:0.78rem;margin-top:0.3rem">
+                ※ タブを開いたままでも届きますが、タブを閉じた状態で確認するのがおすすめです
+              </p>
+            </div>
+
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
               <button class="sumioka-btn sumioka-btn-primary"
                 onclick="requestNotificationPermission()">
@@ -5810,31 +5858,31 @@ p:last-child { margin-bottom: 0; }
 
     /**
      * 1分後に通知テストを送る。
-     * 押してからちょうど60秒後に OS 通知が届く。
+     * SWに予約を渡すのでタブを閉じても届く。
      */
-    function testNotificationIn1Min() {
+    async function testNotificationIn1Min() {
       if (Notification.permission !== 'granted') {
         showToast('先に「通知を許可する」を押してください。', 'warning');
         return;
       }
-      showToast('60秒後に通知テストを送ります。タブを閉じても届きます。', 'success');
-      setTimeout(async function() {
-        if ('serviceWorker' in navigator) {
-          const reg = await navigator.serviceWorker.ready;
-          if (reg.active) {
-            reg.active.postMessage({
-              type : 'SHOW_NOTIFICATION',
-              title: '🔔 通知テスト',
-              body : 'この通知は1分後テストです。定時5分前もこのように届きます。',
-            });
-            return;
-          }
-        }
-        // SWが使えない場合は直接送る
-        new Notification('🔔 通知テスト', {
-          body: 'この通知は1分後テストです。定時5分前もこのように届きます。',
-        });
-      }, 60 * 1000);
+      if (!('serviceWorker' in navigator)) {
+        showToast('このブラウザはService Workerに対応していません。', 'warning');
+        return;
+      }
+      const reg = await navigator.serviceWorker.ready;
+      if (!reg.active) {
+        showToast('Service Workerがまだ準備中です。少し待って再試行してください。', 'warning');
+        return;
+      }
+      // SWに「60秒後に通知を送る」よう依頼する
+      // タブを閉じてもSWが動いている限り届く
+      reg.active.postMessage({
+        type        : 'DELAYED_NOTIFICATION',
+        delaySeconds: 60,
+        title       : '🔔 通知テスト',
+        body        : 'タブを閉じた状態でも届きました！定時5分前も同様に届きます。',
+      });
+      showToast('60秒後に通知テストを送ります。このタブを閉じて確認してください。', 'success');
     }
   </script>
 
