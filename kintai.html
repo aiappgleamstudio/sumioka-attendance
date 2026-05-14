@@ -5861,28 +5861,53 @@ p:last-child { margin-bottom: 0; }
      * SWに予約を渡すのでタブを閉じても届く。
      */
     async function testNotificationIn1Min() {
-      if (Notification.permission !== 'granted') {
-        showToast('先に「通知を許可する」を押してください。', 'warning');
+      // Step1: 通知許可確認
+      const perm = Notification.permission;
+      console.log('[通知テスト] Notification.permission =', perm);
+      if (perm !== 'granted') {
+        showToast('通知が許可されていません（現在: ' + perm + '）。「通知を許可する」を押してください。', 'warning');
         return;
       }
+
+      // Step2: SW確認
       if (!('serviceWorker' in navigator)) {
         showToast('このブラウザはService Workerに対応していません。', 'warning');
         return;
       }
-      const reg = await navigator.serviceWorker.ready;
-      if (!reg.active) {
-        showToast('Service Workerがまだ準備中です。少し待って再試行してください。', 'warning');
+      console.log('[通知テスト] SW対応OK');
+
+      // Step3: まず直接Notificationで動作確認
+      try {
+        const n = new Notification('🔔 即時テスト', {
+          body: 'この通知が届けばブラウザ側はOKです。',
+          tag : 'sumioka-direct-test',
+        });
+        console.log('[通知テスト] 直接Notification送信OK:', n);
+      } catch(e) {
+        console.error('[通知テスト] 直接Notification失敗:', e);
+        showToast('通知送信に失敗しました: ' + e.message, 'error');
         return;
       }
-      // SWに「60秒後に通知を送る」よう依頼する
-      // タブを閉じてもSWが動いている限り届く
-      reg.active.postMessage({
-        type        : 'DELAYED_NOTIFICATION',
-        delaySeconds: 60,
-        title       : '🔔 通知テスト',
-        body        : 'タブを閉じた状態でも届きました！定時5分前も同様に届きます。',
-      });
-      showToast('60秒後に通知テストを送ります。このタブを閉じて確認してください。', 'success');
+
+      // Step4: SW経由で60秒後通知
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        console.log('[通知テスト] SW ready:', reg.active?.state);
+        if (reg.active) {
+          reg.active.postMessage({
+            type        : 'DELAYED_NOTIFICATION',
+            delaySeconds: 60,
+            title       : '🔔 1分後通知テスト',
+            body        : 'タブを閉じた状態でも届きました！定時5分前も同様に届きます。',
+          });
+          showToast('即時テスト通知を送信しました。60秒後にもう1回届きます。', 'success');
+        } else {
+          showToast('SW未準備。即時テストのみ送信しました。', 'warning');
+        }
+      } catch(e) {
+        console.error('[通知テスト] SW経由失敗:', e);
+        showToast('SW経由の通知設定に失敗しました: ' + e.message, 'warning');
+      }
     }
   </script>
 
