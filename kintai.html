@@ -2906,9 +2906,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.20 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.21 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.20</div>
+  <div class="version-badge" id="app-version">v1.2.21</div>
 
 
   <script>
@@ -3274,6 +3274,12 @@ p:last-child { margin-bottom: 0; }
       const checkoutBtn = document.getElementById('btn-checkout');
       if (checkinBtn)  checkinBtn.disabled  = true;
       if (checkoutBtn) checkoutBtn.disabled = true;
+
+      // 定時前通知タイマーを開始する
+      // startNotifyTimer は </body> 直前の <script> タグ内で定義されている
+      if (typeof startNotifyTimer === 'function' && session.scheduledEnd) {
+        startNotifyTimer(session.scheduledEnd);
+      }
     }
 
     /**
@@ -3285,6 +3291,9 @@ p:last-child { margin-bottom: 0; }
       if (!ok) return;
 
       SumiokaStorage.remove('kintai_session');
+
+      // 通知タイマーを停止する
+      if (typeof stopNotifyTimer === 'function') stopNotifyTimer();
 
       // 状態をリセット
       Object.assign(state, {
@@ -5475,48 +5484,101 @@ p:last-child { margin-bottom: 0; }
 
   <script>
     // ============================================================
-    // #13/#16: PWA Service Worker 登録・通知許可・スタートアップ設定
+    // #13/#16: PWA Service Worker 登録・定時前通知タイマー
     // ============================================================
 
-    /**
-     * Service Worker を登録する。
-     *
-     * #16: Service Worker がバックグラウンドで動作することで、
-     * kintai.html のタブを閉じた状態でも定時5分前通知が届く。
-     *
-     * 注意: Service Worker は HTTPS でのみ動作する。
-     * GitHub Pages（https://aiappgleamstudio.github.io/...）で運用中のため問題なし。
-     */
+    // ------ Service Worker 登録 ------
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', async () => {
         try {
-          const reg = await navigator.serviceWorker.register('./service-worker.js', {
-            scope: './',
-          });
+          const reg = await navigator.serviceWorker.register('./service-worker.js', { scope: './' });
           console.log('[SW] 登録完了:', reg.scope);
-
-          // Service Worker に現在のユーザー情報と定時を伝える
-          // （ユーザーがログインしている場合のみ）
-          const session = (() => {
-            try {
-              // SumiokaStorage が初期化済みであれば参照する
-              return typeof SumiokaStorage !== 'undefined'
-                ? SumiokaStorage.load('kintai_session')
-                : null;
-            } catch (_) { return null; }
-          })();
-
-          if (session && reg.active) {
-            reg.active.postMessage({
-              type: 'SET_SCHEDULE',
-              scheduledEnd: session.scheduledEnd || '',
-              employeeId  : session.employeeId   || '',
-            });
-          }
         } catch (err) {
-          console.warn('[SW] 登録失敗（通知はブラウザポップアップで代替）:', err.message);
+          console.warn('[SW] 登録失敗:', err.message);
         }
       });
+    }
+
+    // ------ 定時前通知タイマー ------
+    // SW内のsetIntervalはChromeがSWをスリープさせると止まるため、
+    // タイマーはkintai.htmlのタブ側で管理し、SWに通知送信を依頼する方式にする。
+
+    let _notifyTimer     = null;  // setIntervalのID
+    let _notifiedToday   = '';    // 当日の通知済み日付（重複防止）
+
+    /**
+     * 定時前通知タイマーを開始する。
+     * ログイン後に呼ぶ。
+     *
+     * @param {string} scheduledEnd - 'HH:MM' 形式の定時
+     */
+    function startNotifyTimer(scheduledEnd) {
+      if (_notifyTimer) clearInterval(_notifyTimer);
+      if (!scheduledEnd) return;
+
+      console.log('[通知] タイマー開始: 定時=', scheduledEnd);
+
+      // 毎分チェックする
+      _notifyTimer = setInterval(() => {
+        checkAndSendNotify(scheduledEnd);
+      }, 60 * 1000);
+
+      // すぐに1回チェックする
+      checkAndSendNotify(scheduledEnd);
+    }
+
+    /**
+     * 定時5分前かどうかを確認して、条件を満たせばSWに通知を依頼する。
+     *
+     * @param {string} scheduledEnd - 'HH:MM' 形式の定時
+     */
+    async function checkAndSendNotify(scheduledEnd) {
+      if (!scheduledEnd) return;
+
+      const now        = new Date();
+      const todayStr   = now.getFullYear() + '-'
+        + String(now.getMonth() + 1).padStart(2, '0') + '-'
+        + String(now.getDate()).padStart(2, '0');
+      const nowMin     = now.getHours() * 60 + now.getMinutes();
+      const [h, m]     = scheduledEnd.split(':').map(Number);
+      if (isNaN(h) || isNaN(m)) return;
+      const targetMin  = h * 60 + m - 5;  // 定時5分前
+
+      // 時刻が合わない・今日すでに通知済みならスキップ
+      if (nowMin !== targetMin) return;
+      if (_notifiedToday === todayStr) return;
+
+      _notifiedToday = todayStr;
+      console.log('[通知] 定時5分前を検知。通知を送信します。');
+
+      // SW経由でOS通知を送る
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        if (reg.active) {
+          reg.active.postMessage({
+            type : 'SHOW_NOTIFICATION',
+            title: 'まもなく定時です',
+            body : '退勤打刻を忘れていませんか？',
+          });
+          return;
+        }
+      }
+
+      // SWが使えない場合は Notification API を直接呼ぶ
+      if (Notification.permission === 'granted') {
+        new Notification('まもなく定時です', { body: '退勤打刻を忘れていませんか？' });
+      }
+    }
+
+    /**
+     * 通知タイマーを停止する（ログアウト時に呼ぶ）。
+     */
+    function stopNotifyTimer() {
+      if (_notifyTimer) {
+        clearInterval(_notifyTimer);
+        _notifyTimer = null;
+        console.log('[通知] タイマー停止');
+      }
     }
 
     /**
