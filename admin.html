@@ -3892,12 +3892,31 @@
         const statusClass = badgeMap[req.status] || 'badge-gray';
         const statusLabel = labelMap[req.status] || req.status || '―';
 
-        // #6: 時間欄
-        // 優先順: late_time > early_leave_time > request_time > reasonから抽出（旧データ互換）
-        let timeDisplay = '';
-        if (req.late_time)             timeDisplay = req.late_time;
-        else if (req.early_leave_time) timeDisplay = req.early_leave_time;
-        else if (req.request_time)     timeDisplay = req.request_time;
+        // 申請日時を 'YY/M/D H:M' 形式に変換する（JST）。
+        // ISO 文字列のままでは列幅を圧迫するため短縮表示にする。
+        const createdAtDisplay = fmtCreatedAt(req.created_at);
+
+        // 時間欄の表示ロジック。
+        // 遅刻: 「出勤予定: HH:MM」/ 早退: 「退勤予定: HH:MM」の形式で表示する。
+        // 優先順: req.time（新規保存分） > req.late_time / req.early_leave_time（旧フィールド互換）
+        // req.time は GAS の rowToRequest で返す TIME 列（13列目）の値。
+        // 既存レコード（TIME 列が空）は旧フィールドにフォールバックして互換性を保つ。
+        let timeRaw = '';
+        if (req.time)                  timeRaw = req.time;
+        else if (req.late_time)        timeRaw = req.late_time;
+        else if (req.early_leave_time) timeRaw = req.early_leave_time;
+        else if (req.request_time)     timeRaw = req.request_time;
+
+        let timeDisplay = '―';
+        if (timeRaw) {
+          const formatted = fmtTime(timeRaw, '');
+          if (formatted) {
+            // 遅刻・早退のときは意味のあるラベルを付ける。それ以外は時刻のみ表示。
+            if      (req.type === '遅刻') timeDisplay = `出勤予定 ${formatted}`;
+            else if (req.type === '早退') timeDisplay = `退勤予定 ${formatted}`;
+            else                          timeDisplay = formatted;
+          }
+        }
 
         // #7: 申請種別区分（request_kind）の日本語表示
         // 旧データ（request_kind が空）は reason / type から推定する
@@ -3953,12 +3972,12 @@
         }
         return `
           <tr>
-            <td style="white-space:nowrap;font-size:0.78rem">${escHtml(req.created_at || '―')}</td>
+            <td style="white-space:nowrap;font-size:0.78rem">${escHtml(createdAtDisplay)}</td>
             <td>${escHtml(req.name || '―')}</td>
             <td style="font-size:0.82rem">${kindLabel || '―'}</td>
             <td style="font-size:0.82rem">${escHtml(req.type || '―')}</td>
             <td style="white-space:nowrap">${escHtml(String(req.target_date||'').replace(/\//g,'-')||'―')}</td>
-            <td style="white-space:nowrap;font-size:0.82rem">${escHtml(timeDisplay||'―')}</td>
+            <td style="white-space:nowrap;font-size:0.82rem">${escHtml(timeDisplay)}</td>
             <td style="max-width:140px;font-size:0.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
               title="${escHtml(req.reason||'')}">
               ${escHtml(reasonMain||'―')}
@@ -5692,6 +5711,32 @@
       const m   = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       return `${y}-${m}-${day}`;
+    }
+
+    /**
+     * ISO 8601 の申請日時を 'YY/M/D H:M' 形式に変換する（JST）。
+     *
+     * 例: "2026-05-11T23:40:07.006Z" → "26/5/11 23:40"
+     *
+     * 設計判断:
+     *   - 年は下2桁（YY）にすることで申請一覧の列幅を抑える。
+     *   - 月・日・時・分はゼロ埋めなしで表示（画面スペース節約）。
+     *   - タイムゾーンは JST（getHours 等でローカル時刻を取得）。
+     *   - 変換できない値は '―' を返す（安全側に倒す）。
+     *
+     * @param {string} iso - ISO 8601 文字列（例: "2026-05-11T23:40:07.006Z"）
+     * @returns {string}   - 'YY/M/D H:M' 形式、変換失敗時は '―'
+     */
+    function fmtCreatedAt(iso) {
+      if (!iso) return '―';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '―';
+      const yy = String(d.getFullYear()).slice(2);  // 下2桁
+      const M  = d.getMonth() + 1;                  // ゼロ埋めなし
+      const D  = d.getDate();
+      const H  = d.getHours();
+      const m  = String(d.getMinutes()).padStart(2, '0'); // 分は2桁固定
+      return `${yy}/${M}/${D} ${H}:${m}`;
     }
 
     /**
