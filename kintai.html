@@ -2839,8 +2839,10 @@ p:last-child { margin-bottom: 0; }
               🖥️ Windows 起動時に自動起動
             </p>
             <p style="font-size:0.82rem;color:GrayText;margin-bottom:0.6rem;line-height:1.6">
-              「ダウンロード」を押すと <code>startup-register.bat</code> がダウンロードされます。<br>
-              そのファイルをダブルクリックすると、次回 Windows 起動時に打刻画面が自動的に開きます。<br>
+              ① 「ダウンロード」を押す<br>
+              ② ダウンロードされた <code>startup-register.bat</code> をダブルクリックする<br>
+              ③ 黒い画面に「✅ 登録完了」と出たら成功です。Enterキーで閉じる<br>
+              以降、Windows 起動時に打刻画面が自動で開きます。<br>
               ※ ログイン保持はブラウザ設定に依存します。
             </p>
             <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
@@ -2852,7 +2854,7 @@ p:last-child { margin-bottom: 0; }
             <p style="font-size:0.78rem;color:GrayText;margin-top:0.5rem">
               解除する場合: スタートアップフォルダ
               （<code>%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup</code>）
-              から <code>startup-register.bat</code> を削除してください。
+              から <code>sumioka-kintai.bat</code> を削除してください。
             </p>
           </div>
           <!-- 通知設定 -->
@@ -5707,46 +5709,82 @@ p:last-child { margin-bottom: 0; }
      *
      * 自動ログインは実装しない。ログイン保持はブラウザ側設定に委ねる。
      */
+    /**
+     * Windowsスタートアップ登録BATを生成してダウンロードする。
+     *
+     * ダウンロードした startup-register.bat をダブルクリックするだけで
+     * スタートアップフォルダへの登録が完了する。
+     * 次回Windows起動時から自動的に打刻画面が開くようになる。
+     *
+     * 解除する場合は startup-unregister.bat を実行するか、
+     * スタートアップフォルダから sumioka-kintai.bat を手動削除する。
+     */
     function downloadStartupBat() {
-      const url = window.location.href.split('?')[0]; // クエリを除いたURL
-      const batContent = [
+      const url = 'https://aiappgleamstudio.github.io/sumioka-attendance/kintai.html';
+
+      // スタートアップフォルダに置く起動BAT（sumioka-kintai.bat）の内容
+      const launchBat = [
         '@echo off',
-        'REM 住岡 勤怠打刻 - Windows スタートアップ自動起動',
-        'REM このファイルをスタートアップフォルダに置くと Windows 起動時に打刻画面が自動的に開きます',
-        'REM スタートアップフォルダ: %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup',
+        'REM 住岡 勤怠打刻 - 自動起動',
+        'REM このファイルはスタートアップフォルダに自動登録されています',
         '',
-        'REM Chrome が存在する場合はアプリモードで起動する（ブラウザUIを非表示にする）',
         'IF EXIST "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" (',
         '  start "" "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" --app=' + url,
         '  GOTO :EOF',
         ')',
-        '',
-        'REM Chrome (x86) が存在する場合',
         'IF EXIST "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" (',
         '  start "" "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" --app=' + url,
         '  GOTO :EOF',
         ')',
-        '',
-        'REM Edge が存在する場合',
         'IF EXIST "%PROGRAMFILES(X86)%\Microsoft\Edge\Application\msedge.exe" (',
         '  start "" "%PROGRAMFILES(X86)%\Microsoft\Edge\Application\msedge.exe" --app=' + url,
         '  GOTO :EOF',
         ')',
-        '',
-        'REM どちらも見つからない場合はデフォルトブラウザで開く',
         'start "" ' + url,
-        '',
         ':EOF',
-      ].join('\r\n');
+      ].join('
+');
 
-      const blob = new Blob([batContent], { type: 'text/plain;charset=Shift_JIS' });
+      // startup-register.bat の内容
+      // ダブルクリックすると sumioka-kintai.bat をスタートアップフォルダに書き込んで登録する
+      const registerBat = [
+        '@echo off',
+        'REM 住岡 勤怠打刻 - Windows スタートアップ自動登録',
+        'REM このファイルをダブルクリックするとスタートアップに登録されます',
+        '',
+        'SET STARTUP=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup',
+        'SET TARGET=%STARTUP%\sumioka-kintai.bat',
+        '',
+        'REM 起動用BATをスタートアップフォルダに書き込む',
+        '(',
+        // launchBatの各行を echo で書き込む
+        ...launchBat.split('
+').map(line =>
+          line === '' ? 'echo.' : 'echo ' + line.replace(/[<>|&^]/g, '^$&')
+        ),
+        ') > "%TARGET%"',
+        '',
+        'IF EXIST "%TARGET%" (',
+        '  echo.',
+        '  echo ✅ 登録完了！次回Windowsを起動すると打刻画面が自動で開きます。',
+        '  echo    登録先: %TARGET%',
+        ') ELSE (',
+        '  echo ❌ 登録に失敗しました。管理者権限で実行してみてください。',
+        ')',
+        '',
+        'echo.',
+        'pause',
+      ].join('
+');
+
+      const blob = new Blob([registerBat], { type: 'text/plain;charset=Shift_JIS' });
       const a    = document.createElement('a');
       a.href     = URL.createObjectURL(blob);
       a.download = 'startup-register.bat';
       a.click();
       URL.revokeObjectURL(a.href);
 
-      showToast('startup-register.bat をダウンロードしました。ダブルクリックで実行してください。', 'success');
+      showToast('startup-register.bat をダウンロードしました。ダブルクリックで登録完了です。', 'success');
     }
   </script>
 
