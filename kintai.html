@@ -2047,6 +2047,20 @@ p:last-child { margin-bottom: 0; }
             </div>
           </div>
 
+          <!-- 定時前通知時刻（出勤時に設定） -->
+          <div class="sumioka-form-group" id="notify-time-wrap"
+            style="margin-bottom:0.75rem">
+            <label class="sumioka-label" for="input-notify-time"
+              style="font-size:0.82rem">
+              🔔 退勤通知時刻
+              <span style="font-weight:400;color:GrayText;font-size:0.78rem">
+                （この時刻の5分前に通知）
+              </span>
+            </label>
+            <input class="sumioka-input" type="time" id="input-notify-time"
+              style="width:120px">
+          </div>
+
           <button
             class="sumioka-btn sumioka-btn-primary sumioka-btn-block"
             id="btn-checkin"
@@ -2872,8 +2886,8 @@ p:last-child { margin-bottom: 0; }
                 🔔 通知を許可する
               </button>
               <button class="sumioka-btn"
-                onclick="testNotification()">
-                🔔 通知テスト
+                onclick="testNotificationIn1Min()">
+                ⏱ 1分後に通知テスト
               </button>
             </div>
           </div>
@@ -3277,11 +3291,12 @@ p:last-child { margin-bottom: 0; }
       if (checkinBtn)  checkinBtn.disabled  = true;
       if (checkoutBtn) checkoutBtn.disabled = true;
 
-      // 定時前通知タイマーを開始する
-      // startNotifyTimer は </body> 直前の <script> タグ内で定義されている
-      if (typeof startNotifyTimer === 'function' && session.scheduledEnd) {
-        startNotifyTimer(session.scheduledEnd);
+      // 通知時刻入力欄に所定終業時刻を初期値としてセットする
+      const notifyInput = document.getElementById('input-notify-time');
+      if (notifyInput && session.scheduledEnd) {
+        notifyInput.value = session.scheduledEnd;
       }
+      // 定時前通知タイマーは出勤打刻後に開始する（打刻前は不要）
     }
 
     /**
@@ -3471,7 +3486,20 @@ p:last-child { margin-bottom: 0; }
       state.checkedIn   = true;
       state.checkinTime = now;
 
-      showToast('出勤打刻しました。', 'success');
+      // 出勤打刻時に入力された通知時刻でタイマーを開始する
+      // 入力がない場合は所定終業時刻を使う
+      const notifyInput   = document.getElementById('input-notify-time');
+      const notifyTime    = (notifyInput && notifyInput.value) || state.scheduledEnd || '';
+      if (notifyTime && typeof startNotifyTimer === 'function') {
+        startNotifyTimer(notifyTime);
+        if (notifyTime !== state.scheduledEnd) {
+          showToast('出勤打刻しました。' + notifyTime + ' の5分前に通知します。', 'success');
+        } else {
+          showToast('出勤打刻しました。', 'success');
+        }
+      } else {
+        showToast('出勤打刻しました。', 'success');
+      }
       renderState();
     }
 
@@ -5702,89 +5730,111 @@ p:last-child { margin-bottom: 0; }
     }
 
     /**
-     * #13: Windows スタートアップ用 BAT ファイルを生成してダウンロードする。
-     *
-     * Chrome または Edge の --app モードで kintai.html を起動する。
-     * ユーザーが1回実行するとスタートアップフォルダに登録される。
-     *
-     * 自動ログインは実装しない。ログイン保持はブラウザ側設定に委ねる。
-     */
-    /**
      * Windowsスタートアップ登録BATを生成してダウンロードする。
-     *
-     * ダウンロードした startup-register.bat をダブルクリックするだけで
-     * スタートアップフォルダへの登録が完了する。
-     * 次回Windows起動時から自動的に打刻画面が開くようになる。
-     *
-     * 解除する場合は startup-unregister.bat を実行するか、
-     * スタートアップフォルダから sumioka-kintai.bat を手動削除する。
+     * ダブルクリックするだけでスタートアップフォルダへの登録が完了する。
      */
     function downloadStartupBat() {
-      const url = 'https://aiappgleamstudio.github.io/sumioka-attendance/kintai.html';
+      const CRLF = '\r\n';
+      const url  = 'https://aiappgleamstudio.github.io/sumioka-attendance/kintai.html';
 
-      // スタートアップフォルダに置く起動BAT（sumioka-kintai.bat）の内容
-      const launchBat = [
+      // バックスラッシュを変数で安全に扱う
+      const BS   = '\\';
+      const PF   = '%PROGRAMFILES%';
+      const PF86 = '%PROGRAMFILES(X86)%';
+      const APP  = '%APPDATA%';
+
+      // スタートアップフォルダに配置する起動BAT（sumioka-kintai.bat）の内容
+      const lines = [
         '@echo off',
         'REM 住岡 勤怠打刻 - 自動起動',
-        'REM このファイルはスタートアップフォルダに自動登録されています',
         '',
-        'IF EXIST "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" (',
-        '  start "" "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" --app=' + url,
+        'IF EXIST "' + PF  + BS + 'Google' + BS + 'Chrome' + BS + 'Application' + BS + 'chrome.exe" (',
+        '  start "" "' + PF  + BS + 'Google' + BS + 'Chrome' + BS + 'Application' + BS + 'chrome.exe" --app=' + url,
         '  GOTO :EOF',
         ')',
-        'IF EXIST "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" (',
-        '  start "" "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" --app=' + url,
+        'IF EXIST "' + PF86 + BS + 'Google' + BS + 'Chrome' + BS + 'Application' + BS + 'chrome.exe" (',
+        '  start "" "' + PF86 + BS + 'Google' + BS + 'Chrome' + BS + 'Application' + BS + 'chrome.exe" --app=' + url,
         '  GOTO :EOF',
         ')',
-        'IF EXIST "%PROGRAMFILES(X86)%\Microsoft\Edge\Application\msedge.exe" (',
-        '  start "" "%PROGRAMFILES(X86)%\Microsoft\Edge\Application\msedge.exe" --app=' + url,
+        'IF EXIST "' + PF86 + BS + 'Microsoft' + BS + 'Edge' + BS + 'Application' + BS + 'msedge.exe" (',
+        '  start "" "' + PF86 + BS + 'Microsoft' + BS + 'Edge' + BS + 'Application' + BS + 'msedge.exe" --app=' + url,
         '  GOTO :EOF',
         ')',
         'start "" ' + url,
         ':EOF',
-      ].join('
-');
+      ];
 
-      // startup-register.bat の内容
-      // ダブルクリックすると sumioka-kintai.bat をスタートアップフォルダに書き込んで登録する
-      const registerBat = [
+      // startup-register.bat: ダブルクリックするとsumioka-kintai.batをスタートアップに書き込む
+      const startup  = APP + BS + 'Microsoft' + BS + 'Windows' + BS + 'Start Menu' + BS + 'Programs' + BS + 'Startup';
+      const target   = startup + BS + 'sumioka-kintai.bat';
+      const echoLines = lines.map(function(line) {
+        if (line === '') return 'echo.';
+        // BATの特殊文字をエスケープ（< > | & ^ を ^でエスケープ）
+        return 'echo ' + line.replace(/([<>|&^])/g, '^$1');
+      });
+
+      const registerLines = [
         '@echo off',
         'REM 住岡 勤怠打刻 - Windows スタートアップ自動登録',
-        'REM このファイルをダブルクリックするとスタートアップに登録されます',
+        'REM ダブルクリックするとスタートアップに登録されます',
         '',
-        'SET STARTUP=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup',
-        'SET TARGET=%STARTUP%\sumioka-kintai.bat',
+        'SET STARTUP=' + startup,
+        'SET TARGET='  + target,
         '',
         'REM 起動用BATをスタートアップフォルダに書き込む',
         '(',
-        // launchBatの各行を echo で書き込む
-        ...launchBat.split('
-').map(line =>
-          line === '' ? 'echo.' : 'echo ' + line.replace(/[<>|&^]/g, '^$&')
-        ),
+      ].concat(echoLines).concat([
         ') > "%TARGET%"',
         '',
         'IF EXIST "%TARGET%" (',
         '  echo.',
-        '  echo ✅ 登録完了！次回Windowsを起動すると打刻画面が自動で開きます。',
-        '  echo    登録先: %TARGET%',
+        '  echo 登録完了！次回Windowsを起動すると打刻画面が自動で開きます。',
+        '  echo 登録先: %TARGET%',
         ') ELSE (',
-        '  echo ❌ 登録に失敗しました。管理者権限で実行してみてください。',
+        '  echo 登録に失敗しました。管理者権限で実行してみてください。',
         ')',
         '',
         'echo.',
         'pause',
-      ].join('
-');
+      ]);
 
-      const blob = new Blob([registerBat], { type: 'text/plain;charset=Shift_JIS' });
-      const a    = document.createElement('a');
-      a.href     = URL.createObjectURL(blob);
-      a.download = 'startup-register.bat';
+      const batText = registerLines.join(CRLF);
+      const blob    = new Blob([batText], { type: 'text/plain;charset=Shift_JIS' });
+      const a       = document.createElement('a');
+      a.href        = URL.createObjectURL(blob);
+      a.download    = 'startup-register.bat';
       a.click();
       URL.revokeObjectURL(a.href);
-
       showToast('startup-register.bat をダウンロードしました。ダブルクリックで登録完了です。', 'success');
+    }
+
+    /**
+     * 1分後に通知テストを送る。
+     * 押してからちょうど60秒後に OS 通知が届く。
+     */
+    function testNotificationIn1Min() {
+      if (Notification.permission !== 'granted') {
+        showToast('先に「通知を許可する」を押してください。', 'warning');
+        return;
+      }
+      showToast('60秒後に通知テストを送ります。タブを閉じても届きます。', 'success');
+      setTimeout(async function() {
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg.active) {
+            reg.active.postMessage({
+              type : 'SHOW_NOTIFICATION',
+              title: '🔔 通知テスト',
+              body : 'この通知は1分後テストです。定時5分前もこのように届きます。',
+            });
+            return;
+          }
+        }
+        // SWが使えない場合は直接送る
+        new Notification('🔔 通知テスト', {
+          body: 'この通知は1分後テストです。定時5分前もこのように届きます。',
+        });
+      }, 60 * 1000);
     }
   </script>
 
