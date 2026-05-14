@@ -1,21 +1,15 @@
 /**
- * service-worker.js - 住岡勤怠管理 PWA Service Worker v2.0
+ * service-worker.js - 住岡勤怠管理 PWA Service Worker v2.1
  *
  * 設計方針:
  *   タイマー管理は kintai.html 側で行い、SWは通知送信専用にする。
- *   Chrome は SW をアイドル時にスリープさせるため SW 内の setInterval は使えない。
- *   kintai.html のタブが開いている限り setInterval が確実に動く。
+ *   DELAYED_NOTIFICATION でタブを閉じても届く遅延通知が可能。
  *
- * 動作フロー:
- *   1. kintai.html が毎分時刻チェックして定時5分前を検知する
- *   2. kintai.html が SW に SHOW_NOTIFICATION メッセージを送る
- *   3. SW がすぐに OS 通知を表示する
- *
- * @version 2.0.0
+ * @version 2.1.0
  */
 'use strict';
 
-const SW_VERSION = 'sumioka-v2.0.0';
+const SW_VERSION = 'sumioka-v2.1.0';
 
 self.addEventListener('install', event => {
   console.log('[SW] インストール:', SW_VERSION);
@@ -34,16 +28,45 @@ self.addEventListener('activate', event => {
 });
 
 /**
- * kintai.html から SHOW_NOTIFICATION を受け取ったら即座に OS 通知を表示する。
+ * kintai.html からのメッセージを処理する。
+ *
+ * SHOW_NOTIFICATION:
+ *   即座にOS通知を表示する。定時5分前の通知に使用。
+ *
+ * DELAYED_NOTIFICATION:
+ *   指定秒数後にOS通知を表示する。通知テストに使用。
+ *   タブを閉じていても届く。
+ *   event.waitUntil で SW がスリープしないよう保持する。
  */
-self.addEventListener('message', async event => {
+self.addEventListener('message', event => {
   const data = event.data || {};
   console.log('[SW] メッセージ受信:', data.type);
+
   if (data.type === 'SHOW_NOTIFICATION') {
-    await showOsNotification(
-      data.title || 'まもなく定時です',
-      data.body  || '退勤打刻を忘れていませんか？'
+    event.waitUntil(
+      showOsNotification(
+        data.title || 'まもなく定時です',
+        data.body  || '退勤打刻を忘れていませんか？'
+      )
     );
+  }
+
+  if (data.type === 'DELAYED_NOTIFICATION') {
+    const delay = (data.delaySeconds || 60) * 1000;
+    const title = data.title || '🔔 通知テスト';
+    const body  = data.body  || 'テスト通知です。';
+
+    // event.waitUntil に Promise を渡して SW をスリープさせない
+    // ※ Chromeは最大数分間 waitUntil を保持するので60秒は問題なし
+    event.waitUntil(
+      new Promise(resolve => {
+        setTimeout(async () => {
+          await showOsNotification(title, body);
+          resolve();
+        }, delay);
+      })
+    );
+    console.log('[SW] 遅延通知を予約:', delay / 1000, '秒後');
   }
 });
 
@@ -55,7 +78,7 @@ async function showOsNotification(title, body) {
       requireInteraction: false,
       renotify         : true,
     });
-    console.log('[SW] 通知送信完了');
+    console.log('[SW] 通知送信完了:', title);
   } catch (err) {
     console.warn('[SW] 通知送信失敗:', err.message);
   }
