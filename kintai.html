@@ -2856,19 +2856,21 @@ p:last-child { margin-bottom: 0; }
             <div style="background:#f0fdf4;border-radius:8px;padding:0.75rem 1rem;
               margin-bottom:0.75rem;font-size:0.82rem;line-height:1.8">
               <p style="font-weight:700;margin-bottom:0.3rem">📋 設定手順</p>
-              <p>① 「ダウンロード」ボタンを押す</p>
-              <p>② <code>startup-register.bat</code> をダブルクリックする</p>
-              <p>③ 黒い画面に「登録完了」と出たらEnterキーで閉じる</p>
-              <p>以降、Windows起動時に打刻画面が自動で開きます</p>
+              <p>① 「ダウンロード」ボタンを押して <code>sumioka-kintai.bat</code> を保存する</p>
+              <p>② <strong>Win+R</strong> を押して <code>shell:startup</code> と入力しEnter</p>
+              <p>③ 開いたフォルダに <code>sumioka-kintai.bat</code> を移動（またはコピー）する</p>
+              <p>④ 次回Windows起動時から打刻画面が自動で開きます</p>
             </div>
 
             <!-- 動作確認方法 -->
             <div style="background:#eff6ff;border-radius:8px;padding:0.75rem 1rem;
               margin-bottom:0.75rem;font-size:0.82rem;line-height:1.8">
               <p style="font-weight:700;margin-bottom:0.3rem">🔍 再起動なしで動作確認する方法</p>
-              <p>① <strong>Win+R</strong> を押して <code>shell:startup</code> と入力しEnter</p>
-              <p>② <code>sumioka-kintai.bat</code> が存在すれば登録成功</p>
-              <p>③ その <code>sumioka-kintai.bat</code> をダブルクリックすると打刻画面が開く</p>
+              <p><code>sumioka-kintai.bat</code> をダブルクリックすると打刻画面が開きます</p>
+              <p style="color:#6b7280;font-size:0.78rem">
+                スタートアップフォルダに置いたファイルをダブルクリックするか、<br>
+                ダウンロードしたファイルを直接ダブルクリックして動作確認できます
+              </p>
             </div>
 
             <!-- 解除方法 -->
@@ -5784,79 +5786,41 @@ p:last-child { margin-bottom: 0; }
      * ダブルクリックするだけでスタートアップフォルダへの登録が完了する。
      */
     function downloadStartupBat() {
-      const CRLF = '\r\n';
       const url  = 'https://aiappgleamstudio.github.io/sumioka-attendance/kintai.html';
+      const CRLF = '\r\n';
+      const PF   = '%ProgramFiles%';
+      const P86  = '%ProgramFiles(x86)%';
 
-      // バックスラッシュを変数で安全に扱う
-      const BS   = '\\';
-      const PF   = '%PROGRAMFILES%';
-      const PF86 = '%PROGRAMFILES(X86)%';
-      const APP  = '%APPDATA%';
-
-      // スタートアップフォルダに配置する起動BAT（sumioka-kintai.bat）の内容
+      // シンプルなChrome起動BAT（英数字のみ・文字化けなし）
+      // このファイル自体をスタートアップフォルダに置いてもらう方式にする
       const lines = [
         '@echo off',
-        'REM 住岡 勤怠打刻 - 自動起動',
-        '',
-        'IF EXIST "' + PF  + BS + 'Google' + BS + 'Chrome' + BS + 'Application' + BS + 'chrome.exe" (',
-        '  start "" "' + PF  + BS + 'Google' + BS + 'Chrome' + BS + 'Application' + BS + 'chrome.exe" --app=' + url,
-        '  GOTO :EOF',
+        'if exist "' + PF  + '\\Google\\Chrome\\Application\\chrome.exe" (',
+        '  start "" "' + PF  + '\\Google\\Chrome\\Application\\chrome.exe" --app=' + url,
+        '  goto :eof',
         ')',
-        'IF EXIST "' + PF86 + BS + 'Google' + BS + 'Chrome' + BS + 'Application' + BS + 'chrome.exe" (',
-        '  start "" "' + PF86 + BS + 'Google' + BS + 'Chrome' + BS + 'Application' + BS + 'chrome.exe" --app=' + url,
-        '  GOTO :EOF',
+        'if exist "' + P86 + '\\Google\\Chrome\\Application\\chrome.exe" (',
+        '  start "" "' + P86 + '\\Google\\Chrome\\Application\\chrome.exe" --app=' + url,
+        '  goto :eof',
         ')',
-        'IF EXIST "' + PF86 + BS + 'Microsoft' + BS + 'Edge' + BS + 'Application' + BS + 'msedge.exe" (',
-        '  start "" "' + PF86 + BS + 'Microsoft' + BS + 'Edge' + BS + 'Application' + BS + 'msedge.exe" --app=' + url,
-        '  GOTO :EOF',
+        'if exist "' + P86 + '\\Microsoft\\Edge\\Application\\msedge.exe" (',
+        '  start "" "' + P86 + '\\Microsoft\\Edge\\Application\\msedge.exe" --app=' + url,
+        '  goto :eof',
         ')',
         'start "" ' + url,
-        ':EOF',
+        ':eof',
       ];
 
-      // startup-register.bat: ダブルクリックするとsumioka-kintai.batをスタートアップに書き込む
-      const startup  = APP + BS + 'Microsoft' + BS + 'Windows' + BS + 'Start Menu' + BS + 'Programs' + BS + 'Startup';
-      const target   = startup + BS + 'sumioka-kintai.bat';
-      const echoLines = lines.map(function(line) {
-        if (line === '') return 'echo.';
-        // BATの特殊文字をエスケープ（< > | & ^ を ^でエスケープ）
-        return 'echo ' + line.replace(/([<>|&^])/g, '^$1');
-      });
-
-      const registerLines = [
-        '@echo off',
-        'REM 住岡 勤怠打刻 - Windows スタートアップ自動登録',
-        'REM ダブルクリックするとスタートアップに登録されます',
-        '',
-        'SET STARTUP=' + startup,
-        'SET TARGET='  + target,
-        '',
-        'REM 起動用BATをスタートアップフォルダに書き込む',
-        '(',
-      ].concat(echoLines).concat([
-        ') > "%TARGET%"',
-        '',
-        'IF EXIST "%TARGET%" (',
-        '  echo.',
-        '  echo 登録完了！次回Windowsを起動すると打刻画面が自動で開きます。',
-        '  echo 登録先: %TARGET%',
-        ') ELSE (',
-        '  echo 登録に失敗しました。管理者権限で実行してみてください。',
-        ')',
-        '',
-        'echo.',
-        'pause',
-      ]);
-
-      const batText = registerLines.join(CRLF);
-      const blob    = new Blob([batText], { type: 'text/plain;charset=Shift_JIS' });
-      const a       = document.createElement('a');
-      a.href        = URL.createObjectURL(blob);
-      a.download    = 'startup-register.bat';
+      const bat  = lines.join(CRLF);
+      const blob = new Blob([bat], { type: 'text/plain;charset=us-ascii' });
+      const a    = document.createElement('a');
+      a.href     = URL.createObjectURL(blob);
+      a.download = 'sumioka-kintai.bat';
       a.click();
       URL.revokeObjectURL(a.href);
-      showToast('startup-register.bat をダウンロードしました。ダブルクリックで登録完了です。', 'success');
+      showToast('sumioka-kintai.bat をダウンロードしました。', 'success');
     }
+
 
     /**
      * 1分後に通知テストを送る。
