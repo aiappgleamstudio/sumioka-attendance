@@ -3385,9 +3385,14 @@
 
     /**
      * 補填申請フォームのスタッフ選択肢を最新に保つ。
+     * カレンダータブ廃止後、このフォームが存在しないページでも
+     * loadAdminCalendar から呼ばれるため、要素が null の場合は何もしない。
      */
     async function loadStaffSelectForFillup() {
       const select = document.getElementById('admin-req-staff');
+      // DOM上に存在しない場合はスキップする（タブ統合後は不要なため）
+      if (!select) return;
+
       if (adminState.staffList.length === 0) {
         const r = await callGAS('admin_staff_list', { type: 'all' });
         if (r.success) adminState.staffList = r.data.staff || [];
