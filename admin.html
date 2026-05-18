@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理者ダッシュボード | 住岡</title>
 
+  <!-- favicon: kintai.html と同じ data URI 方式で 404 を防ぐ。
+       管理者は「管」の文字・青色で打刻（打・緑）と区別する。 -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231d4ed8'/><text y='.9em' font-size='70' x='50%' text-anchor='middle' fill='white'>管</text></svg>">
+
   <!--
     ============================================================
     共通基盤（kintai.html と同じ読み込み順を維持）
@@ -329,6 +333,20 @@
 
     .modal-overlay.hidden {
       display: none;
+    }
+
+    /* modal-card は modal と同じスタイルを持つ別クラス。
+       使い分け: .modal は既存モーダル、.modal-card は申請編集・欠席登録など後発モーダル。
+       定義がなかったため背景が透明になっていた。 */
+    .modal-card {
+      background: Canvas;
+      border: 1px solid GrayText;
+      border-radius: 10px;
+      padding: 1.5rem;
+      width: 100%;
+      max-width: 420px;
+      max-height: 90dvh;
+      overflow-y: auto;
     }
 
     .modal {
@@ -773,15 +791,13 @@
     <nav class="admin-tabs" id="admin-tabs" role="tablist">
       <button class="admin-tab"        data-tab="dashboard"   role="tab">ダッシュボード</button>
       <button class="admin-tab active" data-tab="attendance"  role="tab">勤怠一覧</button>
-      <!-- カレンダータブ: 旧「カレンダー・申請」から「カレンダー」に変更（補填申請フォームを削除したため） -->
-      <button class="admin-tab"        data-tab="calendar"    role="tab">カレンダー</button>
       <button class="admin-tab"        data-tab="requests"    role="tab">申請管理</button>
       <button class="admin-tab"        data-tab="staff"       role="tab">スタッフ管理</button>
       <button class="admin-tab"        data-tab="monthly"     role="tab">月次レポート</button>
       <button class="admin-tab"        data-tab="payroll"     role="tab">給与計算</button>
-      <!-- 納期ビュー（管理者は全スタッフの納期を閲覧。タスクはkintai.html側で個人管理） -->
       <button class="admin-tab"        data-tab="taskview"    role="tab">納期</button>
-      <!-- 使い方タブ：操作手順とテストデータリセットボタンを配置 -->
+      <!-- 設定タブ：会社カレンダー登録・ダミーデータ・リセットを集約 -->
+      <button class="admin-tab"        data-tab="settings"    role="tab">設定</button>
       <button class="admin-tab"        data-tab="howto"       role="tab">使い方</button>
     </nav>
 
@@ -790,9 +806,19 @@
          ============================================================ -->
     <main class="admin-content">
 
-      <!-- ①ダッシュボード -->
       <section class="tab-panel" id="panel-dashboard">
         <div class="tab-loading" id="loading-dashboard">読み込み中...</div>
+
+        <!-- 未打刻スタッフ警告バナー: loadDashboard 完了後に JS で制御する。
+             未打刻者が1人以上いる場合のみ表示する。 -->
+        <div id="admin-unpunched-warning" style="display:none;
+          background:#fff3cd;border:1px solid #ffc107;border-radius:8px;
+          padding:0.65rem 1rem;margin-bottom:0.85rem;
+          font-size:0.84rem;color:#856404;
+          display:flex;align-items:center;gap:0.5rem">
+          <span style="font-size:1.1rem">⚠️</span>
+          <span id="admin-unpunched-warning-text">未打刻のスタッフがいます。下の一覧を確認してください。</span>
+        </div>
 
         <p class="section-title">本日のサマリー</p>
         <div class="summary-grid">
@@ -859,6 +885,7 @@
           </table>
         </div>
 
+        <!-- 未打刻スタッフ: 所定始業・所定終業の両方を表示して出勤督促に活用する -->
         <p class="section-title">未打刻スタッフ</p>
         <div class="admin-table-wrap">
           <table class="admin-table">
@@ -866,13 +893,42 @@
               <tr>
                 <th>氏名</th>
                 <th>区分</th>
+                <th>所定始業</th>
                 <th>所定終業</th>
               </tr>
             </thead>
             <tbody id="dash-absent-body">
-              <tr><td colspan="3" class="empty-state">読み込み中...</td></tr>
+              <tr><td colspan="4" class="empty-state">読み込み中...</td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- ── カレンダー（旧カレンダータブから移動） ── -->
+        <p class="section-title" style="margin-top:1.5rem">カレンダー</p>
+        <div class="tab-loading" id="loading-calendar" style="display:none">読み込み中...</div>
+        <div class="admin-cal-nav">
+          <button class="sumioka-btn" id="admin-btn-cal-prev">◀ 前月</button>
+          <span class="admin-cal-nav-title" id="admin-cal-title">――</span>
+          <button class="sumioka-btn" id="admin-btn-cal-next">翌月 ▶</button>
+        </div>
+        <table class="admin-calendar-grid" id="admin-calendar-grid">
+          <thead>
+            <tr>
+              <th>日</th><th>月</th><th>火</th><th>水</th>
+              <th>木</th><th>金</th><th>土</th>
+            </tr>
+          </thead>
+          <tbody id="admin-calendar-body">
+            <tr><td colspan="7" style="text-align:center;color:GrayText;padding:1rem">読み込み中...</td></tr>
+          </tbody>
+        </table>
+        <div class="admin-cal-legend">
+          <span class="admin-cal-event admin-ev-欠勤">欠勤・休み</span>
+          <span class="admin-cal-event admin-ev-遅刻">遅刻・早退</span>
+          <span class="admin-cal-event admin-ev-補填予定">補填予定</span>
+          <span class="admin-cal-event admin-ev-補填完了">補填完了</span>
+          <span class="admin-cal-event admin-ev-会社">会社休日</span>
+          <span class="admin-cal-event admin-ev-納期">納期</span>
         </div>
       </section>
 
@@ -887,51 +943,20 @@
            A-11: 会社カレンダー（休日登録）
            A-12: 欠勤・遅刻・早退は全員分。補填関連とログインユーザーのみ分離
            ============================================================ -->
-      <section class="tab-panel" id="panel-calendar">
-        <div class="tab-loading" id="loading-calendar">読み込み中...</div>
+      <!-- ⑨設定タブ: 会社カレンダー登録・ダミーデータ一括登録・テストデータリセット -->
+      <section class="tab-panel" id="panel-settings">
 
-        <!-- ── 月カレンダー（全スタッフ：欠勤・遅刻・早退 / 全員の補填）── -->
-        <div class="admin-cal-nav">
-          <button class="sumioka-btn" id="admin-btn-cal-prev">◀ 前月</button>
-          <span class="admin-cal-nav-title" id="admin-cal-title">――</span>
-          <button class="sumioka-btn" id="admin-btn-cal-next">翌月 ▶</button>
-        </div>
-
-        <table class="admin-calendar-grid" id="admin-calendar-grid">
-          <thead>
-            <tr>
-              <th>日</th><th>月</th><th>火</th><th>水</th>
-              <th>木</th><th>金</th><th>土</th>
-            </tr>
-          </thead>
-          <tbody id="admin-calendar-body">
-            <tr><td colspan="7" style="text-align:center;color:GrayText;padding:1rem">読み込み中...</td></tr>
-          </tbody>
-        </table>
-
-        <!-- 凡例 -->
-        <div class="admin-cal-legend">
-          <span class="admin-cal-event admin-ev-欠勤">欠勤・休み</span>
-          <span class="admin-cal-event admin-ev-遅刻">遅刻・早退</span>
-          <span class="admin-cal-event admin-ev-補填予定">補填予定</span>
-          <span class="admin-cal-event admin-ev-補填完了">補填完了</span>
-          <span class="admin-cal-event admin-ev-会社">会社休日</span>
-          <span class="admin-cal-event admin-ev-納期">納期</span>
-        </div>
-
-        <!-- ── A-11: 会社カレンダー登録（管理者専用）── -->
+        <!-- 会社カレンダー登録 -->
         <p class="section-title">会社カレンダー登録</p>
         <div class="company-cal-section">
           <p style="font-size:0.82rem;color:GrayText;margin-bottom:0.75rem">
             カレンダー上の日付をクリックして休日を登録できます。複数日まとめて登録可能です。
           </p>
-          <!-- 選択済み日付リスト -->
           <div id="company-cal-selected-dates" style="margin-bottom:0.75rem;min-height:1.5rem">
             <span style="font-size:0.82rem;color:GrayText">カレンダーの日付をクリックして選択</span>
           </div>
           <div class="sumioka-form-group">
             <label class="sumioka-label" for="company-cal-title">名称</label>
-            <!-- デフォルト値を「会社休日」にする。登録担当者が変更することもできる。 -->
             <input class="sumioka-input" type="text" id="company-cal-title"
               value="会社休日" placeholder="例：創立記念日、お盆休み">
           </div>
@@ -940,7 +965,38 @@
           <button class="sumioka-btn" id="btn-company-cal-clear">選択をリセット</button>
         </div>
 
-      </section><!-- /#panel-calendar -->
+        <!-- ダミー勤怠データ一括登録 -->
+        <p class="section-title" style="margin-top:2rem">テスト機能</p>
+        <div style="padding:1rem;background:#f0f9ff;border:1px solid #93c5fd;border-radius:6px;margin-bottom:1rem">
+          <p style="font-size:0.83rem;color:#1d4ed8;margin-bottom:0.75rem">
+            <strong>ダミー勤怠データ一括登録</strong><br>
+            指定月の全スタッフ分のダミー勤怠データを登録します。導入前のUI確認・テスト用途専用です。
+          </p>
+          <div style="display:flex;gap:0.65rem;align-items:center;flex-wrap:wrap">
+            <div class="filter-group">
+              <span class="filter-label">対象月</span>
+              <input class="sumioka-input" type="month" id="dummy-insert-month" style="width:160px">
+            </div>
+            <button class="sumioka-btn" id="btn-bulk-insert-dummy"
+              style="background:#1d4ed8;color:#fff;border-color:#1d4ed8;align-self:flex-end">
+              ダミーデータを一括登録
+            </button>
+          </div>
+        </div>
+
+        <!-- テストデータ一括リセット -->
+        <div style="padding:1rem;background:#fff5f5;border:1px solid #fca5a5;border-radius:6px">
+          <p style="font-size:0.83rem;color:#c0392b;margin-bottom:0.75rem">
+            <strong>テストデータのリセット</strong><br>
+            出退勤記録・申請管理・タスク管理・納期管理の全データを削除します。<br>
+            人員マスタ・会社カレンダー・給与設定は削除されません。<strong>本番運用後は使用しないでください。</strong>
+          </p>
+          <button class="sumioka-btn" id="btn-reset-test-data"
+            style="background:#c0392b;color:#fff;border-color:#c0392b">
+            テストデータを一括削除
+          </button>
+        </div>
+      </section><!-- /#panel-settings -->
 
       <!-- ②勤怠一覧 -->
       <section class="tab-panel active" id="panel-attendance">
@@ -1211,45 +1267,16 @@
             各種設定
           </p>
           <div style="font-size:0.86rem;line-height:1.9">
-            <p><strong>会社休日登録</strong>：カレンダータブでカレンダー上の日付をクリックして選択 → 名称を入力して「休日を登録」</p>
+            <p><strong>会社休日登録</strong>：設定タブでカレンダー上の日付をクリックして選択 → 名称を入力して「休日を登録」</p>
             <p><strong>スタッフ追加・編集</strong>：スタッフ管理タブの「＋ スタッフ追加」から登録。PIN・パスワードは0始まりも使用可</p>
             <p><strong>給与計算</strong>：給与計算タブで月を選んで「給与計算を実行」→ 各スタッフの明細を確認</p>
             <p><strong>納期管理</strong>：全スタッフの案件納期を「担当者順」「納品日順」「進捗順」で確認</p>
           </div>
         </div>
 
-        <p class="section-title" style="margin-top:2rem">テスト機能</p>
-
-        <!-- 一括ダミー登録 -->
-        <div style="padding:1rem;background:#f0f9ff;border:1px solid #93c5fd;border-radius:6px;margin-bottom:1rem">
-          <p style="font-size:0.83rem;color:#1d4ed8;margin-bottom:0.75rem">
-            <strong>ダミー勤怠データ一括登録</strong><br>
-            指定月の全スタッフ分のダミー勤怠データを登録します。導入前のUI確認・テスト用途専用です。
-          </p>
-          <div style="display:flex;gap:0.65rem;align-items:center;flex-wrap:wrap">
-            <div class="filter-group">
-              <span class="filter-label">対象月</span>
-              <input class="sumioka-input" type="month" id="dummy-insert-month" style="width:160px">
-            </div>
-            <button class="sumioka-btn" id="btn-bulk-insert-dummy"
-              style="background:#1d4ed8;color:#fff;border-color:#1d4ed8;align-self:flex-end">
-              ダミーデータを一括登録
-            </button>
-          </div>
-        </div>
-
-        <!-- テストデータ一括リセット -->
-        <div style="padding:1rem;background:#fff5f5;border:1px solid #fca5a5;border-radius:6px">
-          <p style="font-size:0.83rem;color:#c0392b;margin-bottom:0.75rem">
-            <strong>テストデータのリセット</strong><br>
-            出退勤記録・申請管理・タスク管理・納期管理の全データを削除します。<br>
-            人員マスタ・会社カレンダー・給与設定は削除されません。<strong>本番運用後は使用しないでください。</strong>
-          </p>
-          <button class="sumioka-btn" id="btn-reset-test-data"
-            style="background:#c0392b;color:#fff;border-color:#c0392b">
-            テストデータを一括削除
-          </button>
-        </div>
+        <p style="font-size:0.82rem;color:GrayText;margin-top:1rem">
+          ダミーデータ登録・テストデータリセットは「設定」タブから操作できます。
+        </p>
       </section>
 
       <!-- ⑤月次レポート -->
@@ -2666,37 +2693,57 @@
       const isPayroll = role === '給与計算担当';
       const isGeneral = role === '一般職員';
 
+      // 打刻修正権限:
+      //   管理者    → 全スタッフ（職員・利用者）の修正が可能
+      //   一般職員  → 利用者のみ修正可能（職員同士の打刻操作は管理者のみ）
+      //   給与担当  → 修正不可（閲覧のみ）
+      // この値を adminState に保存して renderAttendanceTable が参照できるようにする
+      adminState.canEditAttendance = isAdmin || isGeneral;
+      adminState.editOnlyUsers     = isGeneral; // true=利用者のみ編集可
+
       // ── タブの表示制御 ──
-      // 給与タブ: 社長・給与計算担当のみ表示
+      // 給与タブ: 管理者・給与計算担当のみ表示
       const payrollTab = document.querySelector('.admin-tab[data-tab="payroll"]');
       if (payrollTab) {
         payrollTab.style.display = (isAdmin || isPayroll) ? '' : 'none';
       }
 
+      // 設定タブ: 管理者のみ表示
+      const settingsTab = document.querySelector('.admin-tab[data-tab="settings"]');
+      if (settingsTab) {
+        settingsTab.style.display = isAdmin ? '' : 'none';
+      }
+
       // ── スタッフ管理: 追加・編集・削除ボタンの制御 ──
-      // 社長のみ操作可能。給与担当・一般職員は閲覧のみ。
+      // 管理者のみ操作可能。給与担当・一般職員は閲覧のみ。
       const staffAddBtn = document.getElementById('btn-staff-add');
       if (staffAddBtn) {
         staffAddBtn.style.display = isAdmin ? '' : 'none';
       }
 
-      // ── 給与設定ボタン: 社長のみ ──
+      // ── 給与設定ボタン: 管理者のみ ──
       const payrollSettingsBtn = document.getElementById('btn-payroll-settings');
       if (payrollSettingsBtn) {
         payrollSettingsBtn.style.display = isAdmin ? '' : 'none';
       }
 
-      // ── テストデータ・使い方タブの操作: 社長のみ ──
+      // ── テストデータ: 管理者のみ操作可能 ──
       const resetBtn = document.getElementById('btn-reset-test-data');
       if (resetBtn) {
         resetBtn.disabled      = !isAdmin;
         resetBtn.style.opacity = isAdmin ? '' : '0.4';
       }
 
-      // ── 欠席登録ボタン: 社長のみ表示 ──
+      // ── 欠席登録ボタン: 管理者のみ表示 ──
       const absenceRegBtn = document.getElementById('btn-absence-register');
       if (absenceRegBtn) {
         absenceRegBtn.style.display = isAdmin ? '' : 'none';
+      }
+
+      // ── 新規打刻登録ボタン: 管理者・一般職員は表示 ──
+      const attAddBtn = document.getElementById('btn-att-add');
+      if (attAddBtn) {
+        attAddBtn.style.display = (isAdmin || isGeneral) ? '' : 'none';
       }
 
       // ── ロールバッジをヘッダーに表示する ──
@@ -2803,12 +2850,18 @@
           document.getElementById('att-filter-staff').value = '';
           loadAttendance();
           break;
-        case 'calendar': loadAdminCalendar(); loadAdminFillupPending(); break;
+        // ダッシュボードにカレンダーを統合したため、dashboard切替時にカレンダーもロードする
+        case 'dashboard':
+          loadDashboard();
+          loadAdminCalendar();
+          loadAdminFillupPending();
+          break;
         case 'requests': loadRequests();          break;
         case 'staff':    loadStaff();             break;
         case 'payroll':  initPayrollTab();        break;
         case 'taskview': loadTaskView();          break;
         case 'monthly':  /* 明示的に検索ボタンを押す運用 */ break;
+        case 'settings': /* 設定タブは静的コンテンツ。カレンダー登録のみ操作ベース */ break;
       }
     }
 
@@ -2839,8 +2892,11 @@
       const restoredTab = adminState._restoredTab;
       if (restoredTab && restoredTab !== 'attendance') {
         switch (restoredTab) {
-          case 'dashboard': loadDashboard();          break;
-          case 'calendar': await loadAdminCalendar(); await loadAdminFillupPending(); break;
+          case 'dashboard':
+            loadDashboard();
+            await loadAdminCalendar();
+            await loadAdminFillupPending();
+            break;
           case 'requests': await loadRequests();  break;
           case 'staff':    await loadStaff();     break;
           case 'payroll':  initPayrollTab();      break;
@@ -3507,6 +3563,21 @@
 
       // 未打刻スタッフを描画
       renderDashAbsent(data.absent_staff || []);
+
+      // 未打刻警告バナー: absent_count が 1 以上の場合のみ表示する
+      const warningEl = document.getElementById('admin-unpunched-warning');
+      if (warningEl) {
+        const absentCount = data.absent_count ?? 0;
+        if (absentCount > 0) {
+          warningEl.style.display = 'flex';
+          const textEl = document.getElementById('admin-unpunched-warning-text');
+          if (textEl) {
+            textEl.textContent = `未打刻のスタッフが ${absentCount} 名います。下の一覧を確認してください。`;
+          }
+        } else {
+          warningEl.style.display = 'none';
+        }
+      }
     }
 
     /**
@@ -3557,7 +3628,8 @@
       const tbody = document.getElementById('dash-absent-body');
 
       if (staff.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">全員出勤済み</td></tr>';
+        // colspan はテーブルヘッダー列数（4）に合わせる
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">全員出勤済み</td></tr>';
         return;
       }
 
@@ -3565,6 +3637,7 @@
         <tr>
           <td>${escHtml(s.name)}</td>
           <td>${escHtml(s.type || '―')}</td>
+          <td>${fmtTime(s.scheduled_start)}</td>
           <td>${fmtTime(s.scheduled_end)}</td>
         </tr>
       `).join('');
@@ -3617,9 +3690,17 @@
         return;
       }
 
+      // 打刻修正の権限判定:
+      //   canEditAttendance = true  → 修正ボタンを表示
+      //   editOnlyUsers     = true  → 利用者（employment_type='利用者'）のみ修正ボタン表示
+      const canEdit     = adminState.canEditAttendance !== false;
+      const onlyUsers   = adminState.editOnlyUsers === true;
+
       tbody.innerHTML = records.map(r => {
         // 未打刻行は背景色・バッジで視覚的に区別する
         if (r.is_absent) {
+          // 代理入力ボタンも権限チェックを通す
+          const canInput = canEdit && (!onlyUsers || r.type === '利用者');
           return `
             <tr style="background:#fff5f5;opacity:0.85">
               <td style="color:#9ca3af;font-size:0.82rem">${escHtml(r.date || '―')}</td>
@@ -3635,17 +3716,27 @@
               <td>
                 <div style="display:flex;gap:0.3rem;align-items:center">
                   <span class="badge badge-red" style="font-size:0.7rem">未打刻</span>
-                  <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em"
+                  ${canInput ? `<button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em"
                     onclick="openEditModal(null, '${escHtml(r.employee_id)}', '${escHtml(r.date)}')">
                     代理入力
-                  </button>
+                  </button>` : ''}
                 </div>
               </td>
             </tr>`;
         }
 
-        const workMin = calcWorkMinutes(r.time_in, r.time_out);
-        const workStr = workMin > 0 ? formatMinutes(workMin) : '―';
+        // 修正ボタンの表示判定: 一般職員は利用者のみ修正可
+        const canEditRow = canEdit && (!onlyUsers || r.type === '利用者');
+
+        // work_minutes: DBに保存済みの値を優先し、ない場合は time_in/out から再計算する
+        const workMin = r.work_minutes != null && r.work_minutes !== ''
+          ? Number(r.work_minutes)
+          : calcWorkMinutes(r.time_in, r.time_out);
+        const breakMin = r.break_minutes != null && r.break_minutes !== ''
+          ? Number(r.break_minutes) : 0;
+        // 表示: 実働（DBか再計算） - 休憩 で純実働を出す
+        const netMin  = r.work_minutes != null ? workMin : Math.max(0, workMin - breakMin);
+        const workStr = (r.time_in && r.time_out) ? formatMinutes(netMin) : '―';
 
         return `
           <tr>
@@ -3661,10 +3752,10 @@
               ${escHtml(r.memo || '―')}
             </td>
             <td>
-              <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
+              ${canEditRow ? `<button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
                 onclick="openEditModal(${escJson(r)})">
                 修正
-              </button>
+              </button>` : ''}
             </td>
           </tr>
         `;
@@ -3936,11 +4027,31 @@
           .replace(/【有給消化】/g, '')
           .trim();
         const fillupMatch = (req.reason || '').match(/【補填日時:(.*?)】/);
-        const fillupInfo  = fillupMatch ? fillupMatch[1].trim() : '';
-        // 補填情報欄: request_kind=fillup の場合も reason から抽出した値を使う
-        const fillupDisplay = fillupInfo
-          ? `<span style="font-size:0.78rem;color:#065f46">${escHtml(fillupInfo)}</span>`
-          : '―';
+        const fillupRaw   = fillupMatch ? fillupMatch[1].trim() : '';
+
+        // 「/」区切りを改行に変換し、時間範囲を「HH:MM〜HH:MM」形式で表示する。
+        // 旧形式: "2026-05-12 10:00 60分 / 2026-05-13 14:00 30分"
+        // 新形式: "2026-05-12 10:00〜11:00\n2026-05-13 14:00〜14:30"
+        let fillupDisplay = '―';
+        if (fillupRaw) {
+          const lines = fillupRaw.split('/').map(seg => {
+            const s = seg.trim();
+            // "YYYY-MM-DD HH:MM NNN分" のパターンを検出して時間範囲に変換する
+            const m = s.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2})\s+(\d+)分?$/);
+            if (m) {
+              const [, date, startTime, durStr] = m;
+              const [sh, sm] = startTime.split(':').map(Number);
+              const endTotalMin = sh * 60 + sm + Number(durStr);
+              const eh = String(Math.floor(endTotalMin / 60)).padStart(2, '0');
+              const em = String(endTotalMin % 60).padStart(2, '0');
+              return `${date} ${startTime}〜${eh}:${em}`;
+            }
+            return s; // 変換できない旧形式はそのまま表示
+          });
+          fillupDisplay = `<div style="font-size:0.78rem;color:#065f46;line-height:1.6">${
+            lines.map(l => escHtml(l)).join('<br>')
+          }</div>`;
+        }
 
         // 操作ボタン:
         //   pending      → 承認・却下
@@ -5714,29 +5825,29 @@
     }
 
     /**
-     * ISO 8601 の申請日時を 'YY/M/D H:M' 形式に変換する（JST）。
+     * ISO 8601 の申請日時を 'YYYY/M/D H:M' 形式に変換する（JST）。
      *
-     * 例: "2026-05-11T23:40:07.006Z" → "26/5/11 23:40"
+     * 例: "2026-05-11T23:40:07.006Z" → "2026/5/11 23:40"
      *
      * 設計判断:
-     *   - 年は下2桁（YY）にすることで申請一覧の列幅を抑える。
+     *   - 年は4桁（YYYY）で表示する（YY だと世紀の誤認が生じるため）。
      *   - 月・日・時・分はゼロ埋めなしで表示（画面スペース節約）。
      *   - タイムゾーンは JST（getHours 等でローカル時刻を取得）。
      *   - 変換できない値は '―' を返す（安全側に倒す）。
      *
      * @param {string} iso - ISO 8601 文字列（例: "2026-05-11T23:40:07.006Z"）
-     * @returns {string}   - 'YY/M/D H:M' 形式、変換失敗時は '―'
+     * @returns {string}   - 'YYYY/M/D H:M' 形式、変換失敗時は '―'
      */
     function fmtCreatedAt(iso) {
       if (!iso) return '―';
       const d = new Date(iso);
       if (isNaN(d.getTime())) return '―';
-      const yy = String(d.getFullYear()).slice(2);  // 下2桁
-      const M  = d.getMonth() + 1;                  // ゼロ埋めなし
-      const D  = d.getDate();
-      const H  = d.getHours();
-      const m  = String(d.getMinutes()).padStart(2, '0'); // 分は2桁固定
-      return `${yy}/${M}/${D} ${H}:${m}`;
+      const yyyy = d.getFullYear();             // 4桁年
+      const M    = d.getMonth() + 1;
+      const D    = d.getDate();
+      const H    = d.getHours();
+      const m    = String(d.getMinutes()).padStart(2, '0');
+      return `${yyyy}/${M}/${D} ${H}:${m}`;
     }
 
     /**
