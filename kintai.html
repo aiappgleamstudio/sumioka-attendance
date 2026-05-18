@@ -2001,6 +2001,27 @@ p:last-child { margin-bottom: 0; }
         <span class="balance-banner-value" id="display-balance">読み込み中...</span>
       </div>
 
+      <!-- 未打刻警告バナー:
+           データロード完了後に出勤打刻がない場合のみ表示する。
+           勤務形態が設定されており、申請（遅刻・早退・欠席）もない日に表示する。
+           JS の showUnpunchedWarning() / hideUnpunchedWarning() で制御する。 -->
+      <div id="unpunched-warning-banner" style="
+        display:none;
+        background:#fff3cd;
+        border:1px solid #ffc107;
+        border-radius:8px;
+        padding:0.65rem 1rem;
+        margin-bottom:0.75rem;
+        font-size:0.84rem;
+        color:#856404;
+        display:flex;
+        align-items:center;
+        gap:0.5rem;
+      ">
+        <span style="font-size:1.1rem">⚠️</span>
+        <span>本日まだ出勤打刻がされていません。出勤する場合は打刻してください。</span>
+      </div>
+
       <!-- 出勤・退勤カードを PC では横並びにする -->
       <div class="checkin-grid">
       <!-- 出勤カード -->
@@ -2191,6 +2212,7 @@ p:last-child { margin-bottom: 0; }
             <option value="休み">休み</option>
             <option value="遅刻">遅刻</option>
             <option value="早退">早退</option>
+            <option value="外出勤務">外出勤務</option>
           </select>
         </div>
 
@@ -2974,9 +2996,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.22 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.23 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.22</div>
+  <div class="version-badge" id="app-version">v1.2.23</div>
 
 
   <script>
@@ -3648,6 +3670,14 @@ p:last-child { margin-bottom: 0; }
       renderCheckinButton();
       renderCheckoutButton();
       checkOvertimeNotice();
+
+      // 未打刻警告バナー: 出勤前のみ表示する。
+      // 打刻済み・退勤済みは警告不要なので非表示にする。
+      const warningBanner = document.getElementById('unpunched-warning-banner');
+      if (warningBanner) {
+        const shouldWarn = !state.checkedIn && !state.checkedOut;
+        warningBanner.style.display = shouldWarn ? 'flex' : 'none';
+      }
     }
 
     /** 出勤エリアの表示を更新する */
@@ -4329,6 +4359,15 @@ p:last-child { margin-bottom: 0; }
 
       // バリデーション
       if (!date) { showToast('対象日を選択してください。', 'warning'); return; }
+
+      // YYYY-MM-DD 形式の厳密チェック:
+      // <input type="date"> でも手入力や自動補完で "202605-05-11" のような
+      // 不正値が入ることがあるため GAS 送信前にフロントでも弾く。
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        showToast('対象日の形式が正しくありません。カレンダーから日付を選択してください。（例: 2026-05-11）', 'warning');
+        document.getElementById('absence-date').focus();
+        return;
+      }
 
       // 補填日時の収集（「補填する」を選んだときのみ）
       let fillupItems = [];
