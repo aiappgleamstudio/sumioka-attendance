@@ -4650,7 +4650,8 @@
       // UI上は '権限なし' と明記するが、GAS（authenticateEmployee）は '' を
       // ログイン不可の判定値として使うため、保存時に '' に変換する。
       const adminRoleRaw = document.getElementById('modal-staff-admin-role').value;
-      const adminRole    = adminRoleRaw || '';
+      // '権限なし' はUI表示用の文字列なので '' に変換してGASに渡す
+      const adminRole    = (adminRoleRaw === '権限なし' || !adminRoleRaw) ? '' : adminRoleRaw;
 
       const isNew = !id;
 
