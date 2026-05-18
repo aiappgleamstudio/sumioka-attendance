@@ -295,6 +295,7 @@
     .badge-yellow { background: #fef9c3; color: #92400e; }
     .badge-gray   { background: #f3f4f6; color: #6b7280; }
     .badge-blue   { background: #dbeafe; color: #1e40af; }
+    .badge-orange { background: #ffedd5; color: #9a3412; }
 
     /* ── フィルター行 ── */
 
@@ -3660,22 +3661,31 @@
         const timeIn  = fmtTime(r.time_in);
         const timeOut = fmtTime(r.time_out);
 
-        // 申請種別バッジ（休み・遅刻・早退・外出勤務）
+        // 申請種別バッジ（氏名の隣に表示）
         const reqBadgeMap = {
-          '休み'    : '<span class="badge badge-red"   style="font-size:0.68rem;margin-left:3px">休み</span>',
+          '休み'    : '<span class="badge badge-red"    style="font-size:0.68rem;margin-left:3px">休み</span>',
           '遅刻'    : '<span class="badge badge-orange" style="font-size:0.68rem;margin-left:3px">遅刻</span>',
           '早退'    : '<span class="badge badge-orange" style="font-size:0.68rem;margin-left:3px">早退</span>',
           '外出勤務': '<span class="badge badge-gray"   style="font-size:0.68rem;margin-left:3px">外出</span>',
+          '欠席'    : '<span class="badge badge-red"    style="font-size:0.68rem;margin-left:3px">欠席</span>',
+          '有給'    : '<span class="badge"              style="font-size:0.68rem;margin-left:3px;background:#1d4ed8;color:#fff">有給</span>',
+          '補填休'  : '<span class="badge"              style="font-size:0.68rem;margin-left:3px;background:#065f46;color:#fff">補填休</span>',
+          '在宅'    : '<span class="badge badge-gray"   style="font-size:0.68rem;margin-left:3px">在宅</span>',
         };
         const reqBadge = reqBadgeMap[r.request_type] || '';
 
-        // ステータス表示: 申請のみ（打刻なし）の場合は申請種別を優先表示
+        // ステータス判定:
+        //   退勤済み  > 出勤中 > 欠勤（申請あり）> 遅刻/早退（申請あり）> 未打刻
         let status, badgeClass;
         if (timeOut !== '―') {
-          status = '退勤済'; badgeClass = 'badge-gray';
+          status = '退勤済';  badgeClass = 'badge-gray';
         } else if (timeIn !== '―') {
-          status = '出勤中'; badgeClass = 'badge-green';
+          status = '出勤中';  badgeClass = 'badge-green';
+        } else if (r.status === '欠勤') {
+          // GAS側でstatus='欠勤'をセットした欠勤申請者
+          status = '欠勤'; badgeClass = 'badge-red';
         } else if (r.request_type) {
+          // 遅刻・早退など（出勤予定だが打刻前）
           status = r.request_type; badgeClass = 'badge-orange';
         } else {
           status = '未打刻'; badgeClass = 'badge-red';
