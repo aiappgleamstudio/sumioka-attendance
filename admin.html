@@ -950,10 +950,18 @@
         <p class="section-title">会社カレンダー登録</p>
         <div class="company-cal-section">
           <p style="font-size:0.82rem;color:GrayText;margin-bottom:0.75rem">
-            カレンダー上の日付をクリックして休日を登録できます。複数日まとめて登録可能です。
+            日付を直接入力するか、ダッシュボードのカレンダーで日付をクリックして登録できます。複数日まとめて登録可能です。
           </p>
+
+          <!-- 直接日付入力フォーム -->
+          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-bottom:0.75rem">
+            <input class="sumioka-input" type="date" id="settings-cal-date-input" style="width:180px">
+            <button class="sumioka-btn" id="btn-settings-cal-add-date">日付を追加</button>
+          </div>
+
+          <!-- 選択済み日付リスト -->
           <div id="company-cal-selected-dates" style="margin-bottom:0.75rem;min-height:1.5rem">
-            <span style="font-size:0.82rem;color:GrayText">カレンダーの日付をクリックして選択</span>
+            <span style="font-size:0.82rem;color:GrayText">日付を追加するか、ダッシュボードのカレンダーで日付をクリックして選択</span>
           </div>
           <div class="sumioka-form-group">
             <label class="sumioka-label" for="company-cal-title">名称</label>
@@ -1076,7 +1084,7 @@
           <!-- #14: 欠席登録ボタン（管理者のみ表示） -->
           <button class="sumioka-btn" id="btn-absence-register"
             style="align-self:flex-end;display:none"
-            onclick="openAbsenceStatusModal()">欠席・在宅登録</button>
+            onclick="openAbsenceStatusModal()">欠席・遅刻・早退・外出の登録</button>
         </div>
 
         <div class="admin-table-wrap">
@@ -2141,6 +2149,16 @@
           placeholder="理由を入力"></textarea>
       </div>
 
+      <!-- 補填情報（補填予定・補填完了の場合に表示） -->
+      <div class="sumioka-form-group" id="mer-fillup-wrap" style="display:none">
+        <label class="sumioka-label" for="mer-fillup">補填情報</label>
+        <textarea class="sumioka-textarea" id="mer-fillup" rows="2"
+          placeholder="例: 2026-05-20 10:00 60分"></textarea>
+        <p style="font-size:0.75rem;color:GrayText;margin-top:0.25rem">
+          「日付 開始時刻 分数」形式で入力。複数ある場合は / で区切ってください。
+        </p>
+      </div>
+
       <!-- ステータス -->
       <div class="sumioka-form-group">
         <label class="sumioka-label" for="mer-status">ステータス</label>
@@ -2501,6 +2519,21 @@
       document.getElementById('btn-company-cal-clear').addEventListener('click', () => {
         adminCalState.selectedDates = [];
         renderSelectedDates();
+      });
+
+      // 設定タブの日付直接入力ボタン
+      document.getElementById('btn-settings-cal-add-date').addEventListener('click', () => {
+        const input = document.getElementById('settings-cal-date-input');
+        const val   = input.value;
+        if (!val) { showToast('日付を選択してください。', 'warning'); return; }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) { showToast('日付の形式が正しくありません。', 'warning'); return; }
+        if (!adminCalState.selectedDates) adminCalState.selectedDates = [];
+        if (adminCalState.selectedDates.includes(val)) {
+          showToast('すでに選択済みです。', 'warning'); return;
+        }
+        adminCalState.selectedDates.push(val);
+        renderSelectedDates();
+        input.value = '';
       });
 
       // ── 使い方タブ ──────────────────────────────────────────
@@ -3025,15 +3058,15 @@
           const compTitles = compMap[dateStr] || [];
 
           // 苗字＋名前1文字で表示する（苗字が同じ人を区別できる）
-          // スペース・全角スペースで分割し、先頭が苗字、次が名前
           function nameLabel(name) {
             if (!name) return '';
-            const parts = name.split(/[\s\u3000]/);
+            const parts        = name.split(/[\s\u3000]/);
             const lastName     = escHtml(parts[0] || '');
             const firstInitial = parts[1] ? escHtml(parts[1].charAt(0)) : '';
             if (!firstInitial) return lastName;
-            // #14: 名前1文字目を70%フォントで表示する
-            return `${lastName}<span style="font-size:80%;vertical-align:bottom;line-height:1">${firstInitial}</span>`;
+            // 苗字を通常サイズ・名前1文字目を小さくして下揃えにする（kintai.htmlと同仕様）
+            return `<span style="display:inline-flex;align-items:flex-end;line-height:1">`
+              + `${lastName}<span style="font-size:75%">${firstInitial}</span></span>`;
           }
 
           const dayNumClass = isToday ? 'today' : (compTitles.length ? 'holiday-company' : '');
@@ -3593,8 +3626,6 @@
     function renderDashAttendance(records) {
       const tbody = document.getElementById('dash-attendance-body');
 
-      // tbody が取得できない場合は描画をスキップしてログだけ残す。
-      // DOMがまだ構築されていないタイミングで呼ばれた場合の防御。
       if (!tbody) {
         console.warn('[renderDashAttendance] #dash-attendance-body が見つかりません。描画をスキップします。');
         return;
@@ -3608,12 +3639,31 @@
       tbody.innerHTML = records.map(r => {
         const timeIn  = fmtTime(r.time_in);
         const timeOut = fmtTime(r.time_out);
-        const status = timeOut !== '―' ? '退勤済' : timeIn !== '―' ? '出勤中' : '未打刻';
-        const badgeClass = timeOut !== '―' ? 'badge-gray' : timeIn !== '―' ? 'badge-green' : 'badge-red';
+
+        // 申請種別バッジ（休み・遅刻・早退・外出勤務）
+        const reqBadgeMap = {
+          '休み'    : '<span class="badge badge-red"   style="font-size:0.68rem;margin-left:3px">休み</span>',
+          '遅刻'    : '<span class="badge badge-orange" style="font-size:0.68rem;margin-left:3px">遅刻</span>',
+          '早退'    : '<span class="badge badge-orange" style="font-size:0.68rem;margin-left:3px">早退</span>',
+          '外出勤務': '<span class="badge badge-gray"   style="font-size:0.68rem;margin-left:3px">外出</span>',
+        };
+        const reqBadge = reqBadgeMap[r.request_type] || '';
+
+        // ステータス表示: 申請のみ（打刻なし）の場合は申請種別を優先表示
+        let status, badgeClass;
+        if (timeOut !== '―') {
+          status = '退勤済'; badgeClass = 'badge-gray';
+        } else if (timeIn !== '―') {
+          status = '出勤中'; badgeClass = 'badge-green';
+        } else if (r.request_type) {
+          status = r.request_type; badgeClass = 'badge-orange';
+        } else {
+          status = '未打刻'; badgeClass = 'badge-red';
+        }
 
         return `
           <tr>
-            <td>${escHtml(r.name)}</td>
+            <td>${escHtml(r.name)}${reqBadge}</td>
             <td>${escHtml(r.type || '―')}</td>
             <td>${timeIn}</td>
             <td>${timeOut}</td>
@@ -3696,10 +3746,10 @@
       }
 
       // 打刻修正の権限判定:
-      //   canEditAttendance = true  → 修正ボタンを表示
-      //   editOnlyUsers     = true  → 利用者（employment_type='利用者'）のみ修正ボタン表示
-      const canEdit     = adminState.canEditAttendance !== false;
-      const onlyUsers   = adminState.editOnlyUsers === true;
+      //   canEditAttendance が未設定（ログイン直後など）は true 扱いにして
+      //   applyRoleBasedUI が呼ばれた後に正しい値が適用される。
+      const canEdit   = adminState.canEditAttendance !== false;
+      const onlyUsers = adminState.editOnlyUsers === true;
 
       tbody.innerHTML = records.map(r => {
         // 未打刻行は背景色・バッジで視覚的に区別する
@@ -4092,7 +4142,7 @@
             <td>${escHtml(req.name || '―')}</td>
             <td style="font-size:0.82rem">${kindLabel || '―'}</td>
             <td style="font-size:0.82rem">${escHtml(req.type || '―')}</td>
-            <td style="white-space:nowrap">${escHtml(String(req.target_date||'').replace(/\//g,'-')||'―')}</td>
+            <td style="white-space:nowrap">${escHtml(String(req.target_date||'').replace(/-/g,'/')||'―')}</td>
             <td style="white-space:nowrap;font-size:0.82rem">${escHtml(timeDisplay)}</td>
             <td style="max-width:140px;font-size:0.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
               title="${escHtml(req.reason||'')}">
@@ -4155,21 +4205,14 @@
      * @param {Object} req - 申請オブジェクト
      */
     function openEditRequestModal(req) {
-      // hidden フィールドに申請IDを保存する
       document.getElementById('mer-id').value = req.id || '';
-
-      // 申請者名（読み取り専用）
       document.getElementById('mer-name-display').textContent = req.name || '―';
-
-      // 種別
       document.getElementById('mer-type').value = req.type || '休み';
 
-      // 対象日: YYYY/MM/DD → YYYY-MM-DD に正規化してからセットする
       const rawDate = String(req.target_date || '').replace(/\//g, '-');
       document.getElementById('mer-target-date').value = rawDate;
 
-      // 時間: late_time / early_leave_time / request_time の優先順で取得する
-      const timeVal = req.late_time || req.early_leave_time || req.request_time || '';
+      const timeVal = req.time || req.late_time || req.early_leave_time || '';
       document.getElementById('mer-time').value = timeVal;
 
       // 理由: 【補填日時:...】【有給消化】タグを除いた純粋な理由テキストをセット
@@ -4179,36 +4222,36 @@
         .trim();
       document.getElementById('mer-reason').value = reasonMain;
 
-      // ステータス
+      // 補填情報: reason から【補填日時:...】を抽出して補填欄にセット
+      const fillupMatch = (req.reason || '').match(/【補填日時:(.*?)】/);
+      document.getElementById('mer-fillup').value = fillupMatch ? fillupMatch[1].trim() : '';
+
       document.getElementById('mer-status').value = req.status || 'pending';
 
-      // 時間欄の表示切り替え
       updateMerTimeWrap();
-
       document.getElementById('modal-edit-request').classList.remove('hidden');
     }
 
-    /**
-     * 種別に応じて時間欄のラベルと表示/非表示を切り替える。
-     *
-     * 遅刻 → 「出勤時刻」表示
-     * 早退 → 「退勤時刻」表示
-     * その他（休み / 補填など）→ 時間欄を非表示にする
-     */
     function updateMerTimeWrap() {
-      const type      = document.getElementById('mer-type').value;
-      const timeWrap  = document.getElementById('mer-time-wrap');
-      const timeLabel = document.getElementById('mer-time-label');
+      const type       = document.getElementById('mer-type').value;
+      const timeWrap   = document.getElementById('mer-time-wrap');
+      const timeLabel  = document.getElementById('mer-time-label');
+      const fillupWrap = document.getElementById('mer-fillup-wrap');
 
       if (type === '遅刻') {
-        timeWrap.style.display  = '';
-        timeLabel.textContent   = '出勤時刻（遅刻）';
+        timeWrap.style.display   = '';
+        timeLabel.textContent    = '出勤時刻（遅刻）';
+        fillupWrap.style.display = 'none';
       } else if (type === '早退') {
-        timeWrap.style.display  = '';
-        timeLabel.textContent   = '退勤時刻（早退）';
+        timeWrap.style.display   = '';
+        timeLabel.textContent    = '退勤時刻（早退）';
+        fillupWrap.style.display = 'none';
+      } else if (type === '補填予定' || type === '補填完了') {
+        timeWrap.style.display   = 'none';
+        fillupWrap.style.display = '';
       } else {
-        // 休み・補填・有給は時間欄不要
-        timeWrap.style.display  = 'none';
+        timeWrap.style.display   = 'none';
+        fillupWrap.style.display = 'none';
       }
     }
 
@@ -4225,45 +4268,40 @@
       const targetDate = document.getElementById('mer-target-date').value.trim();
       const time       = document.getElementById('mer-time').value.trim();
       const reason     = document.getElementById('mer-reason').value.trim();
+      const fillup     = document.getElementById('mer-fillup').value.trim();
       const status     = document.getElementById('mer-status').value;
 
-      // 対象日のバリデーション: YYYY-MM-DD 形式であることを確認する
-      // 誤入力（例: 202605-05-11）はここで弾く
-      if (!targetDate) {
-        showToast('対象日を入力してください。', 'warning');
-        return;
-      }
+      if (!targetDate) { showToast('対象日を入力してください。', 'warning'); return; }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
-        showToast(
-          '対象日の形式が正しくありません。YYYY-MM-DD 形式で入力してください。（例: 2026-05-11）',
-          'warning'
-        );
+        showToast('対象日の形式が正しくありません。YYYY-MM-DD 形式で入力してください。（例: 2026-05-11）', 'warning');
         document.getElementById('mer-target-date').focus();
         return;
       }
+
+      // 補填情報は reason に【補填日時:...】タグとして埋め込む（既存の保存形式を維持する）
+      const reasonFull = [
+        reason,
+        fillup ? `【補填日時: ${fillup}】` : '',
+      ].filter(Boolean).join(' ');
 
       showLoading('保存中...');
 
       const result = await callGAS('admin_edit_request', {
         request_id  : id,
-        type        : type,
+        type,
         target_date : targetDate,
-        time        : time,
-        reason      : reason,
-        status      : status,
+        time,
+        reason      : reasonFull,
+        status,
         admin_id    : adminState.employeeId,
       });
 
       hideLoading();
-
-      if (!result.success) {
-        showError(result.error_message, result.error_detail);
-        return;
-      }
+      if (!result.success) { showError(result.error_message, result.error_detail); return; }
 
       showToast('申請内容を保存しました。', 'success');
       document.getElementById('modal-edit-request').classList.add('hidden');
-      loadRequests(); // 一覧を再取得して反映する
+      loadRequests();
     }
 
     /**
@@ -5169,8 +5207,8 @@
 
         return `
           <tr>
-            <td>${escHtml(r.name || '―')}</td>
-            <td>${escHtml(r.type || '―')}</td>
+            <td>${escHtml(r.employee_name || '―')}</td>
+            <td>${escHtml(r.employment_type || '―')}</td>
             <td>${r.work_days ?? '―'}</td>
             <td>${workStr}</td>
             <td>${schedStr}</td>
@@ -5601,11 +5639,13 @@
       };
 
       tbody.innerHTML = arr.map(d => {
-        const nd       = d.deadline || '';
-        const daysLeft = nd ? Math.round((new Date(nd) - new Date(today)) / 86400000) : null;
-        const isAlert  = daysLeft !== null && daysLeft <= 3 && d.status !== '納品済';
-        const rowStyle = isAlert ? 'background:#fff5f5' : '';
-        const statusColor = statusColorMap[d.status] || '#6b7280';
+        // シートのE列JSONは phases 配列を持つ。
+        // 「納品日」= phases の中で名前に「納品」を含む最初のフェーズの planned_date。
+        // 「進捗」= 同フェーズの status。どちらもなければ phases[0] にフォールバック。
+        const phases = Array.isArray(d.phases) ? d.phases : [];
+        const deliveryPhase = phases.find(p => (p.name || '').includes('納品')) || phases[0] || {};
+        const nd         = deliveryPhase.planned_date || d.deadline || '';
+        const statusVal  = deliveryPhase.status || d.status || '';
 
         const daysLabel = daysLeft !== null
           ? (daysLeft < 0  ? `<span style="color:#c0392b;font-size:0.72rem;font-weight:700">超過${Math.abs(daysLeft)}日</span>`
@@ -5619,7 +5659,7 @@
             <td style="font-size:0.85rem">${escHtml(d.assignee || '―')}</td>
             <td style="font-weight:600">${escHtml(d.title || d.name || '―')}</td>
             <td style="white-space:nowrap;font-size:0.85rem">${escHtml(nd || '―')} ${daysLabel}</td>
-            <td style="color:${statusColor};font-weight:600;font-size:0.85rem">${escHtml(d.status || '―')}</td>
+            <td style="color:${statusColor};font-weight:600;font-size:0.85rem">${escHtml(statusVal || '―')}</td>
             <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
               font-size:0.78rem;color:GrayText" title="${escHtml(d.memo || '')}">
               ${escHtml(d.memo || '―')}</td>
@@ -5627,7 +5667,6 @@
               <div style="display:flex;gap:0.3rem;flex-wrap:wrap">
                 <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em"
                   onclick="openAdminDeadlineForm(${escJson(d)})">編集</button>
-                <!-- #12: コピーして追加 → フォームに値をセット。案件名に「(コピー)」を付与してIDは空にする -->
                 <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em;color:#0369a1;border-color:#0369a1"
                   onclick="copyAdminDeadline(${escJson(d)})">コピー</button>
                 <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em;color:#c0392b;border-color:#c0392b"
