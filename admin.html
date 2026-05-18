@@ -903,6 +903,23 @@
           </table>
         </div>
 
+        <!-- 欠勤・申請済みスタッフ: 欠席・有給・補填休・在宅・外出勤務の申請があるスタッフ -->
+        <p class="section-title">本日の欠勤・申請スタッフ</p>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>氏名</th>
+                <th>区分</th>
+                <th>申請種別</th>
+              </tr>
+            </thead>
+            <tbody id="dash-absent-request-body">
+              <tr><td colspan="3" class="empty-state">読み込み中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
         <!-- ── カレンダー（旧カレンダータブから移動） ── -->
         <p class="section-title" style="margin-top:1.5rem">カレンダー</p>
         <div class="tab-loading" id="loading-calendar" style="display:none">読み込み中...</div>
@@ -3602,6 +3619,9 @@
       // 未打刻スタッフを描画
       renderDashAbsent(data.absent_staff || []);
 
+      // 欠勤申請スタッフを描画
+      renderDashAbsentRequest(data.absent_request_staff || []);
+
       // 未打刻警告バナー: absent_count が 1 以上の場合のみ表示する
       const warningEl = document.getElementById('admin-unpunched-warning');
       if (warningEl) {
@@ -3683,7 +3703,6 @@
       const tbody = document.getElementById('dash-absent-body');
 
       if (staff.length === 0) {
-        // colspan はテーブルヘッダー列数（4）に合わせる
         tbody.innerHTML = '<tr><td colspan="4" class="empty-state">全員出勤済み</td></tr>';
         return;
       }
@@ -3696,6 +3715,46 @@
           <td>${fmtTime(s.scheduled_end)}</td>
         </tr>
       `).join('');
+    }
+
+    /**
+     * 欠勤申請スタッフ一覧を描画する（欠席・有給・補填休・在宅・外出勤務）。
+     * Admin の「欠席・遅刻・早退・外出の登録」から登録されたスタッフが表示される。
+     */
+    function renderDashAbsentRequest(staff) {
+      const tbody = document.getElementById('dash-absent-request-body');
+      if (!tbody) return;
+
+      if (staff.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">本日の欠勤申請はありません</td></tr>';
+        return;
+      }
+
+      // 申請種別ごとにバッジ色を設定する
+      const badgeColorMap = {
+        '欠席'    : '#c0392b',
+        '有給'    : '#1d4ed8',
+        '補填休'  : '#065f46',
+        '会社休日': '#7c3aed',
+        '在宅'    : '#6b7280',
+        '外出勤務': '#b45309',
+      };
+
+      tbody.innerHTML = staff.map(s => {
+        const color = badgeColorMap[s.absence_type] || '#6b7280';
+        return `
+          <tr>
+            <td>${escHtml(s.name)}</td>
+            <td>${escHtml(s.type || '―')}</td>
+            <td>
+              <span style="font-size:0.78rem;font-weight:700;color:#fff;
+                background:${color};padding:0.15em 0.55em;border-radius:4px">
+                ${escHtml(s.absence_type || '―')}
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     // ============================================================
