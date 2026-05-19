@@ -1083,6 +1083,7 @@
               <option value="pending">承認待ち</option>
               <option value="approved">承認済み</option>
               <option value="rejected">却下済み</option>
+              <option value="cancelled">取り下げ済み</option>
             </select>
           </div>
           <div class="filter-group">
@@ -3178,11 +3179,12 @@
       const back = document.getElementById('cal-event-backdrop');
       if (back) back.remove();
 
-      // #6: 時刻フィールドを優先順位に従って取得する
-      // late_time → request_time → time_in の順で遅刻時刻を優先する
-      // early_leave_time → request_time → time_out の順で早退時刻を優先する
-      const lateTimeRaw  = ev.late_time        || ev.request_time || ev.time_in  || ev.time || '';
-      const earlyTimeRaw = ev.early_leave_time || ev.request_time || ev.time_out || ev.time || '';
+      // 時刻フィールドを優先順位に従って取得する。
+      // TIME列（13列目）の値は ev.time として渡される。
+      // late_time → time → request_time → time_in の順で遅刻時刻を優先する
+      // early_leave_time → time → request_time → time_out の順で早退時刻を優先する
+      const lateTimeRaw  = ev.late_time        || ev.time || ev.request_time || ev.time_in  || '';
+      const earlyTimeRaw = ev.early_leave_time || ev.time || ev.request_time || ev.time_out || '';
       const lateTime  = fmtTime(lateTimeRaw,  '');
       const earlyTime = fmtTime(earlyTimeRaw, '');
 
@@ -4102,8 +4104,19 @@
       }
 
       tbody.innerHTML = requests.map(req => {
-        const badgeMap  = { pending:'badge-yellow', approved:'badge-green', rejected:'badge-red' };
-        const labelMap  = { pending:'承認待ち', approved:'承認済み', rejected:'却下済み' };
+        // ステータスバッジ（cancelled も追加）
+        const badgeMap  = {
+          pending  : 'badge-yellow',
+          approved : 'badge-green',
+          rejected : 'badge-red',
+          cancelled: 'badge-gray',
+        };
+        const labelMap  = {
+          pending  : '承認待ち',
+          approved : '承認済み',
+          rejected : '却下済み',
+          cancelled: '取り下げ済み',
+        };
         const statusClass = badgeMap[req.status] || 'badge-gray';
         const statusLabel = labelMap[req.status] || req.status || '―';
 
@@ -4178,11 +4191,15 @@
         }
 
         // 操作ボタン:
-        //   pending      → 承認・却下
-        //   approved     → 取消（pending に戻す）
-        //   rejected     → 再承認
-        //   いずれも Admin は全操作可能にする
-        // 編集ボタンは全ステータス共通で表示する（Admin は常に内容を修正可能）
+        //   pending      → 承認・却下・削除
+        //   approved     → 取消（pending に戻す）・削除
+        //   rejected     → 再承認・削除
+        //   cancelled    → 削除のみ（スタッフが取り下げ済み）
+        //   編集ボタンはcancelled以外の全ステータスに表示（Admin は常に内容を修正可能）
+        //   削除ボタンは全ステータスに表示（完全削除・取消とは別）
+        const deleteBtn = `<button class="sumioka-btn"
+          style="font-size:0.72rem;padding:0.15em 0.45em;color:#7f1d1d;border-color:#fca5a5;background:#fff5f5"
+          onclick="handleDeleteRequest('${escHtml(req.id)}','${escHtml(req.name||'')}','${escHtml(req.type||'')}')">削除</button>`;
         const editBtn = `<button class="sumioka-btn" style="font-size:0.75rem;padding:0.2em 0.5em" onclick="openEditRequestModal(${escJson(req)})">編集</button>`;
         let actionHtml;
         if (req.status === 'pending') {
@@ -4190,21 +4207,29 @@
             ${editBtn}
             <button class="btn-approve" onclick="handleRequestAction('${escHtml(req.id)}','approve')">承認</button>
             <button class="btn-reject"  onclick="handleRequestAction('${escHtml(req.id)}','reject')">却下</button>
+            ${deleteBtn}
           </div>`;
         } else if (req.status === 'approved') {
           actionHtml = `<div class="action-btn-group">
             ${editBtn}
             <button class="sumioka-btn" style="font-size:0.75rem;padding:0.2em 0.5em;color:#c0392b;border-color:#c0392b"
               onclick="handleRequestRevert('${escHtml(req.id)}')">取消</button>
+            ${deleteBtn}
           </div>`;
         } else if (req.status === 'rejected') {
           actionHtml = `<div class="action-btn-group">
             ${editBtn}
             <button class="btn-approve" onclick="handleRequestAction('${escHtml(req.id)}','approve')">再承認</button>
+            ${deleteBtn}
           </div>`;
+        } else if (req.status === 'cancelled') {
+          // 取り下げ済み: 削除のみ可能（編集・承認は不要）
+          actionHtml = `<div class="action-btn-group">${deleteBtn}</div>`;
         } else {
-          actionHtml = editBtn;
+          actionHtml = `<div class="action-btn-group">${editBtn}${deleteBtn}</div>`;
         }
+        // needs_approval を日本語に変換する（True/Falseを人が読めるラベルに変換）
+        const approvalLabel = req.needs_approval ? '承認が必要' : '自動承認';
         return `
           <tr>
             <td style="white-space:nowrap;font-size:0.78rem">${escHtml(createdAtDisplay)}</td>
@@ -4216,8 +4241,7 @@
             <td style="max-width:140px;font-size:0.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
               title="${escHtml(req.reason||'')}">
               ${escHtml(reasonMain||'―')}
-            </td>
-            <td style="font-size:0.82rem">${fillupDisplay}</td>
+            </td>            <td style="font-size:0.82rem">${fillupDisplay}</td>
             <td><span class="badge ${statusClass}">${statusLabel}</span></td>
             <td>${actionHtml}</td>
           </tr>
@@ -4251,6 +4275,38 @@
         return;
       }
       showToast('申請を承認待ちに戻しました。', 'success');
+      loadRequests();
+    }
+
+    /**
+     * 申請を物理削除する（完全削除・取り消し不可）。
+     *
+     * 誤登録・重複・不要な申請を完全に消去するための管理者専用機能。
+     * 削除後はシートから行が消えて復元不可のため、必ず確認ダイアログを表示する。
+     * 操作は GAS の監査ログシートに記録される。
+     *
+     * @param {string} requestId  - 削除する申請のID
+     * @param {string} personName - 申請者名（確認ダイアログ用）
+     * @param {string} reqType    - 申請種別（確認ダイアログ用）
+     */
+    async function handleDeleteRequest(requestId, personName, reqType) {
+      const ok = await confirm(
+        `【申請削除】\n${personName} の「${reqType}」申請を完全に削除しますか？\n\nこの操作は取り消せません。`
+      );
+      if (!ok) return;
+
+      showLoading('削除中...');
+      const result = await callGAS('admin_delete_request', {
+        request_id : requestId,
+        admin_id   : adminState.employeeId,
+      });
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+      showToast('申請を削除しました。', 'success');
       loadRequests();
     }
 
