@@ -2340,58 +2340,6 @@ p:last-child { margin-bottom: 0; }
       </div><!-- /.requests-layout -->
     </div><!-- /#panel-requests -->
 
-  <!-- ============================================================
-       申請編集モーダル（スタッフが自分のpending申請を修正する）
-       対象: pending 状態の申請のみ（承認済みは取り下げ申請を使う）
-       ============================================================ -->
-  <div class="modal-overlay hidden" id="modal-edit-my-request">
-    <div class="modal-card" style="max-width:420px">
-      <p class="modal-title">申請内容を修正</p>
-      <input type="hidden" id="meq-id">
-
-      <!-- 種別（変更可能） -->
-      <div class="sumioka-form-group">
-        <label class="sumioka-label" for="meq-type">種別</label>
-        <select class="sumioka-input" id="meq-type" onchange="updateMeqTimeWrap()">
-          <option value="休み">休み</option>
-          <option value="遅刻">遅刻</option>
-          <option value="早退">早退</option>
-          <option value="外出勤務">外出勤務</option>
-        </select>
-      </div>
-
-      <!-- 対象日 -->
-      <div class="sumioka-form-group">
-        <label class="sumioka-label" for="meq-date">対象日</label>
-        <input class="sumioka-input" type="date" id="meq-date">
-      </div>
-
-      <!-- 時刻（遅刻・早退のみ表示） -->
-      <div class="sumioka-form-group" id="meq-time-wrap" style="display:none">
-        <label class="sumioka-label" for="meq-time" id="meq-time-label">出勤予定時刻</label>
-        <input class="sumioka-input" type="text" id="meq-time"
-          list="absence-time-list" placeholder="11:00"
-          pattern="^\d{1,2}:\d{2}$" autocomplete="off" style="width:140px">
-      </div>
-
-      <!-- 理由 -->
-      <div class="sumioka-form-group">
-        <label class="sumioka-label" for="meq-reason">理由</label>
-        <textarea class="sumioka-textarea" id="meq-reason" rows="2"
-          placeholder="理由を入力してください"></textarea>
-      </div>
-
-      <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1rem">
-        <button class="sumioka-btn"
-          onclick="document.getElementById('modal-edit-my-request').classList.add('hidden')">
-          キャンセル
-        </button>
-        <button class="sumioka-btn sumioka-btn-primary" onclick="saveMyRequestEdit()">
-          保存する
-        </button>
-      </div>
-    </div>
-  </div>
 
     <!-- ============================================================
          タブ3: タスク管理（個人用プロジェクト管理）
@@ -3049,9 +2997,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.27 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.28 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.27</div>
+  <div class="version-badge" id="app-version">v1.2.28</div>
 
 
   <script>
@@ -6159,6 +6107,60 @@ p:last-child { margin-bottom: 0; }
       }
     }
   </script>
+
+
+<!-- ============================================================
+       申請編集モーダル（スタッフが自分のpending申請を修正する）
+       対象: pending 状態の申請のみ（承認済みは取り下げ申請を使う）
+       ============================================================ -->
+  <div class="modal-overlay hidden" id="modal-edit-my-request">
+    <div class="modal-card" style="max-width:420px">
+      <p class="modal-title">申請内容を修正</p>
+      <input type="hidden" id="meq-id">
+
+      <!-- 種別（変更可能） -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="meq-type">種別</label>
+        <select class="sumioka-input" id="meq-type" onchange="updateMeqTimeWrap()">
+          <option value="休み">休み</option>
+          <option value="遅刻">遅刻</option>
+          <option value="早退">早退</option>
+          <option value="外出勤務">外出勤務</option>
+        </select>
+      </div>
+
+      <!-- 対象日 -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="meq-date">対象日</label>
+        <input class="sumioka-input" type="date" id="meq-date">
+      </div>
+
+      <!-- 時刻（遅刻・早退のみ表示） -->
+      <div class="sumioka-form-group" id="meq-time-wrap" style="display:none">
+        <label class="sumioka-label" for="meq-time" id="meq-time-label">出勤予定時刻</label>
+        <input class="sumioka-input" type="text" id="meq-time"
+          list="absence-time-list" placeholder="11:00"
+          pattern="^\d{1,2}:\d{2}$" autocomplete="off" style="width:140px">
+      </div>
+
+      <!-- 理由 -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="meq-reason">理由</label>
+        <textarea class="sumioka-textarea" id="meq-reason" rows="2"
+          placeholder="理由を入力してください"></textarea>
+      </div>
+
+      <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1rem">
+        <button class="sumioka-btn"
+          onclick="document.getElementById('modal-edit-my-request').classList.add('hidden')">
+          キャンセル
+        </button>
+        <button class="sumioka-btn sumioka-btn-primary" onclick="saveMyRequestEdit()">
+          保存する
+        </button>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>
