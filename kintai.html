@@ -4581,28 +4581,40 @@ p:last-child { margin-bottom: 0; }
           cancelBtnHtml = `<button
             onclick="handleCancelRequest('${escHtml(r.id)}', false)"
             style="font-size:0.73rem;background:none;border:1px solid #dc2626;color:#dc2626;
-                   border-radius:4px;padding:0.15em 0.6em;cursor:pointer;margin-top:0.4rem">
+                   border-radius:4px;padding:0.15em 0.6em;cursor:pointer">
             取り下げ
           </button>`;
         } else if (r.status === 'approved') {
           cancelBtnHtml = `<button
             onclick="handleCancelRequest('${escHtml(r.id)}', true)"
             style="font-size:0.73rem;background:none;border:1px solid #b45309;color:#b45309;
-                   border-radius:4px;padding:0.15em 0.6em;cursor:pointer;margin-top:0.4rem"
+                   border-radius:4px;padding:0.15em 0.6em;cursor:pointer"
             title="承認済みは管理者が最終確認後に削除します">
             取り下げ申請
           </button>`;
         }
 
-        // 編集ボタン: pending 状態のみ表示する（承認済みは内容変更不可）
-        const editBtnHtml = r.status === 'pending'
-          ? `<button
-               onclick="openMyRequestEdit(${escJson(r)})"
-               style="font-size:0.73rem;background:none;border:1px solid #2563eb;color:#2563eb;
-                      border-radius:4px;padding:0.15em 0.6em;cursor:pointer;margin-top:0.4rem;margin-right:0.3rem">
-               編集
-             </button>`
-          : '';
+        // 編集ボタン:
+        //   pending  → 内容を直接編集できる
+        //   approved → 「再申請」ボタン：内容を申請フォームにコピーして再申請を促す
+        //              （承認済みは直接変更不可のため、取り下げ→再申請フローを案内）
+        let editBtnHtml = '';
+        if (r.status === 'pending') {
+          editBtnHtml = `<button
+            onclick="openMyRequestEdit(${escJson(r)})"
+            style="font-size:0.73rem;background:none;border:1px solid #2563eb;color:#2563eb;
+                   border-radius:4px;padding:0.15em 0.6em;cursor:pointer">
+            編集
+          </button>`;
+        } else if (r.status === 'approved') {
+          editBtnHtml = `<button
+            onclick="reapplyFromRequest(${escJson(r)})"
+            style="font-size:0.73rem;background:none;border:1px solid #059669;color:#059669;
+                   border-radius:4px;padding:0.15em 0.6em;cursor:pointer"
+            title="この内容を申請フォームにコピーして再申請できます">
+            再申請
+          </button>`;
+        }
 
         return `
           <div style="border:1px solid #e5e7eb;border-radius:8px;padding:0.85rem 1rem;margin-bottom:0.65rem;background:Canvas">
@@ -4628,6 +4640,66 @@ p:last-child { margin-bottom: 0; }
           </div>
         `;
       }).join('');
+    }
+
+    /**
+     * 承認済み申請の内容を申請フォームにコピーして再申請を促す。
+     *
+     * 承認済み申請は直接編集できないため、
+     * 「取り下げ申請 → 内容を修正して再申請」のフローを案内する。
+     * この関数は申請フォームに現在の値をコピーして申請タブに切り替えるだけで、
+     * 既存の承認済み申請には一切変更を加えない。
+     *
+     * @param {Object} req - 申請オブジェクト
+     */
+    function reapplyFromRequest(req) {
+      // 申請タブに切り替える
+      switchTab('requests');
+
+      // 種別をセット
+      const typeEl = document.getElementById('absence-type');
+      if (typeEl) {
+        // 「外出勤務」は選択肢にあるが「補填予定」「補填完了」「有給」はない → 近いものに変換
+        const typeMap = {
+          '休み'   : '休み',
+          '遅刻'   : '遅刻',
+          '早退'   : '早退',
+          '外出勤務': '外出勤務',
+          '有給'   : '休み',    // 有給は「休み＋有給消化」として再申請
+          '補填予定': '休み',
+          '補填完了': '休み',
+        };
+        typeEl.value = typeMap[req.type] || '休み';
+        typeEl.dispatchEvent(new Event('change'));
+      }
+
+      // 対象日をセット（YYYY-MM-DD形式）
+      const dateEl = document.getElementById('absence-date');
+      if (dateEl) dateEl.value = String(req.target_date || '').replace(/\//g, '-');
+
+      // 時刻をセット（遅刻・早退のみ）
+      const timeEl = document.getElementById('absence-time');
+      if (timeEl && (req.type === '遅刻' || req.type === '早退')) {
+        timeEl.value = req.time || '';
+      }
+
+      // 理由をセット（補填・有給タグを除いた純粋なテキスト）
+      const reasonEl = document.getElementById('absence-reason');
+      if (reasonEl) {
+        const reasonMain = (req.reason || '')
+          .replace(/【補填日時:.*?】/g, '')
+          .replace(/【有給消化】/g, '')
+          .trim();
+        reasonEl.value = reasonMain;
+      }
+
+      // 有給だった場合は「有給消化する」ラジオを選択
+      if (req.type === '有給') {
+        const paidEl = document.getElementById('comp-paid');
+        if (paidEl) { paidEl.checked = true; updateCompensationUI('paid'); }
+      }
+
+      showToast('申請内容をフォームにコピーしました。内容を確認して送信してください。', 'success');
     }
 
     /**
