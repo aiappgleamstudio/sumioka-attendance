@@ -4363,20 +4363,26 @@
       const timeLabel  = document.getElementById('mer-time-label');
       const fillupWrap = document.getElementById('mer-fillup-wrap');
 
+      // 時刻入力欄: 遅刻・早退のときのみ表示する
       if (type === '遅刻') {
-        timeWrap.style.display   = '';
-        timeLabel.textContent    = '出勤時刻（遅刻）';
-        fillupWrap.style.display = 'none';
+        timeWrap.style.display = '';
+        timeLabel.textContent  = '出勤時刻（遅刻）';
       } else if (type === '早退') {
-        timeWrap.style.display   = '';
-        timeLabel.textContent    = '退勤時刻（早退）';
-        fillupWrap.style.display = 'none';
-      } else if (type === '補填予定' || type === '補填完了') {
-        timeWrap.style.display   = 'none';
+        timeWrap.style.display = '';
+        timeLabel.textContent  = '退勤時刻（早退）';
+      } else {
+        timeWrap.style.display = 'none';
+      }
+
+      // 補填情報欄: 補填予定・補填完了のときは必ず表示。
+      // 休み・有給でも reason に補填日時が含まれている場合は表示する。
+      // 「常に表示」とすることで、補填情報の修正漏れを防ぐ。
+      const fillupVal = document.getElementById('mer-fillup').value.trim();
+      if (type === '補填予定' || type === '補填完了' || fillupVal) {
         fillupWrap.style.display = '';
       } else {
-        timeWrap.style.display   = 'none';
-        fillupWrap.style.display = 'none';
+        // 遅刻・早退以外で補填情報がない場合は非表示にする（フォームをすっきりさせる）
+        fillupWrap.style.display = (type === '遅刻' || type === '早退') ? 'none' : '';
       }
     }
 
