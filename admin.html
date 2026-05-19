@@ -3141,7 +3141,7 @@
               deadline_done    : !!ev.deadline_done,
               phase_status     : ev.phase_status     || '',
             }));
-            const isClickable = ['遅刻','早退','欠勤','休み','補填予定','補填完了','納期'].includes(ev.type);
+            const isClickable = ['遅刻','早退','欠勤','休み','有給','補填予定','補填完了','納期'].includes(ev.type);
             // #14: label は nameLabel() が生成する HTML（span タグ含む）なので escHtml しない
             return `<span class="admin-cal-event ${escHtml(cls)}"
               title="${escHtml(ev.name)}：${escHtml(ev.type)}"
