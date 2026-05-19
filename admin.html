@@ -5770,13 +5770,27 @@
       };
 
       tbody.innerHTML = arr.map(d => {
-        // シートのE列JSONは phases 配列を持つ。
-        // 「納品日」= phases の中で名前に「納品」を含む最初のフェーズの planned_date。
-        // 「進捗」= 同フェーズの status。どちらもなければ phases[0] にフォールバック。
+        // 納品フェーズ: phases の中で名前に「納品」を含む最初のフェーズ。なければ先頭フェーズ。
         const phases = Array.isArray(d.phases) ? d.phases : [];
         const deliveryPhase = phases.find(p => (p.name || '').includes('納品')) || phases[0] || {};
-        const nd         = deliveryPhase.planned_date || d.deadline || '';
-        const statusVal  = deliveryPhase.status || d.status || '';
+        const nd        = deliveryPhase.planned_date || d.deadline || '';
+        const statusVal = deliveryPhase.status || d.status || '';
+
+        // 残日数計算: 納品日が設定されている場合のみ計算する
+        const daysLeft  = nd ? Math.round((new Date(nd) - new Date(today)) / 86400000) : null;
+
+        // 行のハイライト: 期限超過=薄赤、当日・3日以内=薄黄、納品済=薄緑
+        const allDone = phases.length > 0 && phases.every(p => p.done);
+        const rowStyle = allDone
+          ? 'background:#f0fdf4;opacity:0.75'
+          : (daysLeft !== null && daysLeft < 0)
+            ? 'background:#fff5f5'
+            : (daysLeft !== null && daysLeft <= 3)
+              ? 'background:#fffbeb'
+              : '';
+
+        // 進捗ステータスの色
+        const statusColor = statusColorMap[statusVal] || '#374151';
 
         const daysLabel = daysLeft !== null
           ? (daysLeft < 0  ? `<span style="color:#c0392b;font-size:0.72rem;font-weight:700">超過${Math.abs(daysLeft)}日</span>`
