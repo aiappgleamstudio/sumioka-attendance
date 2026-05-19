@@ -4719,6 +4719,9 @@ p:last-child { margin-bottom: 0; }
       document.getElementById('modal-edit-my-request').classList.add('hidden');
       await loadMyRequests();
     }
+
+    /**
+     * スタッフが自分の申請を取り下げる。
      *
      * pending  → 即 cancelled に変更（承認前なので自由に取り下げ可能）
      * approved → 「取り下げ申請」として rejected に変更し、管理者に削除を依頼する旨を案内する
