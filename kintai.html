@@ -2340,6 +2340,59 @@ p:last-child { margin-bottom: 0; }
       </div><!-- /.requests-layout -->
     </div><!-- /#panel-requests -->
 
+  <!-- ============================================================
+       申請編集モーダル（スタッフが自分のpending申請を修正する）
+       対象: pending 状態の申請のみ（承認済みは取り下げ申請を使う）
+       ============================================================ -->
+  <div class="modal-overlay hidden" id="modal-edit-my-request">
+    <div class="modal-card" style="max-width:420px">
+      <p class="modal-title">申請内容を修正</p>
+      <input type="hidden" id="meq-id">
+
+      <!-- 種別（変更可能） -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="meq-type">種別</label>
+        <select class="sumioka-input" id="meq-type" onchange="updateMeqTimeWrap()">
+          <option value="休み">休み</option>
+          <option value="遅刻">遅刻</option>
+          <option value="早退">早退</option>
+          <option value="外出勤務">外出勤務</option>
+        </select>
+      </div>
+
+      <!-- 対象日 -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="meq-date">対象日</label>
+        <input class="sumioka-input" type="date" id="meq-date">
+      </div>
+
+      <!-- 時刻（遅刻・早退のみ表示） -->
+      <div class="sumioka-form-group" id="meq-time-wrap" style="display:none">
+        <label class="sumioka-label" for="meq-time" id="meq-time-label">出勤予定時刻</label>
+        <input class="sumioka-input" type="text" id="meq-time"
+          list="absence-time-list" placeholder="11:00"
+          pattern="^\d{1,2}:\d{2}$" autocomplete="off" style="width:140px">
+      </div>
+
+      <!-- 理由 -->
+      <div class="sumioka-form-group">
+        <label class="sumioka-label" for="meq-reason">理由</label>
+        <textarea class="sumioka-textarea" id="meq-reason" rows="2"
+          placeholder="理由を入力してください"></textarea>
+      </div>
+
+      <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1rem">
+        <button class="sumioka-btn"
+          onclick="document.getElementById('modal-edit-my-request').classList.add('hidden')">
+          キャンセル
+        </button>
+        <button class="sumioka-btn sumioka-btn-primary" onclick="saveMyRequestEdit()">
+          保存する
+        </button>
+      </div>
+    </div>
+  </div>
+
     <!-- ============================================================
          タブ3: タスク管理（個人用プロジェクト管理）
          ============================================================ -->
@@ -4593,6 +4646,16 @@ p:last-child { margin-bottom: 0; }
           </button>`;
         }
 
+        // 編集ボタン: pending 状態のみ表示する（承認済みは内容変更不可）
+        const editBtnHtml = r.status === 'pending'
+          ? `<button
+               onclick="openMyRequestEdit(${escJson(r)})"
+               style="font-size:0.73rem;background:none;border:1px solid #2563eb;color:#2563eb;
+                      border-radius:4px;padding:0.15em 0.6em;cursor:pointer;margin-top:0.4rem;margin-right:0.3rem">
+               編集
+             </button>`
+          : '';
+
         return `
           <div style="border:1px solid #e5e7eb;border-radius:8px;padding:0.85rem 1rem;margin-bottom:0.65rem;background:Canvas">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
@@ -4611,14 +4674,103 @@ p:last-child { margin-bottom: 0; }
             ${fillupInfo ? `<div style="font-size:0.75rem;color:#065f46;margin-top:0.2rem">補填: ${escHtml(fillupInfo)}</div>` : ''}
             ${approvedHtml}
             ${rejectedHtml}
-            ${cancelBtnHtml}
+            <div style="display:flex;gap:0.3rem;flex-wrap:wrap;margin-top:0.1rem">
+              ${editBtnHtml}${cancelBtnHtml}
+            </div>
           </div>
         `;
       }).join('');
     }
 
     /**
-     * スタッフが自分の申請を取り下げる。
+     * スタッフが自分の pending 申請を編集するモーダルを開く。
+     *
+     * pending 状態のみ編集可能。承認済みは取り下げ申請を使う。
+     * 編集後は GAS の admin_edit_request を流用して保存する
+     * （employee_id チェックは GAS 側で行う）。
+     *
+     * @param {Object} req - 申請オブジェクト（renderRequestHistory から渡す）
+     */
+    function openMyRequestEdit(req) {
+      document.getElementById('meq-id').value     = req.id || '';
+      document.getElementById('meq-type').value   = req.type || '休み';
+      document.getElementById('meq-date').value   = String(req.target_date || '').replace(/\//g, '-');
+      document.getElementById('meq-time').value   = req.time || '';
+
+      // reason から補填・有給タグを除いた純粋なテキストをセット
+      const reasonMain = (req.reason || '')
+        .replace(/【補填日時:.*?】/g, '')
+        .replace(/【有給消化】/g, '')
+        .trim();
+      document.getElementById('meq-reason').value = reasonMain;
+
+      updateMeqTimeWrap();
+      document.getElementById('modal-edit-my-request').classList.remove('hidden');
+    }
+
+    /**
+     * 申請編集モーダルの種別変更に応じて時刻入力欄を表示/非表示にする。
+     */
+    function updateMeqTimeWrap() {
+      const type      = document.getElementById('meq-type').value;
+      const timeWrap  = document.getElementById('meq-time-wrap');
+      const timeLabel = document.getElementById('meq-time-label');
+      if (type === '遅刻') {
+        timeWrap.style.display = '';
+        timeLabel.textContent  = '出勤予定時刻';
+      } else if (type === '早退') {
+        timeWrap.style.display = '';
+        timeLabel.textContent  = '退勤予定時刻';
+      } else {
+        timeWrap.style.display = 'none';
+      }
+    }
+
+    /**
+     * 申請編集モーダルの「保存する」を実行する。
+     *
+     * GAS の admin_edit_request を使うが、スタッフが自分の pending 申請のみ
+     * 編集できるよう employee_id も渡す。ステータスは変更しない（pending のまま）。
+     */
+    async function saveMyRequestEdit() {
+      const id     = document.getElementById('meq-id').value;
+      const type   = document.getElementById('meq-type').value;
+      const date   = document.getElementById('meq-date').value.trim();
+      const time   = document.getElementById('meq-time').value.trim();
+      const reason = document.getElementById('meq-reason').value.trim();
+
+      if (!date) { showToast('対象日を入力してください。', 'warning'); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        showToast('対象日の形式が正しくありません（例: 2026-05-11）', 'warning');
+        return;
+      }
+
+      const ok = await confirm(`申請内容を修正しますか？\n種別: ${type}　対象日: ${date}`);
+      if (!ok) return;
+
+      showLoading('保存中...');
+
+      const result = await callGAS('admin_edit_request', {
+        request_id  : id,
+        type,
+        target_date : date,
+        time        : time || '',
+        reason      : reason || '',
+        status      : 'pending',       // ステータスは pending のまま維持
+        admin_id    : state.employeeId, // スタッフ自身のIDを渡す（ログ用）
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('申請内容を修正しました。', 'success');
+      document.getElementById('modal-edit-my-request').classList.add('hidden');
+      await loadMyRequests();
+    }
      *
      * pending  → 即 cancelled に変更（承認前なので自由に取り下げ可能）
      * approved → 「取り下げ申請」として rejected に変更し、管理者に削除を依頼する旨を案内する
