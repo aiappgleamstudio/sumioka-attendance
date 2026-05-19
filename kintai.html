@@ -2996,9 +2996,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.24 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.25 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.24</div>
+  <div class="version-badge" id="app-version">v1.2.25</div>
 
 
   <script>
@@ -4195,8 +4195,9 @@ p:last-child { margin-bottom: 0; }
                 : nameLast;
             }
 
-            // 遅刻・早退・納期はクリックで詳細表示する
-            const isClickable = ['遅刻','早退','納期'].includes(ev.type);
+            // クリックで詳細表示するイベント種別。
+            // 遅刻・早退: 予定時刻を表示。休み・欠勤・有給: 理由を表示。納期: 案件詳細を表示。
+            const isClickable = ['遅刻','早退','納期','休み','欠勤','有給','補填予定','補填完了'].includes(ev.type);
             const evData = isClickable ? escHtml(JSON.stringify({
               name      : ev.name,
               type      : ev.type,
@@ -4273,7 +4274,7 @@ p:last-child { margin-bottom: 0; }
           ${ev.memo   ? `<div style="font-size:0.78rem;color:GrayText;margin-top:0.3rem;border-top:1px solid #e5e7eb;padding-top:0.3rem">${escHtml(ev.memo)}</div>` : ''}
         `;
       } else {
-        // 遅刻・早退
+        // 遅刻・早退: 予定時刻を表示。休み・欠勤・有給・補填: 理由を表示。
         let timeLabel = '';
         if (ev.type === '遅刻') {
           timeLabel = timeIn  ? `出勤予定: ${timeIn}`  : '出勤予定時刻 未登録';
@@ -4281,6 +4282,9 @@ p:last-child { margin-bottom: 0; }
           timeLabel = timeOut ? `退勤予定: ${timeOut}` : '退勤予定時刻 未登録';
         }
         const reasonText = (ev.reason || '').replace(/【補填日時:.*?】/g, '').trim();
+        const fillupMatch = (ev.reason || '').match(/【補填日時:(.*?)】/);
+        const fillupText  = fillupMatch ? `補填: ${fillupMatch[1].trim()}` : '';
+
         bodyHtml = `
           <div style="margin-bottom:0.35rem">
             <span style="font-size:0.75rem;background:#f3f4f6;padding:0.1em 0.5em;border-radius:3px">${escHtml(ev.type)}</span>
@@ -4288,6 +4292,7 @@ p:last-child { margin-bottom: 0; }
           </div>
           ${timeLabel ? `<div style="font-weight:700;color:#1d4ed8;margin:0.4rem 0">${timeLabel}</div>` : ''}
           ${reasonText ? `<div style="color:GrayText;font-size:0.82rem">${escHtml(reasonText)}</div>` : ''}
+          ${fillupText ? `<div style="color:#065f46;font-size:0.78rem;margin-top:0.3rem">${escHtml(fillupText)}</div>` : ''}
         `;
       }
 
@@ -4506,11 +4511,17 @@ p:last-child { margin-bottom: 0; }
 
       // ステータスに応じたバッジスタイル
       const statusStyle = {
-        pending : 'background:#fef9c3;color:#854d0e;border:1px solid #fbbf24',
-        approved: 'background:#d1fae5;color:#065f46;border:1px solid #34d399',
-        rejected: 'background:#fee2e2;color:#991b1b;border:1px solid #f87171',
+        pending  : 'background:#fef9c3;color:#854d0e;border:1px solid #fbbf24',
+        approved : 'background:#d1fae5;color:#065f46;border:1px solid #34d399',
+        rejected : 'background:#fee2e2;color:#991b1b;border:1px solid #f87171',
+        cancelled: 'background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db',
       };
-      const statusLabel = { pending: '承認待ち', approved: '承認済み', rejected: '却下' };
+      const statusLabel = {
+        pending  : '承認待ち',
+        approved : '承認済み',
+        rejected : '却下',
+        cancelled: '取り下げ済み',
+      };
 
       el.innerHTML = requests.map(r => {
         const sStyle = statusStyle[r.status] || statusStyle.pending;
@@ -4543,6 +4554,18 @@ p:last-child { margin-bottom: 0; }
              </div>`
           : '';
 
+        // pending の申請のみ「取り下げ」ボタンを表示する。
+        // approved済みは管理者への連絡が必要なため取り下げボタンを非表示にする。
+        // cancelled・rejected はすでに確定済みのため操作不要。
+        const cancelBtnHtml = r.status === 'pending'
+          ? `<button
+               onclick="handleCancelRequest('${escHtml(r.id)}')"
+               style="font-size:0.73rem;background:none;border:1px solid #dc2626;color:#dc2626;
+                      border-radius:4px;padding:0.15em 0.6em;cursor:pointer;margin-top:0.4rem">
+               取り下げ
+             </button>`
+          : '';
+
         return `
           <div style="border:1px solid #e5e7eb;border-radius:8px;padding:0.85rem 1rem;margin-bottom:0.65rem;background:Canvas">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
@@ -4561,9 +4584,44 @@ p:last-child { margin-bottom: 0; }
             ${fillupInfo ? `<div style="font-size:0.75rem;color:#065f46;margin-top:0.2rem">補填: ${escHtml(fillupInfo)}</div>` : ''}
             ${approvedHtml}
             ${rejectedHtml}
+            ${cancelBtnHtml}
           </div>
         `;
       }).join('');
+    }
+
+    /**
+     * スタッフが自分の pending 申請を取り下げる。
+     *
+     * 取り下げ後はカレンダーから申請が除去される（cancelled 状態は非表示）。
+     * 再申請が必要な場合は改めて申請フォームから送信する。
+     *
+     * @param {string} requestId - 取り下げる申請のID
+     */
+    async function handleCancelRequest(requestId) {
+      const ok = await confirm(
+        '申請を取り下げますか？\n取り下げ後は再申請が必要です。'
+      );
+      if (!ok) return;
+
+      showLoading('取り下げ中...');
+
+      const result = await callGAS('cancel_request', {
+        request_id  : requestId,
+        employee_id : state.employeeId,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('申請を取り下げました。', 'success');
+
+      // 申請履歴と自分の状況タブのリストを両方更新する
+      await loadMyRequests();
     }
 
     // ============================================================
