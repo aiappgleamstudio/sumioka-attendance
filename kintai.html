@@ -4653,8 +4653,13 @@ p:last-child { margin-bottom: 0; }
      * @param {Object} req - 申請オブジェクト
      */
     function reapplyFromRequest(req) {
-      // 申請タブに切り替える
-      switchTab('requests');
+      // switchTabは (function(global){...})(window) のスコープ内で定義されており、
+      // window._sumiokaSwitch として外部に公開されている。
+      // 別 <script> ブロックから直接 switchTab() を呼ぶとReferenceErrorになるため
+      // window._sumiokaSwitch 経由で呼ぶ。
+      if (window._sumiokaSwitch) {
+        window._sumiokaSwitch('requests');
+      }
 
       // 種別をセット
       const typeEl = document.getElementById('absence-type');
