@@ -2996,9 +2996,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.25 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.26 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.25</div>
+  <div class="version-badge" id="app-version">v1.2.26</div>
 
 
   <script>
@@ -4165,6 +4165,7 @@ p:last-child { margin-bottom: 0; }
           const typeClassMap = {
             '休み'    : 'ev-休み',
             '欠勤'    : 'ev-休み',
+            '有給'    : 'ev-休み',    // 有給も欠勤色で表示
             '遅刻'    : 'ev-遅刻',
             '早退'    : 'ev-早退',
             '補填予定' : 'ev-補填予定',
@@ -4196,8 +4197,9 @@ p:last-child { margin-bottom: 0; }
             }
 
             // クリックで詳細表示するイベント種別。
-            // 遅刻・早退: 予定時刻を表示。休み・欠勤・有給: 理由を表示。納期: 案件詳細を表示。
-            const isClickable = ['遅刻','早退','納期','休み','欠勤','有給','補填予定','補填完了'].includes(ev.type);
+            // 遅刻・早退: 予定時刻を表示。休み・欠勤・有給・補填: 理由を表示。納期: 案件詳細を表示。
+            // 会社休日: 名称を表示。
+            const isClickable = ['遅刻','早退','納期','休み','欠勤','有給','補填予定','補填完了','会社休日','会社'].includes(ev.type);
             const evData = isClickable ? escHtml(JSON.stringify({
               name      : ev.name,
               type      : ev.type,
@@ -4248,9 +4250,11 @@ p:last-child { margin-bottom: 0; }
       const existingBack = document.getElementById('kintai-cal-backdrop');
       if (existingBack) existingBack.remove();
 
-      // 時刻フィールドを正規化（1899問題を回避）
-      const timeIn  = fmtTime(ev.time_in  || ev.time, '');
-      const timeOut = fmtTime(ev.time_out || ev.time, '');
+      // 時刻フィールドの正規化。
+      // 申請イベントには time_in/time_out がなく ev.time に格納されている。
+      // 遅刻は ev.time が出勤予定時刻、早退は ev.time が退勤予定時刻。
+      const timeIn  = fmtTime(ev.time || ev.time_in,  '');
+      const timeOut = fmtTime(ev.time || ev.time_out, '');
 
       let bodyHtml = '';
 
@@ -4272,6 +4276,15 @@ p:last-child { margin-bottom: 0; }
           ${ev.client ? `<div style="font-size:0.8rem;color:GrayText">クライアント: ${escHtml(ev.client)}</div>` : ''}
           ${ev.status ? `<div style="font-size:0.8rem;color:GrayText">進捗: ${escHtml(ev.status)}</div>` : ''}
           ${ev.memo   ? `<div style="font-size:0.78rem;color:GrayText;margin-top:0.3rem;border-top:1px solid #e5e7eb;padding-top:0.3rem">${escHtml(ev.memo)}</div>` : ''}
+        `;
+      } else if (ev.type === '会社休日' || ev.type === '会社') {
+        // 会社休日: 名称と日付だけ表示
+        bodyHtml = `
+          <div style="margin-bottom:0.35rem">
+            <span style="font-size:0.75rem;background:#f3e8ff;color:#7c3aed;padding:0.1em 0.5em;border-radius:3px">会社休日</span>
+            <span style="font-size:0.82rem;color:GrayText;margin-left:0.5rem">${escHtml(ev.date)}</span>
+          </div>
+          <div style="font-size:0.88rem;font-weight:600">${escHtml(ev.name || ev.reason || '会社休日')}</div>
         `;
       } else {
         // 遅刻・早退: 予定時刻を表示。休み・欠勤・有給・補填: 理由を表示。
