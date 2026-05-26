@@ -1086,12 +1086,71 @@
       <section class="tab-panel" id="panel-requests">
         <div class="tab-loading" id="loading-requests">読み込み中...</div>
 
-        <!-- ──────────────────────────────────────────────────────
-             残業指示セクション
-             - Admin が直接指示を作成する（申請スキップ）
-             - Kintai から来た残業申請への対応も同一画面で行う
-             ────────────────────────────────────────────────────── -->
-        <p class="section-title">残業指示</p>
+        <!-- ──────────────────────────────────────────────────
+             申請管理（フィルター・一覧）
+             ────────────────────────────────────────────────── -->
+        <p class="section-title">申請管理</p>
+
+        <!-- フィルター -->
+        <div class="filter-row">
+          <div class="filter-group">
+            <span class="filter-label">ステータス</span>
+            <select class="sumioka-input" id="req-filter-status" style="width:130px">
+              <option value="all">全件</option>
+              <option value="pending">承認待ち</option>
+              <option value="approved">承認済み</option>
+              <option value="rejected">却下済み</option>
+              <option value="cancelled">取り下げ済み</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">種別</span>
+            <select class="sumioka-input" id="req-filter-type" style="width:120px">
+              <option value="">すべて</option>
+              <option value="休み">休み</option>
+              <option value="遅刻">遅刻</option>
+              <option value="早退">早退</option>
+              <option value="補填予定">補填予定</option>
+              <option value="補填完了">補填完了</option>
+              <option value="残業">残業</option>
+            </select>
+          </div>
+          <button class="sumioka-btn sumioka-btn-primary" id="btn-req-search"
+            style="align-self:flex-end">絞り込み</button>
+          <!-- #14: 欠席登録ボタン（管理者のみ表示） -->
+          <button class="sumioka-btn" id="btn-absence-register"
+            style="align-self:flex-end;display:none"
+            onclick="openAbsenceStatusModal()">欠席・遅刻・早退・外出の登録</button>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>申請日</th>
+                <th>氏名</th>
+                <th>申請種別</th>
+                <th>種別</th>
+                <th>対象日</th>
+                <th>時間</th>
+                <th>理由</th>
+                <th>補填情報</th>
+                <th>ステータス</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="req-body">
+              <tr><td colspan="10" class="empty-state">読み込み中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ──────────────────────────────────────────────────
+             残業指示セクション（申請管理の下に配置）
+             - Kintai からの残業申請を承認すると自動登録される
+             - Admin が直接指示を作成することもできる
+             ────────────────────────────────────────────────── -->
+        <p class="section-title" style="margin-top:2rem">残業指示</p>
 
         <!-- 残業指示の新規作成フォーム -->
         <div style="border:1px solid #e5e7eb;border-radius:8px;padding:1rem;
@@ -1170,62 +1229,6 @@
           </table>
         </div>
 
-        <p class="section-title" style="margin-top:2rem">申請管理</p>
-
-        <!-- フィルター -->
-        <div class="filter-row">
-          <div class="filter-group">
-            <span class="filter-label">ステータス</span>
-            <select class="sumioka-input" id="req-filter-status" style="width:130px">
-              <option value="all">全件</option>
-              <option value="pending">承認待ち</option>
-              <option value="approved">承認済み</option>
-              <option value="rejected">却下済み</option>
-              <option value="cancelled">取り下げ済み</option>
-            </select>
-          </div>
-          <div class="filter-group">
-            <span class="filter-label">種別</span>
-            <!-- 補填のみ承認フロー。休み/遅刻/早退はAdmin確認用として引き続き表示する。 -->
-            <select class="sumioka-input" id="req-filter-type" style="width:120px">
-              <option value="">すべて</option>
-              <option value="休み">休み</option>
-              <option value="遅刻">遅刻</option>
-              <option value="早退">早退</option>
-              <option value="補填予定">補填予定</option>
-              <option value="補填完了">補填完了</option>
-              <option value="残業">残業</option>
-            </select>
-          </div>
-          <button class="sumioka-btn sumioka-btn-primary" id="btn-req-search"
-            style="align-self:flex-end">絞り込み</button>
-          <!-- #14: 欠席登録ボタン（管理者のみ表示） -->
-          <button class="sumioka-btn" id="btn-absence-register"
-            style="align-self:flex-end;display:none"
-            onclick="openAbsenceStatusModal()">欠席・遅刻・早退・外出の登録</button>
-        </div>
-
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>申請日</th>
-                <th>氏名</th>
-                <th>申請種別</th>
-                <th>種別</th>
-                <th>対象日</th>
-                <th>時間</th>
-                <th>理由</th>
-                <th>補填情報</th>
-                <th>ステータス</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody id="req-body">
-              <tr><td colspan="10" class="empty-state">読み込み中...</td></tr>
-            </tbody>
-          </table>
-        </div>
       </section>
 
       <!-- スタッフ管理 -->
@@ -6259,10 +6262,11 @@
       const select = document.getElementById('ot-inst-staff');
       if (!select) return;
 
+      // admin_staff_list のレスポンスは { staff: [...] }
       const result = await callGAS('admin_staff_list', { type: 'staff' });
       if (!result.success) return;
 
-      const staff = result.data.employees || [];
+      const staff = result.data.staff || [];
       select.innerHTML = '<option value="">選択してください</option>' +
         staff.map(s => `<option value="${escHtml(s.id)}"
           data-name="${escHtml(s.name)}">${escHtml(s.name)}</option>`).join('');
