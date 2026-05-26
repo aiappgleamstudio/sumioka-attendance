@@ -921,6 +921,18 @@
           </table>
         </div>
 
+        <!-- ──────────────────────────────────────────────────────
+             打刻漏れ警告パネル（本日分）
+             - loadDashboard() 完了後に check_missing_clocks を呼んで表示
+             - 出勤のみ or 出退勤両方なし のスタッフを一覧表示する
+             ────────────────────────────────────────────────────── -->
+        <p class="section-title" style="margin-top:1.5rem">本日の打刻漏れ警告</p>
+        <div id="dash-missing-clock-panel">
+          <div style="text-align:center;color:GrayText;padding:1rem;font-size:0.85rem">
+            読み込み中...
+          </div>
+        </div>
+
         <!-- ── カレンダー（旧カレンダータブから移動） ── -->
         <p class="section-title" style="margin-top:1.5rem">カレンダー</p>
         <div class="tab-loading" id="loading-calendar" style="display:none">読み込み中...</div>
@@ -1074,6 +1086,92 @@
       <section class="tab-panel" id="panel-requests">
         <div class="tab-loading" id="loading-requests">読み込み中...</div>
 
+        <!-- ──────────────────────────────────────────────────────
+             残業指示セクション
+             - Admin が直接指示を作成する（申請スキップ）
+             - Kintai から来た残業申請への対応も同一画面で行う
+             ────────────────────────────────────────────────────── -->
+        <p class="section-title">残業指示</p>
+
+        <!-- 残業指示の新規作成フォーム -->
+        <div style="border:1px solid #e5e7eb;border-radius:8px;padding:1rem;
+          margin-bottom:1rem;background:#f9fafb">
+          <p style="font-weight:700;font-size:0.88rem;margin-bottom:0.75rem;color:GrayText">
+            ＋ 残業指示を登録（Admin直接指示）
+          </p>
+          <div style="display:flex;flex-wrap:wrap;gap:0.65rem;align-items:flex-end">
+            <!-- スタッフ選択 -->
+            <div>
+              <label class="sumioka-label" style="font-size:0.8rem">スタッフ</label>
+              <select class="sumioka-input" id="ot-inst-staff" style="width:140px;font-size:0.85rem">
+                <option value="">選択してください</option>
+                <!-- JS の loadOvertimeStaffSelect() で動的生成 -->
+              </select>
+            </div>
+            <!-- 対象日 -->
+            <div>
+              <label class="sumioka-label" style="font-size:0.8rem">対象日</label>
+              <input class="sumioka-input" type="date" id="ot-inst-date"
+                style="width:145px;font-size:0.85rem">
+            </div>
+            <!-- 見込み時間 -->
+            <div>
+              <label class="sumioka-label" style="font-size:0.8rem">見込み時間</label>
+              <select class="sumioka-input" id="ot-inst-time" style="width:140px;font-size:0.85rem">
+                <option value="">選択してください</option>
+                <option value="00:30">30分</option>
+                <option value="01:00">1時間</option>
+                <option value="01:30">1時間30分</option>
+                <option value="02:00">2時間</option>
+                <option value="02:30">2時間30分</option>
+                <option value="03:00">3時間</option>
+                <option value="04:00">4時間</option>
+              </select>
+            </div>
+            <!-- 作成ボタン -->
+            <button class="sumioka-btn sumioka-btn-primary" id="btn-create-ot-inst"
+              onclick="handleCreateOvertimeInstruction()"
+              style="font-size:0.85rem">
+              指示を登録
+            </button>
+          </div>
+        </div>
+
+        <!-- 残業指示一覧 -->
+        <div style="margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+          <select class="sumioka-input" id="ot-inst-filter-status" style="width:130px;font-size:0.85rem">
+            <option value="all">全ステータス</option>
+            <option value="pending">承認待ち</option>
+            <option value="confirmed">承認済み</option>
+            <option value="rejected">却下</option>
+          </select>
+          <button class="sumioka-btn" id="btn-ot-inst-reload"
+            onclick="loadOvertimeInstructionsAdmin()"
+            style="font-size:0.85rem">
+            再読み込み
+          </button>
+        </div>
+        <div class="admin-table-wrap" id="ot-inst-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>対象日</th>
+                <th>氏名</th>
+                <th>見込み時間</th>
+                <th>実績時間</th>
+                <th>状態</th>
+                <th>コメント</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="ot-inst-body">
+              <tr><td colspan="7" class="empty-state">読み込み中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="section-title" style="margin-top:2rem">申請管理</p>
+
         <!-- フィルター -->
         <div class="filter-row">
           <div class="filter-group">
@@ -1096,6 +1194,7 @@
               <option value="早退">早退</option>
               <option value="補填予定">補填予定</option>
               <option value="補填完了">補填完了</option>
+              <option value="残業">残業</option>
             </select>
           </div>
           <button class="sumioka-btn sumioka-btn-primary" id="btn-req-search"
@@ -3639,6 +3738,12 @@
           warningEl.style.display = 'none';
         }
       }
+
+      // 打刻漏れ警告を別途取得する（本日分）
+      // ダッシュボード読み込みとは独立して非同期で取得し UI をブロックしない
+      loadDashboardMissingClocks(today).catch(err =>
+        console.warn('[loadDashboardMissingClocks]', err)
+      );
     }
 
     /**
@@ -4070,6 +4175,16 @@
       }
 
       renderRequestsTable(result.data.requests || []);
+
+      // 申請管理タブを開いたとき、残業指示一覧も同時に更新する
+      loadOvertimeInstructionsAdmin().catch(err =>
+        console.warn('[loadOvertimeInstructionsAdmin]', err)
+      );
+
+      // スタッフセレクトを更新（残業指示作成フォーム用）
+      loadOvertimeStaffSelect().catch(err =>
+        console.warn('[loadOvertimeStaffSelect]', err)
+      );
     }
 
     /**
@@ -5969,6 +6084,240 @@
 
       showToast('登録しました。', 'success');
       document.getElementById('modal-absence-status').classList.add('hidden');
+    }
+
+    // ============================================================
+    // 打刻漏れ警告（ダッシュボード）
+    // ============================================================
+
+    /**
+     * 本日の打刻漏れを取得してダッシュボードに表示する。
+     *
+     * loadDashboard() 完了後に非同期で呼び出す。
+     * 失敗してもダッシュボード全体には影響しない（コンソールのみ）。
+     *
+     * @param {string} date - 'YYYY-MM-DD'
+     */
+    async function loadDashboardMissingClocks(date) {
+      const panel = document.getElementById('dash-missing-clock-panel');
+      if (!panel) return;
+
+      const result = await callGAS('check_missing_clocks', { date });
+
+      if (!result.success) {
+        panel.innerHTML = `<div style="color:GrayText;font-size:0.82rem;padding:0.5rem">
+          打刻漏れ情報の取得に失敗しました。</div>`;
+        return;
+      }
+
+      const warnings = result.data.missing || [];
+
+      if (warnings.length === 0) {
+        panel.innerHTML = `<div style="color:#065f46;font-size:0.85rem;padding:0.5rem">
+          ✓ 本日の打刻漏れはありません</div>`;
+        return;
+      }
+
+      // 打刻漏れがある場合はテーブルで一覧表示する
+      panel.innerHTML = `
+        <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;
+          padding:0.75rem 1rem;margin-bottom:0.5rem">
+          <div style="font-weight:700;font-size:0.88rem;color:#92400e;margin-bottom:0.5rem">
+            ⚠️ ${warnings.length} 名に打刻漏れの可能性があります
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table" style="font-size:0.82rem">
+              <thead>
+                <tr>
+                  <th>氏名</th>
+                  <th>パターン</th>
+                  <th>出勤時刻</th>
+                  <th>内容</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${warnings.map(w => `
+                  <tr>
+                    <td>${escHtml(w.name)}</td>
+                    <td>
+                      <span style="font-size:0.75rem;padding:0.1em 0.5em;border-radius:3px;
+                        ${w.pattern === 'missing_time_out'
+                          ? 'background:#fef3c7;color:#92400e'
+                          : 'background:#ffedd5;color:#9a3412'}">
+                        ${w.pattern === 'missing_time_out' ? '退勤なし' : '出退勤なし'}
+                      </span>
+                    </td>
+                    <td>${escHtml(w.clocked_in_at || '―')}</td>
+                    <td style="font-size:0.78rem;color:GrayText">${escHtml(w.message)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    // ============================================================
+    // 残業指示管理（Admin）
+    // ============================================================
+
+    /**
+     * 残業指示フォーム用のスタッフセレクトを更新する。
+     *
+     * スタッフ一覧を取得して <select id="ot-inst-staff"> を動的生成する。
+     * 既存の adminStaffList アクションを流用する。
+     */
+    async function loadOvertimeStaffSelect() {
+      const select = document.getElementById('ot-inst-staff');
+      if (!select) return;
+
+      const result = await callGAS('admin_staff_list', { type: 'staff' });
+      if (!result.success) return;
+
+      const staff = result.data.employees || [];
+      select.innerHTML = '<option value="">選択してください</option>' +
+        staff.map(s => `<option value="${escHtml(s.id)}"
+          data-name="${escHtml(s.name)}">${escHtml(s.name)}</option>`).join('');
+    }
+
+    /**
+     * Admin が残業指示を直接登録する。
+     *
+     * create_overtime_instruction アクションを呼び出す。
+     * スタッフ・対象日・見込み時間は必須。
+     */
+    async function handleCreateOvertimeInstruction() {
+      const staffSelect = document.getElementById('ot-inst-staff');
+      const employeeId  = staffSelect?.value;
+      const name        = staffSelect?.options[staffSelect.selectedIndex]?.dataset?.name || '';
+      const date        = document.getElementById('ot-inst-date').value;
+      const estTime     = document.getElementById('ot-inst-time').value;
+
+      // バリデーション
+      if (!employeeId) { showToast('スタッフを選択してください。', 'warning'); return; }
+      if (!date) { showToast('対象日を入力してください。', 'warning'); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        showToast('対象日の形式が正しくありません（例: 2026-05-27）', 'warning'); return;
+      }
+      if (!estTime) { showToast('見込み時間を選択してください。', 'warning'); return; }
+
+      const ok = await confirm(`残業指示を登録しますか？\nスタッフ: ${name}\n対象日: ${date}\n見込み時間: ${estTime}`);
+      if (!ok) return;
+
+      showLoading('残業指示を登録中...');
+
+      const result = await callGAS('create_overtime_instruction', {
+        employee_id    : employeeId,
+        name           : name,
+        target_date    : date,
+        estimated_time : estTime,
+        created_by     : adminState.employeeId,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('残業指示を登録しました。スタッフの承認をお待ちください。', 'success');
+
+      // フォームをリセット
+      if (staffSelect) staffSelect.value = '';
+      document.getElementById('ot-inst-date').value = '';
+      document.getElementById('ot-inst-time').value = '';
+
+      // 一覧を更新する
+      await loadOvertimeInstructionsAdmin();
+    }
+
+    /**
+     * 残業指示一覧を取得してテーブルに描画する（Admin用）。
+     *
+     * ステータスフィルタは <select id="ot-inst-filter-status"> の値を使う。
+     */
+    async function loadOvertimeInstructionsAdmin() {
+      const tbody = document.getElementById('ot-inst-body');
+      if (!tbody) return;
+
+      const statusFilter = document.getElementById('ot-inst-filter-status')?.value || 'all';
+
+      const result = await callGAS('admin_overtime_instructions', { status: statusFilter });
+
+      if (!result.success) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state" style="color:#dc2626">
+          取得に失敗しました。</td></tr>`;
+        return;
+      }
+
+      const instructions = result.data.instructions || [];
+
+      if (instructions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">
+          該当する残業指示がありません</td></tr>`;
+        return;
+      }
+
+      const statusBadge = {
+        pending  : '<span style="background:#fef9c3;color:#854d0e;border:1px solid #fbbf24;font-size:0.72rem;padding:0.1em 0.5em;border-radius:3px">承認待ち</span>',
+        confirmed: '<span style="background:#d1fae5;color:#065f46;border:1px solid #34d399;font-size:0.72rem;padding:0.1em 0.5em;border-radius:3px">承認済み</span>',
+        rejected : '<span style="background:#fee2e2;color:#991b1b;border:1px solid #f87171;font-size:0.72rem;padding:0.1em 0.5em;border-radius:3px">却下</span>',
+      };
+
+      tbody.innerHTML = instructions.map(inst => {
+        const badge      = statusBadge[inst.status] || escHtml(inst.status_display || inst.status);
+        const actualDisp = inst.actual_time || '<span style="color:GrayText">未確定</span>';
+
+        // 削除ボタン（全ステータスで表示。論理削除のため復旧可能。）
+        const deleteBtn = `<button
+          onclick="handleDeleteOvertimeInstruction('${escHtml(inst.id)}', '${escHtml(inst.name)}')"
+          class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.6em;color:#dc2626;
+            border-color:#dc2626">削除</button>`;
+
+        return `
+          <tr>
+            <td>${escHtml(inst.target_date)}</td>
+            <td>${escHtml(inst.name)}</td>
+            <td style="font-weight:700">${escHtml(inst.estimated_time || '―')}</td>
+            <td>${actualDisp}</td>
+            <td>${badge}</td>
+            <td style="font-size:0.78rem;color:GrayText;max-width:120px;
+              white-space:normal;word-break:break-all">
+              ${escHtml(inst.comment || '―')}</td>
+            <td>${deleteBtn}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    /**
+     * Admin が残業指示を論理削除する。
+     *
+     * @param {string} instructionId
+     * @param {string} name - 確認ダイアログ用のスタッフ名
+     */
+    async function handleDeleteOvertimeInstruction(instructionId, name) {
+      const ok = await confirm(`${name} の残業指示を削除しますか？\n（論理削除のため復旧可能です）`);
+      if (!ok) return;
+
+      showLoading('削除中...');
+
+      const result = await callGAS('delete_overtime_instruction', {
+        instruction_id : instructionId,
+        admin_id       : adminState.employeeId,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('残業指示を削除しました。', 'success');
+      await loadOvertimeInstructionsAdmin();
     }
 
     // ============================================================
