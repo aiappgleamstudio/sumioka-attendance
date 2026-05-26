@@ -2249,13 +2249,14 @@
       <!-- 種別 -->
       <div class="sumioka-form-group">
         <label class="sumioka-label" for="mer-type">種別</label>
-        <select class="sumioka-input" id="mer-type">
+        <select class="sumioka-input" id="mer-type" onchange="updateMerTimeWrap()">
           <option value="休み">休み</option>
           <option value="遅刻">遅刻</option>
           <option value="早退">早退</option>
           <option value="補填予定">補填予定</option>
           <option value="補填完了">補填完了</option>
           <option value="有給">有給</option>
+          <option value="残業">残業</option>
         </select>
       </div>
 
@@ -4545,22 +4546,26 @@
     function openEditRequestModal(req) {
       document.getElementById('mer-id').value = req.id || '';
       document.getElementById('mer-name-display').textContent = req.name || '―';
+
+      // 種別: 残業を含む全種別を自動セット
       document.getElementById('mer-type').value = req.type || '休み';
 
+      // 対象日: YYYY-MM-DD 形式に正規化して自動セット
       const rawDate = String(req.target_date || '').replace(/\//g, '-');
       document.getElementById('mer-target-date').value = rawDate;
 
+      // 時刻: 遅刻・早退のときのみ使う
       const timeVal = req.time || req.late_time || req.early_leave_time || '';
       document.getElementById('mer-time').value = timeVal;
 
-      // 理由: 【補填日時:...】【有給消化】タグを除いた純粋な理由テキストをセット
+      // 理由: 補填・有給タグを除いた純粋な理由テキストを自動セット
       const reasonMain = (req.reason || '')
         .replace(/【補填日時:.*?】/g, '')
         .replace(/【有給消化】/g, '')
         .trim();
       document.getElementById('mer-reason').value = reasonMain;
 
-      // 補填情報: reason から【補填日時:...】を抽出して補填欄にセット
+      // 補填情報: reason から抽出して自動セット
       const fillupMatch = (req.reason || '').match(/【補填日時:(.*?)】/);
       document.getElementById('mer-fillup').value = fillupMatch ? fillupMatch[1].trim() : '';
 
@@ -4576,7 +4581,7 @@
       const timeLabel  = document.getElementById('mer-time-label');
       const fillupWrap = document.getElementById('mer-fillup-wrap');
 
-      // 時刻入力欄: 遅刻・早退のときのみ表示する
+      // 時刻入力欄: 遅刻・早退のときのみ表示する。残業・その他は非表示。
       if (type === '遅刻') {
         timeWrap.style.display = '';
         timeLabel.textContent  = '出勤時刻（遅刻）';
@@ -4587,15 +4592,13 @@
         timeWrap.style.display = 'none';
       }
 
-      // 補填情報欄: 補填予定・補填完了のときは必ず表示。
-      // 休み・有給でも reason に補填日時が含まれている場合は表示する。
-      // 「常に表示」とすることで、補填情報の修正漏れを防ぐ。
+      // 補填情報欄: 補填予定・補填完了・既存補填データがある場合のみ表示。
+      // 残業・遅刻・早退は不要なので非表示。
       const fillupVal = document.getElementById('mer-fillup').value.trim();
       if (type === '補填予定' || type === '補填完了' || fillupVal) {
-        fillupWrap.style.display = '';
+        fillupWrap.style.display = (type === '遅刻' || type === '早退' || type === '残業') ? 'none' : '';
       } else {
-        // 遅刻・早退以外で補填情報がない場合は非表示にする（フォームをすっきりさせる）
-        fillupWrap.style.display = (type === '遅刻' || type === '早退') ? 'none' : '';
+        fillupWrap.style.display = 'none';
       }
     }
 
@@ -6416,7 +6419,11 @@
      * @param {string} name - 確認ダイアログ用のスタッフ名
      */
     async function handleDeleteOvertimeInstruction(instructionId, name) {
-      const ok = await confirm(`${name} の残業指示を削除しますか？\n（論理削除のため復旧可能です）`);
+      const ok = await confirm(
+        `${name} の残業指示を削除しますか？\n` +
+        `・残業指示は論理削除されます\n` +
+        `・対応する残業申請がある場合、承認待ちに戻ります`
+      );
       if (!ok) return;
 
       showLoading('削除中...');
@@ -6433,8 +6440,18 @@
         return;
       }
 
-      showToast('残業指示を削除しました。', 'success');
-      await loadOvertimeInstructionsAdmin();
+      // 申請が差し戻された場合はその旨も表示する
+      if (result.data.request_reverted) {
+        showToast('残業指示を削除し、残業申請を承認待ちに戻しました。', 'success');
+      } else {
+        showToast('残業指示を削除しました。', 'success');
+      }
+
+      // 残業指示一覧と申請一覧を両方更新する
+      await Promise.all([
+        loadOvertimeInstructionsAdmin(),
+        loadRequests(),
+      ]);
     }
 
     // ============================================================
