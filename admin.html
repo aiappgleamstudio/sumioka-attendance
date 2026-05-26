@@ -4306,7 +4306,8 @@
         }
 
         // 操作ボタン:
-        //   pending      → 承認・却下・削除
+        //   残業申請（type='残業'）の pending は専用フロー（承認→指示作成）を使う。
+        //   それ以外の pending → 既存の汎用承認・却下・削除
         //   approved     → 取消（pending に戻す）・削除
         //   rejected     → 再承認・削除
         //   cancelled    → 削除のみ（スタッフが取り下げ済み）
@@ -4317,7 +4318,20 @@
           onclick="handleDeleteRequest('${escHtml(req.id)}','${escHtml(req.name||'')}','${escHtml(req.type||'')}')">削除</button>`;
         const editBtn = `<button class="sumioka-btn" style="font-size:0.75rem;padding:0.2em 0.5em" onclick="openEditRequestModal(${escJson(req)})">編集</button>`;
         let actionHtml;
-        if (req.status === 'pending') {
+        if (req.status === 'pending' && req.type === '残業') {
+          // 残業申請の承認 → 残業指示シートへ転記するため専用アクションを呼ぶ
+          actionHtml = `<div class="action-btn-group">
+            <button class="btn-approve"
+              onclick="handleOvertimeRequestApprove('${escHtml(req.id)}','${escHtml(req.name||'')}')">
+              承認＆指示登録
+            </button>
+            <button class="btn-reject"
+              onclick="handleOvertimeRequestReject('${escHtml(req.id)}','${escHtml(req.name||'')}')">
+              却下
+            </button>
+            ${deleteBtn}
+          </div>`;
+        } else if (req.status === 'pending') {
           actionHtml = `<div class="action-btn-group">
             ${editBtn}
             <button class="btn-approve" onclick="handleRequestAction('${escHtml(req.id)}','approve')">承認</button>
@@ -4362,6 +4376,79 @@
           </tr>
         `;
       }).join('');
+    }
+
+    // ============================================================
+    // 残業申請の承認・却下（専用フロー）
+    // ============================================================
+
+    /**
+     * 残業申請を承認し、残業指示シートに転記する。
+     *
+     * 通常の handleRequestAction('approve') とは異なり、
+     * admin_approve_overtime_request アクションを呼ぶことで
+     * 申請管理シートの更新 と 残業指示シートへの登録 を同時に行う。
+     *
+     * @param {string} requestId - 承認する申請のID
+     * @param {string} name      - 申請者名（確認ダイアログ用）
+     */
+    async function handleOvertimeRequestApprove(requestId, name) {
+      const ok = await confirm(
+        `${name} の残業申請を承認しますか？\n承認すると残業指示が自動登録され、スタッフに通知されます。`
+      );
+      if (!ok) return;
+
+      showLoading('承認中...');
+      const result = await callGAS('admin_approve_overtime_request', {
+        request_id : requestId,
+        admin_id   : adminState.employeeId,
+      });
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('残業申請を承認しました。残業指示が登録されました。', 'success');
+      // 申請一覧と残業指示一覧の両方を更新する
+      loadRequests();
+    }
+
+    /**
+     * 残業申請を却下する。
+     *
+     * 却下理由の入力ダイアログを表示してから
+     * admin_reject_overtime_request アクションを呼ぶ。
+     *
+     * @param {string} requestId - 却下する申請のID
+     * @param {string} name      - 申請者名（確認ダイアログ用）
+     */
+    async function handleOvertimeRequestReject(requestId, name) {
+      // ── 却下理由の入力を促す ──
+      // window.prompt でシンプルに実装する
+      const reason = window.prompt(
+        `${name} の残業申請を却下しますか？\n却下理由を入力してください（任意）：`,
+        ''
+      );
+      // キャンセルボタン（null）が押された場合は処理を中止する
+      if (reason === null) return;
+
+      showLoading('却下中...');
+      const result = await callGAS('admin_reject_overtime_request', {
+        request_id    : requestId,
+        admin_id      : adminState.employeeId,
+        reject_reason : reason.trim(),
+      });
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('残業申請を却下しました。', 'success');
+      loadRequests();
     }
 
     /**
