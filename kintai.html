@@ -1992,6 +1992,27 @@ p:last-child { margin-bottom: 0; }
          ============================================================ -->
     <div class="kintai-tab-panel active" id="panel-checkin">
 
+      <!-- ──────────────────────────────────────────────────────
+           打刻漏れ警告パネル
+           - ログイン直後に get_my_missing_clocks を呼んで表示する
+           - 本日 + 過去1ヶ月分の打刻漏れを一覧表示する
+           - 警告はあくまでも忠告。対処は自己責任。
+           ────────────────────────────────────────────────────── -->
+      <div id="missing-clock-warning-panel" style="display:none;
+        border:1px solid #f59e0b;border-radius:8px;background:#fffbeb;
+        padding:0.75rem 1rem;margin-bottom:0.85rem">
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem">
+          <span style="font-size:1.1rem">⚠️</span>
+          <span style="font-weight:700;font-size:0.9rem;color:#92400e">打刻漏れが検出されました</span>
+        </div>
+        <!-- 警告一覧 (JS の renderMissingClockWarnings() で描画する) -->
+        <div id="missing-clock-warning-list"></div>
+        <div style="font-size:0.75rem;color:#92400e;margin-top:0.5rem;
+          padding-top:0.5rem;border-top:1px solid #fcd34d">
+          ※ 警告が表示されている日付は入力が必要な可能性があります。対処は各自でお願いします。
+        </div>
+      </div>
+
       <!-- A-④: 打刻タブは説明を最小化し、ボタン操作に集中できるUIにする。
            アクセス権バッジは削除。残不足バナーのみ残す。 -->
 
@@ -2213,6 +2234,7 @@ p:last-child { margin-bottom: 0; }
             <option value="遅刻">遅刻</option>
             <option value="早退">早退</option>
             <option value="外出勤務">外出勤務</option>
+            <option value="残業">残業</option>
           </select>
         </div>
 
@@ -2222,7 +2244,7 @@ p:last-child { margin-bottom: 0; }
           <input class="sumioka-input" type="date" id="absence-date">
         </div>
 
-        <!-- ③ 時刻（遅刻・早退のときのみ表示） -->
+        <!-- ③-A 時刻（遅刻・早退のときのみ表示） -->
         <!-- 5分刻りリスト＋手入力の両方に対応するため datalist を使う -->
         <div class="sumioka-form-group" id="absence-time-wrap" style="display:none">
           <!-- ラベルは種別に応じて JS で動的に書き換える（updateAbsenceTimeLabel）-->
@@ -2238,6 +2260,22 @@ p:last-child { margin-bottom: 0; }
           <datalist id="absence-time-list">
             <!-- JS の buildAbsenceTimelist() で 5分刻みのオプションを動的生成する -->
           </datalist>
+        </div>
+
+        <!-- ③-B 見込み時間（残業のときのみ表示） -->
+        <div class="sumioka-form-group" id="overtime-estimated-wrap" style="display:none">
+          <label class="sumioka-label" for="overtime-estimated-time">見込み残業時間</label>
+          <select class="sumioka-input" id="overtime-estimated-time" style="width:160px">
+            <option value="">時間を選択</option>
+            <option value="00:30">30分</option>
+            <option value="01:00">1時間</option>
+            <option value="01:30">1時間30分</option>
+            <option value="02:00">2時間</option>
+            <option value="02:30">2時間30分</option>
+            <option value="03:00">3時間</option>
+            <option value="04:00">4時間</option>
+          </select>
+          <div class="sumioka-input-hint">退勤後に実績が自動計算されます</div>
         </div>
 
         <!-- ④ 理由（全種別共通） -->
@@ -2332,6 +2370,21 @@ p:last-child { margin-bottom: 0; }
       </p>
       <div id="request-history-list">
         <div style="text-align:center;color:GrayText;padding:1.5rem;font-size:0.85rem">
+          読み込み中...
+        </div>
+      </div>
+
+      <!-- ────────────────────────────────────────────────────
+           残業指示セクション
+           - ログイン後に get_overtime_instructions を呼んで表示
+           - 「承認待ち」の指示がある場合は承認/却下ボタンを表示する
+           ──────────────────────────────────────────────────── -->
+      <p style="font-size:0.82rem;font-weight:600;color:GrayText;
+        text-transform:uppercase;letter-spacing:0.06em;margin:1.5rem 0 0.85rem">
+        残業指示
+      </p>
+      <div id="overtime-instruction-list">
+        <div style="text-align:center;color:GrayText;padding:1rem;font-size:0.85rem">
           読み込み中...
         </div>
       </div>
@@ -3162,44 +3215,42 @@ p:last-child { margin-bottom: 0; }
       // 種別変更で「時刻」欄と「補填ラベル内の有給オプション」の表示を切り替える。
       // 休み：有給消化オプションあり・時刻非表示
       // 遅刻・早退：有給消化オプションなし・時刻表示
+      // 残業：見込み時間欄を表示・時刻/補填欄を非表示
       document.getElementById('absence-type').addEventListener('change', () => {
         const type       = document.getElementById('absence-type').value;
         const timeWrap   = document.getElementById('absence-time-wrap');
         const timeLabel  = document.getElementById('absence-time-label');
         const paidLabel  = document.getElementById('comp-paid-label');
 
-        // 時刻欄：遅刻・早退のみ表示
-        if (timeWrap) timeWrap.style.display = type === '休み' ? 'none' : '';
+        // 残業選択時は専用のフォーム表示関数に委譲する
+        updateAbsenceFormForType(type);
 
-        // 時刻ラベル：種別に応じて変更する
-        // 遅刻 → 「出勤予定時刻」、早退 → 「退勤予定時刻」
-        if (timeLabel) {
-          timeLabel.textContent = type === '遅刻' ? '出勤予定時刻' : '退勤予定時刻';
-        }
+        // 残業以外の既存の表示制御
+        if (type !== '残業') {
+          // 時刻欄：遅刻・早退のみ表示
+          if (timeWrap) timeWrap.style.display = (type === '遅刻' || type === '早退') ? '' : 'none';
 
-        // ── 有給消化ラジオボタンの制御 ──────────────────────────────
-        // 【変更理由】
-        //   遅刻・早退でも半日（午前 10:00〜12:05 / 午後 12:55〜15:00）の
-        //   有給申請が可能になったため、全種別で有給選択肢を表示する。
-        //   ただし休み（終日）と遅刻・早退（半日）では意味が異なるため、
-        //   ラベル文言と補足説明を種別に応じて切り替える。
-        const paidText        = document.getElementById('comp-paid-text');
-        const halfdayNote     = document.getElementById('paid-leave-halfday-note');
-        const isAbsence       = type === '休み';
+          // 時刻ラベル：種別に応じて変更する
+          // 遅刻 → 「出勤予定時刻」、早退 → 「退勤予定時刻」
+          if (timeLabel) {
+            timeLabel.textContent = type === '遅刻' ? '出勤予定時刻' : '退勤予定時刻';
+          }
 
-        // 有給ラジオボタン：全種別で表示（非表示にしない）
-        if (paidLabel) paidLabel.style.display = '';
+          // ── 有給消化ラジオボタンの制御 ──────────────────────────────
+          const paidText        = document.getElementById('comp-paid-text');
+          const halfdayNote     = document.getElementById('paid-leave-halfday-note');
+          const isAbsence       = type === '休み';
 
-        // ラベル文言：休み→「有給消化する」、遅刻/早退→「半日有給を使う」
-        if (paidText) {
-          paidText.textContent = isAbsence ? '有給消化する' : '半日有給を使う';
-        }
+          if (paidLabel) paidLabel.style.display = '';
 
-        // 半日有給の時間帯説明：有給を選択中かつ遅刻/早退のときのみ表示する。
-        // updateCompensationUI 側でも再評価するため、ここでは現在選択中の値で判定する。
-        const currentComp = document.querySelector('input[name="compensation-type"]:checked')?.value;
-        if (halfdayNote) {
-          halfdayNote.style.display = (!isAbsence && currentComp === 'paid') ? '' : 'none';
+          if (paidText) {
+            paidText.textContent = isAbsence ? '有給消化する' : '半日有給を使う';
+          }
+
+          const currentComp = document.querySelector('input[name="compensation-type"]:checked')?.value;
+          if (halfdayNote) {
+            halfdayNote.style.display = (!isAbsence && currentComp === 'paid') ? '' : 'none';
+          }
         }
       });
 
@@ -3455,6 +3506,13 @@ p:last-child { margin-bottom: 0; }
       // 必要なボタンだけを有効化できる。
       state._dataLoaded = true;
       renderState();
+
+      // ── ログイン直後に追加で取得するデータ ──
+      // 打刻漏れ警告: 本日 + 過去1ヶ月分の漏れを検出して打刻タブ最上部に表示する
+      // 並行して取得し UI をブロックしない（エラーはコンソールのみ）
+      loadMissingClocks().catch(err => console.warn('[loadMissingClocks]', err));
+      // 残業指示: 申請タブの残業指示セクションに表示する
+      loadOvertimeInstructions().catch(err => console.warn('[loadOvertimeInstructions]', err));
 
       // タブ復元: applySession で保存したタブに対応するデータを、
       // 打刻状態の読み込み完了後に改めてロードする。
@@ -4075,7 +4133,9 @@ p:last-child { margin-bottom: 0; }
       if (tabKey === 'calendar') {
         loadCalendar();
       } else if (tabKey === 'requests') {
+        // 申請タブ: 申請履歴 + 残業指示の両方を更新する
         loadMyRequests();
+        loadOvertimeInstructions();
       } else if (tabKey === 'tasks') {
         loadTasks();
       } else if (tabKey === 'deadlines') {
@@ -4367,11 +4427,12 @@ p:last-child { margin-bottom: 0; }
     }
 
     /**
-     * 休み・遅刻・早退・補填・有給消化の申請を統合して送信する。
+     * 休み・遅刻・早退・補填・有給消化・残業の申請を統合して送信する。
      *
      * 旧: 休み/遅刻/早退フォームと補填申請フォームが別々だった
      * 新: 1フォームに統合。種別に応じて送信データを組み立てる。
      * 承認フロー廃止：GAS側で approved として即登録されるためカレンダーに即反映。
+     * ※ 残業のみ別フロー: handleSubmitOvertime() に委譲する。
      */
     async function handleSubmitAbsence() {
       const type      = document.getElementById('absence-type').value;
@@ -4379,6 +4440,12 @@ p:last-child { margin-bottom: 0; }
       const reason    = document.getElementById('absence-reason').value.trim();
       const time      = document.getElementById('absence-time')?.value || '';
       const compValue = document.querySelector('input[name="compensation-type"]:checked')?.value || 'none';
+
+      // 残業申請は別関数に委譲する
+      if (type === '残業') {
+        await handleSubmitOvertime();
+        return;
+      }
 
       // バリデーション
       if (!date) { showToast('対象日を選択してください。', 'warning'); return; }
@@ -5872,6 +5939,346 @@ p:last-child { margin-bottom: 0; }
      */
     function escJson(obj) {
       return escHtml(JSON.stringify(obj));
+    }
+
+    // ============================================================
+    // 打刻漏れ警告
+    // ============================================================
+
+    /**
+     * 自分の打刻漏れを取得して画面上部に表示する。
+     *
+     * 呼び出しタイミング: ログイン直後（loadTodayRecord 完了後）
+     * 対象: 本日 + 過去1ヶ月分
+     * 表示場所: #panel-checkin の最上部（#missing-clock-warning-panel）
+     */
+    async function loadMissingClocks() {
+      // 警告パネルをいったんリセット
+      const panel = document.getElementById('missing-clock-warning-panel');
+      const list  = document.getElementById('missing-clock-warning-list');
+      if (!panel || !list) return;
+
+      const result = await callGAS('get_my_missing_clocks', {
+        employee_id: state.employeeId,
+      });
+
+      // API エラーは toast のみで表示（警告パネルは表示しない）
+      if (!result.success) {
+        console.warn('[loadMissingClocks] 取得失敗:', result.error_message);
+        return;
+      }
+
+      const warnings = result.data.warnings || [];
+
+      if (warnings.length === 0) {
+        // 打刻漏れなし → パネルを非表示
+        panel.style.display = 'none';
+        return;
+      }
+
+      // 警告一覧を描画する
+      renderMissingClockWarnings(warnings);
+      panel.style.display = '';
+    }
+
+    /**
+     * 打刻漏れ警告一覧を描画する。
+     *
+     * パターン別に異なるアイコンを表示する。
+     *   missing_time_out: 退勤打刻なし → 黄色
+     *   missing_both    : 出勤打刻なし → オレンジ
+     *
+     * @param {Array} warnings
+     */
+    function renderMissingClockWarnings(warnings) {
+      const list = document.getElementById('missing-clock-warning-list');
+      if (!list) return;
+
+      list.innerHTML = warnings.map(w => {
+        const isMissingOut  = w.pattern === 'missing_time_out';
+        const bgColor       = isMissingOut ? '#fef3c7' : '#ffedd5';
+        const borderColor   = isMissingOut ? '#fcd34d' : '#fdba74';
+        const textColor     = isMissingOut ? '#92400e' : '#9a3412';
+        const icon          = isMissingOut ? '🕐' : '🚨';
+
+        return `
+          <div style="background:${bgColor};border:1px solid ${borderColor};border-radius:6px;
+            padding:0.5rem 0.75rem;margin-bottom:0.4rem;font-size:0.82rem;color:${textColor};
+            display:flex;align-items:center;gap:0.5rem">
+            <span style="flex-shrink:0">${icon}</span>
+            <span>${escHtml(w.message)}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ============================================================
+    // 残業申請・残業指示
+    // ============================================================
+
+    /**
+     * 種別セレクトの change イベントで残業関連フィールドの表示を切り替える。
+     *
+     * 「残業」を選んだ場合: 見込み時間欄を表示、補填/有給セクションを非表示
+     * それ以外: 既存の挙動を維持
+     *
+     * 呼び出し元: absence-type の change イベント
+     */
+    function updateAbsenceFormForType(type) {
+      const overtimeWrap = document.getElementById('overtime-estimated-wrap');
+      const timeWrap     = document.getElementById('absence-time-wrap');
+      const compWrap     = document.getElementById('compensation-wrap');
+
+      // 残業の場合は時刻欄・補填欄を非表示にして見込み時間欄を表示する
+      if (type === '残業') {
+        if (overtimeWrap) overtimeWrap.style.display = '';
+        if (timeWrap)     timeWrap.style.display     = 'none';
+        if (compWrap)     compWrap.style.display     = 'none';
+      } else {
+        if (overtimeWrap) overtimeWrap.style.display = 'none';
+        if (compWrap)     compWrap.style.display     = '';
+        // 遅刻・早退のときは時刻欄を表示
+        if (timeWrap) {
+          timeWrap.style.display = (type === '遅刻' || type === '早退') ? '' : 'none';
+        }
+      }
+    }
+
+    /**
+     * 残業申請を送信する。
+     *
+     * submit_overtime_request アクションを呼び出す。
+     * 見込み時間の入力が必須。
+     */
+    async function handleSubmitOvertime() {
+      const date          = document.getElementById('absence-date').value;
+      const estimatedTime = document.getElementById('overtime-estimated-time').value;
+      const reason        = document.getElementById('absence-reason').value.trim();
+
+      // バリデーション
+      if (!date) { showToast('対象日を選択してください。', 'warning'); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        showToast('対象日の形式が正しくありません（例: 2026-05-27）', 'warning');
+        return;
+      }
+      if (!estimatedTime) { showToast('見込み残業時間を選択してください。', 'warning'); return; }
+
+      const ok = await confirm(`残業申請を送信しますか？\n対象日: ${date}\n見込み時間: ${estimatedTime}`);
+      if (!ok) return;
+
+      showLoading('残業申請を送信中...');
+
+      const result = await callGAS('submit_overtime_request', {
+        employee_id    : state.employeeId,
+        name           : state.name,
+        target_date    : date,
+        estimated_time : estimatedTime,
+        reason         : reason,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast('残業申請を送信しました。管理者の確認をお待ちください。', 'success');
+
+      // フォームリセット
+      document.getElementById('absence-date').value = '';
+      document.getElementById('overtime-estimated-time').value = '';
+      document.getElementById('absence-reason').value = '';
+
+      // 残業指示一覧を更新する
+      await loadOvertimeInstructions();
+    }
+
+    /**
+     * 自分の残業指示一覧を取得して表示する。
+     *
+     * 呼び出しタイミング:
+     *   - ログイン後（loadTodayRecord 完了後）
+     *   - 申請タブに切り替えたとき
+     *   - 承認/却下後
+     */
+    async function loadOvertimeInstructions() {
+      const el = document.getElementById('overtime-instruction-list');
+      if (!el) return;
+
+      const result = await callGAS('get_overtime_instructions', {
+        employee_id : state.employeeId,
+        status      : 'all',
+      });
+
+      if (!result.success) {
+        el.innerHTML = '<div style="color:#dc2626;font-size:0.82rem">取得に失敗しました。</div>';
+        return;
+      }
+
+      const instructions = result.data.instructions || [];
+      renderOvertimeInstructions(instructions);
+    }
+
+    /**
+     * 残業指示一覧を描画する。
+     *
+     * 状態別のバッジカラー:
+     *   承認待ち  → 黄色（アクションが必要）
+     *   承認済み  → 緑色
+     *   却下      → 赤色
+     *
+     * @param {Array} instructions
+     */
+    function renderOvertimeInstructions(instructions) {
+      const el = document.getElementById('overtime-instruction-list');
+      if (!el) return;
+
+      if (instructions.length === 0) {
+        el.innerHTML = '<div style="text-align:center;color:GrayText;padding:1rem;font-size:0.85rem">残業指示はありません</div>';
+        return;
+      }
+
+      const statusStyle = {
+        pending  : 'background:#fef9c3;color:#854d0e;border:1px solid #fbbf24',
+        confirmed: 'background:#d1fae5;color:#065f46;border:1px solid #34d399',
+        rejected : 'background:#fee2e2;color:#991b1b;border:1px solid #f87171',
+      };
+
+      el.innerHTML = instructions.map(inst => {
+        const sStyle  = statusStyle[inst.status] || 'background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db';
+        const sLabel  = inst.status_display || inst.status;
+
+        // 実績時間（あれば表示、なければダッシュ）
+        const actualDisplay = inst.actual_time
+          ? `<span style="color:#065f46;font-weight:700">${escHtml(inst.actual_time)}</span>`
+          : '<span style="color:GrayText">未確定</span>';
+
+        // 「承認待ち」のみ承認/却下ボタンを表示する
+        const actionHtml = inst.status === 'pending' ? `
+          <div style="display:flex;gap:0.5rem;margin-top:0.65rem;flex-wrap:wrap">
+            <button
+              onclick="handleOvertimeAction('${escHtml(inst.id)}', 'confirmed')"
+              style="font-size:0.78rem;padding:0.3em 0.9em;background:#1a7f37;color:#fff;
+                     border:none;border-radius:4px;cursor:pointer;font-weight:600">
+              ✓ 承認する
+            </button>
+            <button
+              onclick="openOvertimeRejectModal('${escHtml(inst.id)}')"
+              style="font-size:0.78rem;padding:0.3em 0.9em;background:none;color:#dc2626;
+                     border:1px solid #dc2626;border-radius:4px;cursor:pointer">
+              却下する
+            </button>
+          </div>` : '';
+
+        return `
+          <div style="border:1px solid #e5e7eb;border-radius:8px;padding:0.85rem 1rem;
+            margin-bottom:0.65rem;background:Canvas">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem">
+              <span style="font-weight:700;font-size:0.92rem">
+                残業指示 — ${escHtml(inst.target_date)}
+              </span>
+              <span style="font-size:0.75rem;padding:0.15em 0.6em;border-radius:99px;font-weight:600;${sStyle}">
+                ${escHtml(sLabel)}
+              </span>
+            </div>
+            <div style="font-size:0.82rem;color:GrayText;line-height:1.8">
+              <span>見込み: <strong style="color:CanvasText">${escHtml(inst.estimated_time || '―')}</strong></span>
+              　
+              <span>実績: ${actualDisplay}</span>
+            </div>
+            ${inst.comment ? `<div style="font-size:0.78rem;color:#991b1b;margin-top:0.25rem">
+              コメント: ${escHtml(inst.comment)}</div>` : ''}
+            ${actionHtml}
+          </div>
+        `;
+      }).join('');
+    }
+
+    /**
+     * 残業指示に対してスタッフが承認または却下する。
+     *
+     * @param {string} instructionId
+     * @param {'confirmed'|'rejected'} status
+     * @param {string} [comment=''] 却下理由
+     */
+    async function handleOvertimeAction(instructionId, status, comment = '') {
+      const actionLabel = status === 'confirmed' ? '承認' : '却下';
+
+      const ok = await confirm(`残業指示を「${actionLabel}」しますか？`);
+      if (!ok) return;
+
+      showLoading(`${actionLabel}中...`);
+
+      const result = await callGAS('update_overtime_instruction_status', {
+        instruction_id : instructionId,
+        status         : status,
+        employee_id    : state.employeeId,
+        comment        : comment,
+      });
+
+      hideLoading();
+
+      if (!result.success) {
+        showError(result.error_message, result.error_detail);
+        return;
+      }
+
+      showToast(`残業指示を「${result.data.status}」にしました。`, 'success');
+
+      // モーダルが開いていれば閉じる
+      const modal = document.getElementById('modal-overtime-reject');
+      if (modal) modal.style.display = 'none';
+
+      // 一覧を更新する
+      await loadOvertimeInstructions();
+    }
+
+    /**
+     * 残業指示の却下モーダルを開く。
+     * 却下理由を入力してから handleOvertimeAction を呼び出す。
+     *
+     * @param {string} instructionId
+     */
+    function openOvertimeRejectModal(instructionId) {
+      const modal = document.getElementById('modal-overtime-reject');
+      if (!modal) {
+        // モーダルが DOM にない場合は動的に生成する
+        const div = document.createElement('div');
+        div.id = 'modal-overtime-reject';
+        div.style.cssText = `
+          position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.45);
+          display:flex;align-items:center;justify-content:center;padding:1rem`;
+        div.innerHTML = `
+          <div style="background:Canvas;border-radius:10px;padding:1.5rem;
+            width:100%;max-width:360px;box-shadow:0 8px 24px rgba(0,0,0,0.2)">
+            <p style="font-weight:700;font-size:1rem;margin-bottom:1rem">却下理由を入力</p>
+            <textarea id="overtime-reject-comment" class="sumioka-textarea"
+              rows="3" placeholder="却下の理由を入力してください（任意）"></textarea>
+            <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1rem">
+              <button class="sumioka-btn"
+                onclick="document.getElementById('modal-overtime-reject').style.display='none'">
+                キャンセル
+              </button>
+              <button class="sumioka-btn sumioka-btn-danger"
+                id="btn-overtime-reject-submit">
+                却下する
+              </button>
+            </div>
+          </div>`;
+        document.body.appendChild(div);
+      }
+
+      const submitBtn = document.getElementById('btn-overtime-reject-submit');
+      // 以前のイベントリスナーを除去してから新しいリスナーを登録する（二重実行防止）
+      const newBtn = submitBtn.cloneNode(true);
+      submitBtn.parentNode.replaceChild(newBtn, submitBtn);
+      newBtn.addEventListener('click', async () => {
+        const comment = document.getElementById('overtime-reject-comment').value.trim();
+        await handleOvertimeAction(instructionId, 'rejected', comment);
+      });
+
+      document.getElementById('modal-overtime-reject').style.display = 'flex';
     }
   </script>
 
