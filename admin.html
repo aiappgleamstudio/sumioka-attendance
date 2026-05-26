@@ -886,8 +886,34 @@
           </table>
         </div>
 
-        <!-- 未打刻スタッフ: 所定始業・所定終業の両方を表示して出勤督促に活用する -->
-        <p class="section-title">未打刻スタッフ</p>
+        <!-- 未打刻スタッフ（本日）と打刻漏れ月次確認を統合したパネル -->
+        <p class="section-title">未打刻・打刻漏れ確認</p>
+
+        <!-- 月次確認フォーム -->
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;
+          margin-bottom:0.75rem;padding:0.75rem 1rem;background:#f9fafb;
+          border:1px solid #e5e7eb;border-radius:8px">
+          <span style="font-size:0.85rem;font-weight:600;color:GrayText;white-space:nowrap">月次確認：</span>
+          <input class="sumioka-input" type="month" id="missing-clock-month-input"
+            style="width:160px;font-size:0.85rem">
+          <button class="sumioka-btn sumioka-btn-primary"
+            onclick="loadMonthlyMissingClocks()"
+            id="btn-missing-clock-monthly"
+            style="font-size:0.85rem">
+            この月の打刻漏れを確認
+          </button>
+          <span style="font-size:0.78rem;color:GrayText">
+            ①勤務曜日 ②会社休日でない ③欠勤登録なし ④打刻漏れ の条件をすべて満たす一覧
+          </span>
+        </div>
+
+        <!-- 月次打刻漏れ結果（初期は非表示） -->
+        <div id="missing-clock-monthly-panel" style="display:none;margin-bottom:1rem"></div>
+
+        <!-- 本日の未打刻スタッフ（既存） -->
+        <p style="font-size:0.82rem;font-weight:600;color:GrayText;margin:1rem 0 0.5rem">
+          本日の未打刻スタッフ
+        </p>
         <div class="admin-table-wrap">
           <table class="admin-table">
             <thead>
@@ -919,27 +945,6 @@
               <tr><td colspan="3" class="empty-state">読み込み中...</td></tr>
             </tbody>
           </table>
-        </div>
-
-        <!-- ──────────────────────────────────────────────────────
-             打刻漏れ警告パネル
-             - ダッシュボード表示時に本日分を自動取得
-             - 日付ピッカーで過去1ヶ月分まで任意の日付を確認可能
-             ────────────────────────────────────────────────────── -->
-        <p class="section-title" style="margin-top:1.5rem">打刻漏れ警告</p>
-        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-bottom:0.75rem">
-          <input class="sumioka-input" type="date" id="missing-clock-date-input"
-            style="width:160px;font-size:0.85rem">
-          <button class="sumioka-btn" onclick="loadDashboardMissingClocks(document.getElementById('missing-clock-date-input').value)"
-            style="font-size:0.85rem">
-            この日付で確認
-          </button>
-          <span style="font-size:0.78rem;color:GrayText">（未選択時は本日）</span>
-        </div>
-        <div id="dash-missing-clock-panel">
-          <div style="text-align:center;color:GrayText;padding:1rem;font-size:0.85rem">
-            読み込み中...
-          </div>
         </div>
 
         <!-- ── カレンダー（旧カレンダータブから移動） ── -->
@@ -3750,12 +3755,6 @@
           warningEl.style.display = 'none';
         }
       }
-
-      // 打刻漏れ警告を別途取得する（本日分）
-      // ダッシュボード読み込みとは独立して非同期で取得し UI をブロックしない
-      loadDashboardMissingClocks(today).catch(err =>
-        console.warn('[loadDashboardMissingClocks]', err)
-      );
     }
 
     /**
@@ -6186,95 +6185,86 @@
     }
 
     // ============================================================
-    // 打刻漏れ警告（ダッシュボード）
+    // 打刻漏れ月次確認（Admin）
     // ============================================================
 
     /**
-     * 指定日付の打刻漏れを取得してダッシュボードに表示する。
+     * 指定月全体の打刻漏れを取得してダッシュボードに一覧表示する。
      *
-     * - ダッシュボード初期表示時は本日分を自動取得
-     * - 日付ピッカーで任意の日付（過去1ヶ月分まで）を指定して再取得可能
-     * - 失敗してもダッシュボード全体には影響しない（コンソールのみ）
-     *
-     * @param {string} [date] - 'YYYY-MM-DD'。省略時は本日。
+     * 「この月の打刻漏れを確認」ボタンから呼び出す。
+     * GAS の checkMissingClocksMonthly を使い、月を通じて
+     * ①勤務曜日 ②会社休日でない ③欠勤登録なし ④打刻漏れ
+     * の4条件をすべて満たすスタッフ×日付の組み合わせを一覧表示する。
      */
-    async function loadDashboardMissingClocks(date) {
-      const panel = document.getElementById('dash-missing-clock-panel');
+    async function loadMonthlyMissingClocks() {
+      const monthInput = document.getElementById('missing-clock-month-input');
+      const panel      = document.getElementById('missing-clock-monthly-panel');
+      const btn        = document.getElementById('btn-missing-clock-monthly');
       if (!panel) return;
 
-      // 日付が未指定・無効なら本日にフォールバックする
-      const targetDate = (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) ? date : todayString();
-
-      // 日付ピッカーを対象日に合わせる（ボタン経由で呼ばれた場合も同期）
-      const picker = document.getElementById('missing-clock-date-input');
-      if (picker && !picker.value) picker.value = targetDate;
-
-      // 過去1ヶ月より前は確認できない旨を案内する
-      const oneMonthAgo = (function() {
-        const d = new Date();
-        d.setDate(d.getDate() - 31);
-        return d.getFullYear() + '-'
-          + String(d.getMonth() + 1).padStart(2, '0') + '-'
-          + String(d.getDate()).padStart(2, '0');
-      })();
-      if (targetDate < oneMonthAgo) {
-        panel.innerHTML = `<div style="color:GrayText;font-size:0.82rem;padding:0.5rem">
-          過去1ヶ月より前の日付は確認できません。</div>`;
+      const yearMonth = monthInput?.value || '';
+      if (!yearMonth || !/^\d{4}-\d{2}$/.test(yearMonth)) {
+        showToast('対象月を選択してください。', 'warning');
         return;
       }
 
-      panel.innerHTML = `<div style="color:GrayText;font-size:0.82rem;padding:0.5rem">
-        ${escHtml(targetDate)} の打刻漏れを確認中...</div>`;
+      panel.style.display = '';
+      panel.innerHTML = `<div style="color:GrayText;font-size:0.85rem;padding:0.5rem">
+        ${escHtml(yearMonth)} の打刻漏れを集計中... しばらくお待ちください。</div>`;
+      if (btn) btn.disabled = true;
 
-      const result = await callGAS('check_missing_clocks', { date: targetDate });
+      const result = await callGAS('check_missing_clocks_monthly', { year_month: yearMonth });
+
+      if (btn) btn.disabled = false;
 
       if (!result.success) {
-        panel.innerHTML = `<div style="color:GrayText;font-size:0.82rem;padding:0.5rem">
-          打刻漏れ情報の取得に失敗しました。</div>`;
+        panel.innerHTML = `<div style="color:#dc2626;font-size:0.85rem;padding:0.5rem">
+          取得に失敗しました: ${escHtml(result.error_message || '')}</div>`;
         return;
       }
 
       const warnings = result.data.missing || [];
-      const isToday  = targetDate === todayString();
-      const dateLabel = isToday ? `本日（${targetDate}）` : targetDate;
+      const total    = result.data.total_missing || 0;
 
-      if (warnings.length === 0) {
-        panel.innerHTML = `<div style="color:#065f46;font-size:0.85rem;padding:0.5rem">
-          ✓ ${escHtml(dateLabel)} の打刻漏れはありません</div>`;
+      if (total === 0) {
+        panel.innerHTML = `<div style="color:#065f46;font-size:0.88rem;padding:0.65rem;
+          background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
+          ✓ ${escHtml(yearMonth)} の打刻漏れは検出されませんでした</div>`;
         return;
       }
 
-      // 打刻漏れがある場合はテーブルで一覧表示する
+      const patternBadge = p => p === 'missing_time_out'
+        ? '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#fef3c7;color:#92400e">退勤なし</span>'
+        : '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#ffedd5;color:#9a3412">出退勤なし</span>';
+
       panel.innerHTML = `
         <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;
-          padding:0.75rem 1rem;margin-bottom:0.5rem">
-          <div style="font-weight:700;font-size:0.88rem;color:#92400e;margin-bottom:0.5rem">
-            ⚠️ ${escHtml(dateLabel)}：${warnings.length} 名に打刻漏れの可能性があります
+          padding:0.75rem 1rem">
+          <div style="font-weight:700;font-size:0.9rem;color:#92400e;margin-bottom:0.75rem">
+            ⚠️ ${escHtml(yearMonth)}：計 ${total} 件の打刻漏れが検出されました
+            <span style="font-size:0.75rem;font-weight:400;margin-left:0.5rem;color:GrayText">
+              （①勤務曜日 ②会社休日でない ③欠勤登録なし ④打刻漏れ の4条件すべて該当）
+            </span>
           </div>
           <div class="admin-table-wrap">
             <table class="admin-table" style="font-size:0.82rem">
               <thead>
                 <tr>
+                  <th>日付</th>
+                  <th>曜日</th>
                   <th>氏名</th>
                   <th>パターン</th>
                   <th>出勤時刻</th>
-                  <th>内容</th>
                 </tr>
               </thead>
               <tbody>
                 ${warnings.map(w => `
                   <tr>
+                    <td style="white-space:nowrap">${escHtml(w.date)}</td>
+                    <td style="text-align:center">${escHtml(w.day_of_week)}</td>
                     <td>${escHtml(w.name)}</td>
-                    <td>
-                      <span style="font-size:0.75rem;padding:0.1em 0.5em;border-radius:3px;
-                        ${w.pattern === 'missing_time_out'
-                          ? 'background:#fef3c7;color:#92400e'
-                          : 'background:#ffedd5;color:#9a3412'}">
-                        ${w.pattern === 'missing_time_out' ? '退勤なし' : '出退勤なし'}
-                      </span>
-                    </td>
-                    <td>${escHtml(w.clocked_in_at || '―')}</td>
-                    <td style="font-size:0.78rem;color:GrayText">${escHtml(w.message)}</td>
+                    <td>${patternBadge(w.pattern)}</td>
+                    <td style="color:GrayText">${escHtml(w.clocked_in_at || '―')}</td>
                   </tr>
                 `).join('')}
               </tbody>
