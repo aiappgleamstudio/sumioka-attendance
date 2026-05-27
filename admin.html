@@ -6309,18 +6309,20 @@
       const select = document.getElementById('ot-inst-staff');
       if (!select) return;
 
-      // admin_staff_list の type:'staff' は「利用者以外の全員」を返す。
-      // 残業指示は職員のみ対象なので employment_type で絞り込む。
-      // また name が空のレコードは除外して選択肢を正しく表示する。
-      const result = await callGAS('admin_staff_list', { type: 'staff' });
+      // type 指定なし = 全スタッフ（論理削除済みは GAS 側で除外済み）
+      // フロント側で employment_type === '職員' に絞り込む
+      const result = await callGAS('admin_staff_list', {});
       if (!result.success) {
         console.warn('[loadOvertimeStaffSelect] 取得失敗:', result.error_message);
         return;
       }
 
       const staff = (result.data.staff || [])
-        .filter(s => s.name && s.name.trim())   // 名前が空のレコードを除外
-        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja')); // 名前順ソート
+        .filter(s => s.name && s.name.trim())                                  // 名前が空を除外
+        .filter(s => s.employment === '職員' || s.type === '職員')              // 職員のみ
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));      // 五十音順
+
+      console.log('[loadOvertimeStaffSelect] 取得件数:', staff.length);
 
       select.innerHTML = '<option value="">選択してください</option>' +
         staff.map(s =>
