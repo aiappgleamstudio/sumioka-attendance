@@ -2730,6 +2730,21 @@ p:last-child { margin-bottom: 0; }
         </div>
       </div>
 
+      <!-- ────────────────────────────────────────────────────
+           打刻漏れ確認（当月 + 前月）
+           - 「表示」ボタンを押した月 + その前月を対象に取得する
+           - get_my_missing_clocks は本日〜過去30日分しか返さないため、
+             ここでは check_missing_clocks_monthly を月ごとに2回呼ぶ
+           ──────────────────────────────────────────────────── -->
+      <p style="font-size:0.82rem;font-weight:600;color:GrayText;margin:1.25rem 0 0.5rem">
+        打刻漏れ確認（当月・前月）
+      </p>
+      <div id="mystatus-missing-clocks-panel">
+        <div style="text-align:center;color:GrayText;padding:1rem;font-size:0.82rem">
+          「表示」ボタンを押すと、当月・前月の打刻漏れを確認できます
+        </div>
+      </div>
+
       <!-- 申請履歴は申請タブで確認できるため、このタブでは勤怠実績のみ表示する -->
 
     </div><!-- /#panel-mystatus -->
@@ -3042,9 +3057,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.29 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.30 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.29</div>
+  <div class="version-badge" id="app-version">v1.2.30</div>
 
 
   <script>
@@ -5806,6 +5821,83 @@ p:last-child { margin-bottom: 0; }
         document.getElementById('ms-remain').textContent = formatMinutes(fillup.remain_minutes);
       }
       // 申請履歴は申請タブで確認できるため、このタブでは描画しない
+
+      // 打刻漏れ確認: 当月 + 前月を対象に取得する
+      // get_my_status と同じ month を起点に前月を計算する
+      loadMyStatusMissingClocks(yearMonth).catch(err =>
+        console.warn('[loadMyStatusMissingClocks]', err)
+      );
+    }
+
+    /**
+     * 出勤状況タブの打刻漏れ確認セクションを更新する。
+     *
+     * 当月 + 前月の2ヶ月分について check_missing_clocks_monthly を呼び出す。
+     * 2回のAPIコールを並行して実行し、結果をマージして表示する。
+     *
+     * @param {string} yearMonth - YYYY-MM（loadMyStatusで選択した月）
+     */
+    async function loadMyStatusMissingClocks(yearMonth) {
+      const panel = document.getElementById('mystatus-missing-clocks-panel');
+      if (!panel) return;
+
+      panel.innerHTML = `<div style="color:GrayText;font-size:0.82rem;padding:0.5rem">
+        打刻漏れを確認中...</div>`;
+
+      // 前月を計算する（YYYY-MM から Date を生成して1ヶ月戻す）
+      const [y, m] = yearMonth.split('-').map(Number);
+      const prevDate = new Date(y, m - 2, 1); // m-2 = 0始まりで前月
+      const prevMonth = prevDate.getFullYear() + '-'
+        + String(prevDate.getMonth() + 1).padStart(2, '0');
+
+      // 当月・前月を並行取得する
+      const [currentRes, prevRes] = await Promise.all([
+        callGAS('check_missing_clocks_monthly', { year_month: yearMonth }),
+        callGAS('check_missing_clocks_monthly', { year_month: prevMonth }),
+      ]);
+
+      // 取得結果から自分のスタッフ分のみ抽出する
+      const filterMine = res => (res.success ? res.data.missing || [] : [])
+        .filter(w => w.employee_id === state.employeeId);
+
+      const currentWarnings = filterMine(currentRes);
+      const prevWarnings    = filterMine(prevRes);
+      const allWarnings     = [...prevWarnings, ...currentWarnings]; // 古い順に表示
+
+      if (allWarnings.length === 0) {
+        panel.innerHTML = `<div style="color:#065f46;font-size:0.85rem;padding:0.65rem;
+          background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px">
+          ✓ ${escHtml(prevMonth)}・${escHtml(yearMonth)} の打刻漏れはありません
+        </div>`;
+        return;
+      }
+
+      // パターン別バッジ
+      const badge = p => p === 'missing_time_out'
+        ? '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#fef3c7;color:#92400e">退勤なし</span>'
+        : '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#ffedd5;color:#9a3412">出退勤なし</span>';
+
+      panel.innerHTML = `
+        <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:0.75rem 1rem">
+          <div style="font-weight:700;font-size:0.88rem;color:#92400e;margin-bottom:0.65rem">
+            ⚠️ 計 ${allWarnings.length} 件の打刻漏れが検出されました
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0.4rem">
+            ${allWarnings.map(w => `
+              <div style="display:flex;align-items:center;gap:0.5rem;
+                font-size:0.82rem;padding:0.35rem 0.5rem;background:Canvas;
+                border:1px solid #fde68a;border-radius:5px">
+                <span style="white-space:nowrap;color:GrayText">${escHtml(w.date)}（${escHtml(w.day_of_week)}）</span>
+                ${badge(w.pattern)}
+                <span style="color:GrayText">${escHtml(w.message)}</span>
+              </div>
+            `).join('')}
+          </div>
+          <div style="font-size:0.75rem;color:#92400e;margin-top:0.5rem">
+            ※ 修正が必要な場合は管理者に申し出てください。
+          </div>
+        </div>
+      `;
     }
 
     // ============================================================
