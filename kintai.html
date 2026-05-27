@@ -5858,11 +5858,6 @@ p:last-child { margin-bottom: 0; }
       });
 
       const allWarnings = result.success ? (result.data.warnings || []) : [];
-      console.log('[loadMyStatusMissingClocks] result.success:', result.success,
-        '警告数:', allWarnings.length,
-        '最初の1件:', JSON.stringify(allWarnings[0]),
-        'employee_id:', state.employeeId,
-        'year_month:', yearMonth);
 
       if (allWarnings.length === 0) {
         panel.innerHTML = `<div style="color:#065f46;font-size:0.85rem;padding:0.65rem;
@@ -5959,16 +5954,20 @@ p:last-child { margin-bottom: 0; }
       }
 
       const warnings = result.data.warnings || [];
-      console.log('[loadMissingClocks] 警告数:', warnings.length, '最初の1件:', JSON.stringify(warnings[0]));
 
       if (warnings.length === 0) {
-        // 打刻漏れなし → パネルを非表示
         panel.style.display = 'none';
         return;
       }
 
-      // 警告一覧を描画する
-      renderMissingClockWarnings(warnings);
+      // 打刻漏れがある場合は件数と誘導メッセージのみ表示する
+      // 詳細は出勤状況タブで確認できるため、ここでは忠告のみにとどめる
+      list.innerHTML = `
+        <div style="font-size:0.85rem;color:#92400e;line-height:1.7">
+          <strong>${warnings.length} 件</strong>の打刻漏れが検出されました。<br>
+          詳細は「<strong>出勤状況</strong>」タブで確認してください。
+        </div>
+      `;
       panel.style.display = '';
     }
 
