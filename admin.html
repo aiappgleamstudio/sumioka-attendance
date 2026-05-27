@@ -2765,7 +2765,15 @@
         name       : employee.name,
         adminRole  : employee.admin_role || '',
       });
-      await loadInitialData();
+
+      // loadInitialData が内部エラーで throw しても handleLogin 自体はクラッシュさせない。
+      // handleSessionExpired の呼び出しは loadInitialData 内で行われるため、
+      // ここでは catch してログに残すだけでよい。
+      try {
+        await loadInitialData();
+      } catch (err) {
+        console.warn('[handleLogin] loadInitialData エラー（セッション処理は内部で完了）:', err);
+      }
     }
 
     // ============================================================
@@ -3054,7 +3062,7 @@
       } catch (err) {
         console.warn('[loadInitialData] エラー:', err);
         handleSessionExpired();
-        throw err; // catch した呼び出し元にも伝播させる
+        return; // 以降の処理をスキップ（セッションは既にクリア済み）
       }
 
       // 【修正③】初期タブが 'attendance' になったため、判定を 'dashboard' から変更する。
