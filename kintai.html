@@ -5850,15 +5850,19 @@ p:last-child { margin-bottom: 0; }
       const prevMonth = prevDate.getFullYear() + '-'
         + String(prevDate.getMonth() + 1).padStart(2, '0');
 
-      // 当月・前月を並行取得する。employee_id を渡してサーバー側で絞り込む。
-      const [currentRes, prevRes] = await Promise.all([
-        callGAS('check_missing_clocks_monthly', { year_month: yearMonth,  employee_id: state.employeeId }),
-        callGAS('check_missing_clocks_monthly', { year_month: prevMonth,  employee_id: state.employeeId }),
-      ]);
+      // 当月・前月を1回のAPI呼び出しで取得する。
+      // get_my_missing_clocks に year_month を渡すと当月+前月を一括処理して返す。
+      const result = await callGAS('get_my_missing_clocks', {
+        employee_id : state.employeeId,
+        year_month  : yearMonth,
+      });
 
-      const currentWarnings = currentRes.success ? currentRes.data.missing || [] : [];
-      const prevWarnings    = prevRes.success    ? prevRes.data.missing    || [] : [];
-      const allWarnings     = [...prevWarnings, ...currentWarnings]; // 古い順に表示
+      const allWarnings = result.success ? (result.data.warnings || []) : [];
+      console.log('[loadMyStatusMissingClocks] result.success:', result.success,
+        '警告数:', allWarnings.length,
+        '最初の1件:', JSON.stringify(allWarnings[0]),
+        'employee_id:', state.employeeId,
+        'year_month:', yearMonth);
 
       if (allWarnings.length === 0) {
         panel.innerHTML = `<div style="color:#065f46;font-size:0.85rem;padding:0.65rem;
@@ -5955,6 +5959,7 @@ p:last-child { margin-bottom: 0; }
       }
 
       const warnings = result.data.warnings || [];
+      console.log('[loadMissingClocks] 警告数:', warnings.length, '最初の1件:', JSON.stringify(warnings[0]));
 
       if (warnings.length === 0) {
         // 打刻漏れなし → パネルを非表示
