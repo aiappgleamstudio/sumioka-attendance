@@ -6309,20 +6309,22 @@
       const select = document.getElementById('ot-inst-staff');
       if (!select) return;
 
-      // type 指定なし = 全スタッフ（論理削除済みは GAS 側で除外済み）
-      // フロント側で employment_type === '職員' に絞り込む
       const result = await callGAS('admin_staff_list', {});
       if (!result.success) {
         console.warn('[loadOvertimeStaffSelect] 取得失敗:', result.error_message);
         return;
       }
 
-      const staff = (result.data.staff || [])
-        .filter(s => s.name && s.name.trim())                                  // 名前が空を除外
-        .filter(s => s.employment === '職員' || s.type === '職員')              // 職員のみ
-        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));      // 五十音順
+      const raw = result.data.staff || [];
+      console.log('[loadOvertimeStaffSelect] GAS取得総数:', raw.length);
+      raw.forEach(s => console.log('  name:', s.name, '| employment:', s.employment, '| type:', s.type, '| deleted:', s.deleted));
 
-      console.log('[loadOvertimeStaffSelect] 取得件数:', staff.length);
+      const staff = raw
+        .filter(s => s.name && s.name.trim())
+        .filter(s => s.employment === '職員' || s.type === '職員')
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
+
+      console.log('[loadOvertimeStaffSelect] フィルタ後件数:', staff.length);
 
       select.innerHTML = '<option value="">選択してください</option>' +
         staff.map(s =>
