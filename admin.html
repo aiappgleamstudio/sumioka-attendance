@@ -3848,6 +3848,8 @@
       const tbody = document.getElementById('dash-absent-body');
       // テーブルが DOM に存在しない場合はスキップする
       if (!tbody) return;
+
+      if (staff.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="empty-state">全員出勤済み</td></tr>';
         return;
       }
