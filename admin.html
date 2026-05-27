@@ -6309,8 +6309,7 @@
       const select = document.getElementById('ot-inst-staff');
       if (!select) return;
 
-      // type 指定なし = 全スタッフ（論理削除済みは GAS 側で除外済み）
-      // フロント側で employment === '職員' の職員のみに絞り込む
+      // 論理削除済みを除く全スタッフ（職員・利用者）を取得する
       const result = await callGAS('admin_staff_list', {});
       if (!result.success) {
         console.warn('[loadOvertimeStaffSelect] 取得失敗:', result.error_message);
@@ -6319,7 +6318,6 @@
 
       const staff = (result.data.staff || [])
         .filter(s => s.name && s.name.trim())
-        .filter(s => s.employment === '職員' || s.type === '職員')
         .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja'));
 
       select.innerHTML = '<option value="">選択してください</option>' +
