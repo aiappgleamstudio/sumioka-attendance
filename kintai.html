@@ -3057,9 +3057,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.30 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.31 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.30</div>
+  <div class="version-badge" id="app-version">v1.2.31</div>
 
 
   <script>
@@ -5850,18 +5850,14 @@ p:last-child { margin-bottom: 0; }
       const prevMonth = prevDate.getFullYear() + '-'
         + String(prevDate.getMonth() + 1).padStart(2, '0');
 
-      // 当月・前月を並行取得する
+      // 当月・前月を並行取得する。employee_id を渡してサーバー側で絞り込む。
       const [currentRes, prevRes] = await Promise.all([
-        callGAS('check_missing_clocks_monthly', { year_month: yearMonth }),
-        callGAS('check_missing_clocks_monthly', { year_month: prevMonth }),
+        callGAS('check_missing_clocks_monthly', { year_month: yearMonth,  employee_id: state.employeeId }),
+        callGAS('check_missing_clocks_monthly', { year_month: prevMonth,  employee_id: state.employeeId }),
       ]);
 
-      // 取得結果から自分のスタッフ分のみ抽出する
-      const filterMine = res => (res.success ? res.data.missing || [] : [])
-        .filter(w => w.employee_id === state.employeeId);
-
-      const currentWarnings = filterMine(currentRes);
-      const prevWarnings    = filterMine(prevRes);
+      const currentWarnings = currentRes.success ? currentRes.data.missing || [] : [];
+      const prevWarnings    = prevRes.success    ? prevRes.data.missing    || [] : [];
       const allWarnings     = [...prevWarnings, ...currentWarnings]; // 古い順に表示
 
       if (allWarnings.length === 0) {
