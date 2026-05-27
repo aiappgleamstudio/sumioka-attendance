@@ -886,50 +886,6 @@
           </table>
         </div>
 
-        <!-- 未打刻スタッフ（本日）と打刻漏れ月次確認を統合したパネル -->
-        <p class="section-title">未打刻・打刻漏れ確認</p>
-
-        <!-- 月次確認フォーム -->
-        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;
-          margin-bottom:0.75rem;padding:0.75rem 1rem;background:#f9fafb;
-          border:1px solid #e5e7eb;border-radius:8px">
-          <span style="font-size:0.85rem;font-weight:600;color:GrayText;white-space:nowrap">月次確認：</span>
-          <input class="sumioka-input" type="month" id="missing-clock-month-input"
-            style="width:160px;font-size:0.85rem">
-          <button class="sumioka-btn sumioka-btn-primary"
-            onclick="loadMonthlyMissingClocks()"
-            id="btn-missing-clock-monthly"
-            style="font-size:0.85rem">
-            この月の打刻漏れを確認
-          </button>
-          <span style="font-size:0.78rem;color:GrayText">
-            ①勤務曜日 ②会社休日でない ③欠勤登録なし ④打刻漏れ の条件をすべて満たす一覧
-          </span>
-        </div>
-
-        <!-- 月次打刻漏れ結果（初期は非表示） -->
-        <div id="missing-clock-monthly-panel" style="display:none;margin-bottom:1rem"></div>
-
-        <!-- 本日の未打刻スタッフ（既存） -->
-        <p style="font-size:0.82rem;font-weight:600;color:GrayText;margin:1rem 0 0.5rem">
-          本日の未打刻スタッフ
-        </p>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>氏名</th>
-                <th>区分</th>
-                <th>所定始業</th>
-                <th>所定終業</th>
-              </tr>
-            </thead>
-            <tbody id="dash-absent-body">
-              <tr><td colspan="4" class="empty-state">読み込み中...</td></tr>
-            </tbody>
-          </table>
-        </div>
-
         <!-- 欠勤・申請済みスタッフ: 欠席・有給・補填休・在宅・外出勤務の申請があるスタッフ -->
         <p class="section-title">本日の欠勤・申請スタッフ</p>
         <div class="admin-table-wrap">
@@ -1094,6 +1050,33 @@
             </tbody>
           </table>
         </div>
+
+        <!-- ──────────────────────────────────────────────────
+             未打刻・打刻漏れ確認
+             - 本日の未打刻スタッフ: ダッシュボードの既存データを流用
+             - 月次確認: check_missing_clocks_monthly で任意月を検索
+             ────────────────────────────────────────────────── -->
+        <p class="section-title" style="margin-top:1.75rem">未打刻・打刻漏れ確認</p>
+
+        <!-- 月次確認フォーム -->
+        <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;
+          margin-bottom:0.75rem;padding:0.75rem 1rem;background:#f9fafb;
+          border:1px solid #e5e7eb;border-radius:8px">
+          <span style="font-size:0.85rem;font-weight:600;color:GrayText;white-space:nowrap">月次確認：</span>
+          <input class="sumioka-input" type="month" id="missing-clock-month-input"
+            style="width:160px;font-size:0.85rem">
+          <button class="sumioka-btn sumioka-btn-primary"
+            onclick="loadMonthlyMissingClocks()"
+            id="btn-missing-clock-monthly"
+            style="font-size:0.85rem">
+            この月の打刻漏れを確認
+          </button>
+          <span style="font-size:0.78rem;color:GrayText">
+            ①勤務曜日 ②会社休日でない ③欠勤登録なし ④打刻漏れ の4条件すべて該当
+          </span>
+        </div>
+        <div id="missing-clock-monthly-panel" style="display:none;margin-bottom:1rem"></div>
+
       </section>
 
       <!-- ③申請管理 -->
@@ -3076,6 +3059,13 @@
         // デフォルト（attendance タブ）のデータを読み込む
         await loadAttendance();
       }
+
+      // 残業指示フォームのスタッフ選択を事前に読み込んでおく
+      // 申請タブを開いたときに即座に選択できるようにするため、
+      // ログイン直後にバックグラウンドで取得しておく
+      loadOvertimeStaffSelect().catch(err =>
+        console.warn('[init loadOvertimeStaffSelect]', err)
+      );
     }
 
     // ============================================================
@@ -6291,14 +6281,23 @@
       const select = document.getElementById('ot-inst-staff');
       if (!select) return;
 
-      // admin_staff_list のレスポンスは { staff: [...] }
+      // admin_staff_list の type:'staff' は「利用者以外の全員」を返す。
+      // 残業指示は職員のみ対象なので employment_type で絞り込む。
+      // また name が空のレコードは除外して選択肢を正しく表示する。
       const result = await callGAS('admin_staff_list', { type: 'staff' });
-      if (!result.success) return;
+      if (!result.success) {
+        console.warn('[loadOvertimeStaffSelect] 取得失敗:', result.error_message);
+        return;
+      }
 
-      const staff = result.data.staff || [];
+      const staff = (result.data.staff || [])
+        .filter(s => s.name && s.name.trim())   // 名前が空のレコードを除外
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ja')); // 名前順ソート
+
       select.innerHTML = '<option value="">選択してください</option>' +
-        staff.map(s => `<option value="${escHtml(s.id)}"
-          data-name="${escHtml(s.name)}">${escHtml(s.name)}</option>`).join('');
+        staff.map(s =>
+          `<option value="${escHtml(s.id)}" data-name="${escHtml(s.name)}">${escHtml(s.name)}</option>`
+        ).join('');
     }
 
     /**
