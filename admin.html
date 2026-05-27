@@ -886,6 +886,24 @@
           </table>
         </div>
 
+        <!-- 本日の未打刻スタッフ -->
+        <p class="section-title">本日の未打刻スタッフ</p>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>氏名</th>
+                <th>区分</th>
+                <th>所定始業</th>
+                <th>所定終業</th>
+              </tr>
+            </thead>
+            <tbody id="dash-absent-body">
+              <tr><td colspan="4" class="empty-state">読み込み中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
         <!-- 欠勤・申請済みスタッフ: 欠席・有給・補填休・在宅・外出勤務の申請があるスタッフ -->
         <p class="section-title">本日の欠勤・申請スタッフ</p>
         <div class="admin-table-wrap">
@@ -3820,8 +3838,8 @@
      */
     function renderDashAbsent(staff) {
       const tbody = document.getElementById('dash-absent-body');
-
-      if (staff.length === 0) {
+      // テーブルが DOM に存在しない場合はスキップする
+      if (!tbody) return;
         tbody.innerHTML = '<tr><td colspan="4" class="empty-state">全員出勤済み</td></tr>';
         return;
       }
