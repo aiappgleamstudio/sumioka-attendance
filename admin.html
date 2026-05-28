@@ -4180,7 +4180,15 @@
 
       showToast(`打刻を${label}しました。`, 'success');
       closeEditModal();
-      loadAttendance(); // 一覧を再取得して反映する
+      loadAttendance(); // 勤怠一覧を再取得して反映する
+
+      // 打刻漏れ月次パネルが表示中であれば自動で再取得する。
+      // 修正後に「F5 → 月選択 → 確認ボタン」という手順を踏まなくても
+      // 結果がその場で更新され、漏れが解消されたことをすぐ確認できる。
+      const missingPanel = document.getElementById('missing-clock-monthly-panel');
+      if (missingPanel && missingPanel.style.display !== 'none') {
+        loadMonthlyMissingClocks();
+      }
     }
 
     // ============================================================
