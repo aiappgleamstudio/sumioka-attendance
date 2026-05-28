@@ -1188,20 +1188,19 @@
               <input class="sumioka-input" type="date" id="ot-inst-date"
                 style="width:145px;font-size:0.85rem">
             </div>
-            <!-- 残業時間帯（開始・終了） -->
-            <!-- 「何時から何時まで」を明記することで管理者・スタッフ双方が
-                 残業の範囲を正確に把握できるようにする -->
+            <!-- 見込み時間 -->
             <div>
-              <label class="sumioka-label" style="font-size:0.8rem">開始時刻</label>
-              <input class="sumioka-input" type="time" id="ot-inst-start"
-                style="width:120px;font-size:0.85rem" step="300">
-            </div>
-            <div style="display:flex;align-items:flex-end;padding-bottom:0.35rem;
-              font-size:1rem;color:GrayText">〜</div>
-            <div>
-              <label class="sumioka-label" style="font-size:0.8rem">終了時刻</label>
-              <input class="sumioka-input" type="time" id="ot-inst-end"
-                style="width:120px;font-size:0.85rem" step="300">
+              <label class="sumioka-label" style="font-size:0.8rem">見込み時間</label>
+              <select class="sumioka-input" id="ot-inst-time" style="width:140px;font-size:0.85rem">
+                <option value="">選択してください</option>
+                <option value="00:30">30分</option>
+                <option value="01:00">1時間</option>
+                <option value="01:30">1時間30分</option>
+                <option value="02:00">2時間</option>
+                <option value="02:30">2時間30分</option>
+                <option value="03:00">3時間</option>
+                <option value="04:00">4時間</option>
+              </select>
             </div>
             <!-- 作成ボタン -->
             <button class="sumioka-btn sumioka-btn-primary" id="btn-create-ot-inst"
@@ -1232,8 +1231,8 @@
               <tr>
                 <th>対象日</th>
                 <th>氏名</th>
-                <th>残業時間帯</th>
-                <th>実績時間帯</th>
+                <th>見込み時間</th>
+                <th>実績時間</th>
                 <th>状態</th>
                 <th>コメント</th>
                 <th>操作</th>
@@ -6255,6 +6254,7 @@
         return;
       }
 
+      // パターンに応じた視覚バッジを生成するヘルパー
       const patternBadge = p => p === 'missing_time_out'
         ? '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#fef3c7;color:#92400e">退勤なし</span>'
         : '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#ffedd5;color:#9a3412">出退勤なし</span>';
@@ -6277,6 +6277,7 @@
                   <th>氏名</th>
                   <th>パターン</th>
                   <th>出勤時刻</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -6287,6 +6288,27 @@
                     <td>${escHtml(w.name)}</td>
                     <td>${patternBadge(w.pattern)}</td>
                     <td style="color:GrayText">${escHtml(w.clocked_in_at || '―')}</td>
+                    <td>
+                      <!--
+                        修正ボタン: onclick で openMissingClockFixModal を呼ぶ。
+                        各行の employee_id・name・date・pattern・clocked_in_at を
+                        引数として渡すことで、モーダル側で新規 or 編集モードを判断する。
+                        escJson ではなく個別 escHtml で渡すのは、
+                        onclick 属性内の JSON パースを省いてシンプルにするため。
+                      -->
+                      <button
+                        class="sumioka-btn"
+                        style="font-size:0.72rem;padding:0.2em 0.6em;white-space:nowrap"
+                        onclick="openMissingClockFixModal(
+                          '${escHtml(w.employee_id)}',
+                          '${escHtml(w.name)}',
+                          '${escHtml(w.date)}',
+                          '${escHtml(w.pattern)}',
+                          '${escHtml(w.clocked_in_at || '')}'
+                        )">
+                        修正
+                      </button>
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -6294,6 +6316,77 @@
           </div>
         </div>
       `;
+    }
+
+    // ============================================================
+    // 打刻漏れ一覧からの修正モーダル起動
+    // ============================================================
+
+    /**
+     * 打刻漏れ一覧の「修正」ボタンから呼び出す専用ラッパー。
+     *
+     * パターンによって openEditModal の呼び方を変える:
+     *
+     *   missing_both（出退勤なし）
+     *     → 出勤記録がゼロなので「新規登録」モードで開く。
+     *       openEditModal(null, empId, date) を直接呼ぶ。
+     *
+     *   missing_time_out（退勤なし）
+     *     → 出勤記録は存在するので「編集」モードで開きたい。
+     *       admin_attendance_list でその日・その人のレコードを取得し、
+     *       取得できたら openEditModal(record) で編集モードを起動する。
+     *       万が一取得できなければ新規モードにフォールバックする。
+     *
+     * @param {string} empId       - employee_id
+     * @param {string} empName     - 氏名（確認表示用）
+     * @param {string} date        - 対象日（YYYY-MM-DD）
+     * @param {string} pattern     - 'missing_both' or 'missing_time_out'
+     * @param {string} clockedInAt - 出勤時刻（missing_time_out のとき参照用）
+     */
+    async function openMissingClockFixModal(empId, empName, date, pattern, clockedInAt) {
+
+      // ── ケース1: 出退勤なし → 新規登録モードで直接開く ──
+      if (pattern === 'missing_both') {
+        // presetEmpId・presetDate を渡すことで、スタッフと日付が事前選択される
+        openEditModal(null, empId, date);
+        return;
+      }
+
+      // ── ケース2: 退勤なし → 既存レコードを取得して編集モードで開く ──
+      showLoading('レコードを取得中...');
+
+      let record = null;
+      try {
+        const result = await callGAS('admin_attendance_list', {
+          date        : date,
+          employee_id : empId,
+        });
+
+        if (result.success) {
+          // admin_attendance_list は配列を返す。対象スタッフ×日付の1件を探す
+          const records = result.data.records || [];
+          record = records.find(r =>
+            String(r.employee_id) === String(empId) &&
+            // 日付は '/' 区切りと '-' 区切りが混在することがあるので正規化して比較
+            r.date.replace(/\//g, '-') === date.replace(/\//g, '-')
+          ) || null;
+        }
+      } catch (e) {
+        // 通信エラー時はフォールバックへ進む（ユーザーには toast で通知）
+        console.error('[openMissingClockFixModal] レコード取得エラー:', e);
+      } finally {
+        hideLoading();
+      }
+
+      if (record) {
+        // 取得成功 → 編集モードで開く（退勤・休憩・弁当を入力させる）
+        openEditModal(record);
+      } else {
+        // フォールバック: レコードが見つからない場合は新規モードで開く
+        // clocked_in_at を time_in にセットしておくことで入力の手間を省く
+        showToast('既存レコードが見つからないため新規登録モードで開きます。', 'warning');
+        openEditModal(null, empId, date);
+      }
     }
 
     // ============================================================
@@ -6331,43 +6424,24 @@
      * Admin が残業指示を直接登録する。
      *
      * create_overtime_instruction アクションを呼び出す。
-     * スタッフ・対象日・開始時刻・終了時刻は必須。
-     * 終了 > 開始 の検証をフロントでも行う（GAS側でも二重検証する）。
+     * スタッフ・対象日・見込み時間は必須。
      */
     async function handleCreateOvertimeInstruction() {
-      const staffSelect   = document.getElementById('ot-inst-staff');
-      const employeeId    = staffSelect?.value;
-      const name          = staffSelect?.options[staffSelect.selectedIndex]?.dataset?.name || '';
-      const date          = document.getElementById('ot-inst-date').value;
-      const overtimeStart = document.getElementById('ot-inst-start').value;
-      const overtimeEnd   = document.getElementById('ot-inst-end').value;
+      const staffSelect = document.getElementById('ot-inst-staff');
+      const employeeId  = staffSelect?.value;
+      const name        = staffSelect?.options[staffSelect.selectedIndex]?.dataset?.name || '';
+      const date        = document.getElementById('ot-inst-date').value;
+      const estTime     = document.getElementById('ot-inst-time').value;
 
-      // ── バリデーション ──
-      if (!employeeId) {
-        showToast('スタッフを選択してください。', 'warning'); return;
-      }
-      if (!date) {
-        showToast('対象日を入力してください。', 'warning'); return;
-      }
+      // バリデーション
+      if (!employeeId) { showToast('スタッフを選択してください。', 'warning'); return; }
+      if (!date) { showToast('対象日を入力してください。', 'warning'); return; }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         showToast('対象日の形式が正しくありません（例: 2026-05-27）', 'warning'); return;
       }
-      if (!overtimeStart) {
-        showToast('残業開始時刻を入力してください。', 'warning');
-        document.getElementById('ot-inst-start').focus(); return;
-      }
-      if (!overtimeEnd) {
-        showToast('残業終了時刻を入力してください。', 'warning');
-        document.getElementById('ot-inst-end').focus(); return;
-      }
-      if (overtimeEnd <= overtimeStart) {
-        showToast('残業終了時刻は開始時刻より後を指定してください。', 'warning');
-        document.getElementById('ot-inst-end').focus(); return;
-      }
+      if (!estTime) { showToast('見込み時間を選択してください。', 'warning'); return; }
 
-      const ok = await confirm(
-        `残業指示を登録しますか？\nスタッフ: ${name}\n対象日: ${date}\n残業時間帯: ${overtimeStart}〜${overtimeEnd}`
-      );
+      const ok = await confirm(`残業指示を登録しますか？\nスタッフ: ${name}\n対象日: ${date}\n見込み時間: ${estTime}`);
       if (!ok) return;
 
       showLoading('残業指示を登録中...');
@@ -6376,8 +6450,7 @@
         employee_id    : employeeId,
         name           : name,
         target_date    : date,
-        overtime_start : overtimeStart,
-        overtime_end   : overtimeEnd,
+        estimated_time : estTime,
         created_by     : adminState.employeeId,
       });
 
@@ -6392,9 +6465,8 @@
 
       // フォームをリセット
       if (staffSelect) staffSelect.value = '';
-      document.getElementById('ot-inst-date').value  = '';
-      document.getElementById('ot-inst-start').value = '';
-      document.getElementById('ot-inst-end').value   = '';
+      document.getElementById('ot-inst-date').value = '';
+      document.getElementById('ot-inst-time').value = '';
 
       // 一覧を更新する
       await loadOvertimeInstructionsAdmin();
@@ -6403,7 +6475,6 @@
     /**
      * 残業指示一覧を取得してテーブルに描画する（Admin用）。
      *
-     * overtime_range（"18:00〜19:30" 形式）を表示する。
      * ステータスフィルタは <select id="ot-inst-filter-status"> の値を使う。
      */
     async function loadOvertimeInstructionsAdmin() {
@@ -6435,16 +6506,8 @@
       };
 
       tbody.innerHTML = instructions.map(inst => {
-        const badge = statusBadge[inst.status] || escHtml(inst.status_display || inst.status);
-
-        // 残業時間帯: overtime_range = "18:00〜19:30" で表示
-        const rangeDisp = escHtml(inst.overtime_range || '―');
-
-        // 実績時間帯: actual_start + actual_end が揃っていれば "HH:MM〜HH:MM" で表示
-        const hasActual  = inst.actual_start && inst.actual_end;
-        const actualDisp = hasActual
-          ? escHtml(inst.actual_start + '〜' + inst.actual_end)
-          : '<span style="color:GrayText">未確定</span>';
+        const badge      = statusBadge[inst.status] || escHtml(inst.status_display || inst.status);
+        const actualDisp = inst.actual_time || '<span style="color:GrayText">未確定</span>';
 
         // 削除ボタン（全ステータスで表示。論理削除のため復旧可能。）
         const deleteBtn = `<button
@@ -6456,7 +6519,7 @@
           <tr>
             <td>${escHtml(inst.target_date)}</td>
             <td>${escHtml(inst.name)}</td>
-            <td style="font-weight:700">${rangeDisp}</td>
+            <td style="font-weight:700">${escHtml(inst.estimated_time || '―')}</td>
             <td>${actualDisp}</td>
             <td>${badge}</td>
             <td style="font-size:0.78rem;color:GrayText;max-width:120px;
