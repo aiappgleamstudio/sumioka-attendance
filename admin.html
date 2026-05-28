@@ -6400,8 +6400,15 @@
 
       if (record) {
         // 取得成功 → 編集モードで開く。
-        // record には time_in（出勤時刻）と lunch（boolean）がすでに含まれているため、
-        // openEditModal の編集モードが自動でフォームにセットする。
+        //
+        // _safeTimeStr（Code.gs）は 1899-12-30 型 Date を「年 < 1900 → 空文字」で捨てる。
+        // 一方 checkMissingClocksMonthly が使う formatTimeDisplay_GAS は
+        // 1899 年 Date でも時刻部分を正しく返す。
+        // そのため adminAttendanceList 経由の record.time_in が空文字になることがある。
+        // その場合は clocked_in_at（正しい値）で補完して openEditModal に渡す。
+        if (!record.time_in && clockedInAt) {
+          record = Object.assign({}, record, { time_in: clockedInAt });
+        }
         openEditModal(record);
       } else {
         // フォールバック: レコードが見つからない場合は新規モードで開く。
