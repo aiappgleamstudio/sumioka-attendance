@@ -4082,9 +4082,15 @@
         document.getElementById('modal-edit-employee-id').value = record.employee_id || '';
         const dateVal = (record.date || '').replace(/\//g, '-');
         document.getElementById('modal-edit-date').value        = dateVal;
-        document.getElementById('modal-edit-status').value      = record.status      || '出勤';
-        document.getElementById('modal-edit-timein').value      = record.time_in     || '';
-        document.getElementById('modal-edit-timeout').value     = record.time_out    || '';
+        document.getElementById('modal-edit-status').value      = record.status || '出勤';
+        // fmtTime で正規化する理由:
+        //   GAS から返る time_in/time_out は通常 'HH:MM' 文字列だが、
+        //   シートの書式設定によって ISO 8601 文字列や Date 型に化けることがある。
+        //   input[type=time] は 'HH:MM' 以外を受け付けないため、
+        //   必ず fmtTime を通して正規化してからセットする。
+        //   フォールバックは '' にして input を空にする（'―' を渡すと表示が崩れる）。
+        document.getElementById('modal-edit-timein').value  = fmtTime(record.time_in,  '');
+        document.getElementById('modal-edit-timeout').value = fmtTime(record.time_out, '');
         document.getElementById('modal-edit-break').value       = record.break_minutes != null ? record.break_minutes : '';
         document.getElementById('modal-edit-lunch').value       = String(record.lunch ?? false);
         document.getElementById('modal-edit-memo').value        = record.memo        || '';
