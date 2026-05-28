@@ -2262,20 +2262,27 @@ p:last-child { margin-bottom: 0; }
           </datalist>
         </div>
 
-        <!-- ③-B 見込み時間（残業のときのみ表示） -->
+        <!-- ③-B 残業時間帯（残業のときのみ表示） -->
+        <!-- 「何時から何時まで」を明示することで管理者・スタッフ双方が
+             残業の範囲を正確に把握できるようにする -->
         <div class="sumioka-form-group" id="overtime-estimated-wrap" style="display:none">
-          <label class="sumioka-label" for="overtime-estimated-time">見込み残業時間</label>
-          <select class="sumioka-input" id="overtime-estimated-time" style="width:160px">
-            <option value="">時間を選択</option>
-            <option value="00:30">30分</option>
-            <option value="01:00">1時間</option>
-            <option value="01:30">1時間30分</option>
-            <option value="02:00">2時間</option>
-            <option value="02:30">2時間30分</option>
-            <option value="03:00">3時間</option>
-            <option value="04:00">4時間</option>
-          </select>
-          <div class="sumioka-input-hint">退勤後に実績が自動計算されます</div>
+          <label class="sumioka-label">残業時間帯</label>
+          <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+            <div style="display:flex;flex-direction:column;gap:0.2rem">
+              <span style="font-size:0.75rem;color:GrayText">開始</span>
+              <input class="sumioka-input" type="time" id="overtime-start"
+                style="width:130px"
+                step="300"><!-- 5分刻みのスクロールに対応 -->
+            </div>
+            <span style="font-size:1.1rem;color:GrayText;padding-top:1.2rem">〜</span>
+            <div style="display:flex;flex-direction:column;gap:0.2rem">
+              <span style="font-size:0.75rem;color:GrayText">終了</span>
+              <input class="sumioka-input" type="time" id="overtime-end"
+                style="width:130px"
+                step="300">
+            </div>
+          </div>
+          <div class="sumioka-input-hint">退勤後に実績が記録されます</div>
         </div>
 
         <!-- ④ 理由（全種別共通） -->
@@ -3057,9 +3064,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.31 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に v1.2.32 をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.31</div>
+  <div class="version-badge" id="app-version">v1.2.32</div>
 
 
   <script>
@@ -6038,22 +6045,45 @@ p:last-child { margin-bottom: 0; }
      * 残業申請を送信する。
      *
      * submit_overtime_request アクションを呼び出す。
-     * 見込み時間の入力が必須。
+     * 「何時から何時まで」の開始・終了時刻が両方必須。
+     * 終了時刻 > 開始時刻 であることをフロントでも検証する
+     * （GAS側でも同じ検証を行い二重防護とする）。
      */
     async function handleSubmitOvertime() {
       const date          = document.getElementById('absence-date').value;
-      const estimatedTime = document.getElementById('overtime-estimated-time').value;
+      const overtimeStart = document.getElementById('overtime-start').value;
+      const overtimeEnd   = document.getElementById('overtime-end').value;
       const reason        = document.getElementById('absence-reason').value.trim();
 
-      // バリデーション
-      if (!date) { showToast('対象日を選択してください。', 'warning'); return; }
+      // ── バリデーション ──
+      if (!date) {
+        showToast('対象日を選択してください。', 'warning');
+        return;
+      }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         showToast('対象日の形式が正しくありません（例: 2026-05-27）', 'warning');
         return;
       }
-      if (!estimatedTime) { showToast('見込み残業時間を選択してください。', 'warning'); return; }
+      if (!overtimeStart) {
+        showToast('残業開始時刻を入力してください。', 'warning');
+        document.getElementById('overtime-start').focus();
+        return;
+      }
+      if (!overtimeEnd) {
+        showToast('残業終了時刻を入力してください。', 'warning');
+        document.getElementById('overtime-end').focus();
+        return;
+      }
+      // 終了 > 開始 チェック（HH:MM の文字列比較で可）
+      if (overtimeEnd <= overtimeStart) {
+        showToast('残業終了時刻は開始時刻より後を指定してください。', 'warning');
+        document.getElementById('overtime-end').focus();
+        return;
+      }
 
-      const ok = await confirm(`残業申請を送信しますか？\n対象日: ${date}\n見込み時間: ${estimatedTime}`);
+      const ok = await confirm(
+        `残業申請を送信しますか？\n対象日: ${date}\n残業時間帯: ${overtimeStart}〜${overtimeEnd}`
+      );
       if (!ok) return;
 
       showLoading('残業申請を送信中...');
@@ -6062,7 +6092,8 @@ p:last-child { margin-bottom: 0; }
         employee_id    : state.employeeId,
         name           : state.name,
         target_date    : date,
-        estimated_time : estimatedTime,
+        overtime_start : overtimeStart,
+        overtime_end   : overtimeEnd,
         reason         : reason,
       });
 
@@ -6076,8 +6107,9 @@ p:last-child { margin-bottom: 0; }
       showToast('残業申請を送信しました。管理者の確認をお待ちください。', 'success');
 
       // フォームリセット
-      document.getElementById('absence-date').value = '';
-      document.getElementById('overtime-estimated-time').value = '';
+      document.getElementById('absence-date').value  = '';
+      document.getElementById('overtime-start').value = '';
+      document.getElementById('overtime-end').value   = '';
       document.getElementById('absence-reason').value = '';
 
       // 残業指示一覧を更新する
@@ -6113,6 +6145,10 @@ p:last-child { margin-bottom: 0; }
     /**
      * 残業指示一覧を描画する。
      *
+     * 「何時から何時まで」形式（overtime_range）で表示する。
+     * バックエンドが overtime_range = "18:00〜19:30" を返すため、
+     * そのまま表示すればよい。
+     *
      * 状態別のバッジカラー:
      *   承認待ち  → 黄色（アクションが必要）
      *   承認済み  → 緑色
@@ -6136,12 +6172,20 @@ p:last-child { margin-bottom: 0; }
       };
 
       el.innerHTML = instructions.map(inst => {
-        const sStyle  = statusStyle[inst.status] || 'background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db';
-        const sLabel  = inst.status_display || inst.status;
+        const sStyle = statusStyle[inst.status] || 'background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db';
+        const sLabel = inst.status_display || inst.status;
 
-        // 実績時間（あれば表示、なければダッシュ）
-        const actualDisplay = inst.actual_time
-          ? `<span style="color:#065f46;font-weight:700">${escHtml(inst.actual_time)}</span>`
+        // 残業時間帯: "18:00〜19:30" 形式で表示する。
+        // overtime_range はバックエンドが生成する（start と end が揃っていれば結合、なければ '未設定'）。
+        const rangeDisplay = inst.overtime_range
+          ? `<strong style="color:CanvasText">${escHtml(inst.overtime_range)}</strong>`
+          : '<span style="color:GrayText">未設定</span>';
+
+        // 実績時間帯: 退勤後に actual_start / actual_end が記録される。
+        // どちらかが空なら「未確定」と表示する。
+        const hasActual   = inst.actual_start && inst.actual_end;
+        const actualDisplay = hasActual
+          ? `<span style="color:#065f46;font-weight:700">${escHtml(inst.actual_start)}〜${escHtml(inst.actual_end)}</span>`
           : '<span style="color:GrayText">未確定</span>';
 
         // 「承認待ち」のみ承認/却下ボタンを表示する
@@ -6173,9 +6217,8 @@ p:last-child { margin-bottom: 0; }
               </span>
             </div>
             <div style="font-size:0.82rem;color:GrayText;line-height:1.8">
-              <span>見込み: <strong style="color:CanvasText">${escHtml(inst.estimated_time || '―')}</strong></span>
-              　
-              <span>実績: ${actualDisplay}</span>
+              <div>残業時間帯: ${rangeDisplay}</div>
+              <div>実績: ${actualDisplay}</div>
             </div>
             ${inst.comment ? `<div style="font-size:0.78rem;color:#991b1b;margin-top:0.25rem">
               コメント: ${escHtml(inst.comment)}</div>` : ''}
