@@ -1188,19 +1188,20 @@
               <input class="sumioka-input" type="date" id="ot-inst-date"
                 style="width:145px;font-size:0.85rem">
             </div>
-            <!-- 見込み時間 -->
+            <!-- 残業時間帯（開始・終了） -->
+            <!-- 「何時から何時まで」を明記することで管理者・スタッフ双方が
+                 残業の範囲を正確に把握できるようにする -->
             <div>
-              <label class="sumioka-label" style="font-size:0.8rem">見込み時間</label>
-              <select class="sumioka-input" id="ot-inst-time" style="width:140px;font-size:0.85rem">
-                <option value="">選択してください</option>
-                <option value="00:30">30分</option>
-                <option value="01:00">1時間</option>
-                <option value="01:30">1時間30分</option>
-                <option value="02:00">2時間</option>
-                <option value="02:30">2時間30分</option>
-                <option value="03:00">3時間</option>
-                <option value="04:00">4時間</option>
-              </select>
+              <label class="sumioka-label" style="font-size:0.8rem">開始時刻</label>
+              <input class="sumioka-input" type="time" id="ot-inst-start"
+                style="width:120px;font-size:0.85rem" step="300">
+            </div>
+            <div style="display:flex;align-items:flex-end;padding-bottom:0.35rem;
+              font-size:1rem;color:GrayText">〜</div>
+            <div>
+              <label class="sumioka-label" style="font-size:0.8rem">終了時刻</label>
+              <input class="sumioka-input" type="time" id="ot-inst-end"
+                style="width:120px;font-size:0.85rem" step="300">
             </div>
             <!-- 作成ボタン -->
             <button class="sumioka-btn sumioka-btn-primary" id="btn-create-ot-inst"
@@ -1231,8 +1232,8 @@
               <tr>
                 <th>対象日</th>
                 <th>氏名</th>
-                <th>見込み時間</th>
-                <th>実績時間</th>
+                <th>残業時間帯</th>
+                <th>実績時間帯</th>
                 <th>状態</th>
                 <th>コメント</th>
                 <th>操作</th>
@@ -6330,24 +6331,43 @@
      * Admin が残業指示を直接登録する。
      *
      * create_overtime_instruction アクションを呼び出す。
-     * スタッフ・対象日・見込み時間は必須。
+     * スタッフ・対象日・開始時刻・終了時刻は必須。
+     * 終了 > 開始 の検証をフロントでも行う（GAS側でも二重検証する）。
      */
     async function handleCreateOvertimeInstruction() {
-      const staffSelect = document.getElementById('ot-inst-staff');
-      const employeeId  = staffSelect?.value;
-      const name        = staffSelect?.options[staffSelect.selectedIndex]?.dataset?.name || '';
-      const date        = document.getElementById('ot-inst-date').value;
-      const estTime     = document.getElementById('ot-inst-time').value;
+      const staffSelect   = document.getElementById('ot-inst-staff');
+      const employeeId    = staffSelect?.value;
+      const name          = staffSelect?.options[staffSelect.selectedIndex]?.dataset?.name || '';
+      const date          = document.getElementById('ot-inst-date').value;
+      const overtimeStart = document.getElementById('ot-inst-start').value;
+      const overtimeEnd   = document.getElementById('ot-inst-end').value;
 
-      // バリデーション
-      if (!employeeId) { showToast('スタッフを選択してください。', 'warning'); return; }
-      if (!date) { showToast('対象日を入力してください。', 'warning'); return; }
+      // ── バリデーション ──
+      if (!employeeId) {
+        showToast('スタッフを選択してください。', 'warning'); return;
+      }
+      if (!date) {
+        showToast('対象日を入力してください。', 'warning'); return;
+      }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         showToast('対象日の形式が正しくありません（例: 2026-05-27）', 'warning'); return;
       }
-      if (!estTime) { showToast('見込み時間を選択してください。', 'warning'); return; }
+      if (!overtimeStart) {
+        showToast('残業開始時刻を入力してください。', 'warning');
+        document.getElementById('ot-inst-start').focus(); return;
+      }
+      if (!overtimeEnd) {
+        showToast('残業終了時刻を入力してください。', 'warning');
+        document.getElementById('ot-inst-end').focus(); return;
+      }
+      if (overtimeEnd <= overtimeStart) {
+        showToast('残業終了時刻は開始時刻より後を指定してください。', 'warning');
+        document.getElementById('ot-inst-end').focus(); return;
+      }
 
-      const ok = await confirm(`残業指示を登録しますか？\nスタッフ: ${name}\n対象日: ${date}\n見込み時間: ${estTime}`);
+      const ok = await confirm(
+        `残業指示を登録しますか？\nスタッフ: ${name}\n対象日: ${date}\n残業時間帯: ${overtimeStart}〜${overtimeEnd}`
+      );
       if (!ok) return;
 
       showLoading('残業指示を登録中...');
@@ -6356,7 +6376,8 @@
         employee_id    : employeeId,
         name           : name,
         target_date    : date,
-        estimated_time : estTime,
+        overtime_start : overtimeStart,
+        overtime_end   : overtimeEnd,
         created_by     : adminState.employeeId,
       });
 
@@ -6371,8 +6392,9 @@
 
       // フォームをリセット
       if (staffSelect) staffSelect.value = '';
-      document.getElementById('ot-inst-date').value = '';
-      document.getElementById('ot-inst-time').value = '';
+      document.getElementById('ot-inst-date').value  = '';
+      document.getElementById('ot-inst-start').value = '';
+      document.getElementById('ot-inst-end').value   = '';
 
       // 一覧を更新する
       await loadOvertimeInstructionsAdmin();
@@ -6381,6 +6403,7 @@
     /**
      * 残業指示一覧を取得してテーブルに描画する（Admin用）。
      *
+     * overtime_range（"18:00〜19:30" 形式）を表示する。
      * ステータスフィルタは <select id="ot-inst-filter-status"> の値を使う。
      */
     async function loadOvertimeInstructionsAdmin() {
@@ -6412,8 +6435,16 @@
       };
 
       tbody.innerHTML = instructions.map(inst => {
-        const badge      = statusBadge[inst.status] || escHtml(inst.status_display || inst.status);
-        const actualDisp = inst.actual_time || '<span style="color:GrayText">未確定</span>';
+        const badge = statusBadge[inst.status] || escHtml(inst.status_display || inst.status);
+
+        // 残業時間帯: overtime_range = "18:00〜19:30" で表示
+        const rangeDisp = escHtml(inst.overtime_range || '―');
+
+        // 実績時間帯: actual_start + actual_end が揃っていれば "HH:MM〜HH:MM" で表示
+        const hasActual  = inst.actual_start && inst.actual_end;
+        const actualDisp = hasActual
+          ? escHtml(inst.actual_start + '〜' + inst.actual_end)
+          : '<span style="color:GrayText">未確定</span>';
 
         // 削除ボタン（全ステータスで表示。論理削除のため復旧可能。）
         const deleteBtn = `<button
@@ -6425,7 +6456,7 @@
           <tr>
             <td>${escHtml(inst.target_date)}</td>
             <td>${escHtml(inst.name)}</td>
-            <td style="font-weight:700">${escHtml(inst.estimated_time || '―')}</td>
+            <td style="font-weight:700">${rangeDisp}</td>
             <td>${actualDisp}</td>
             <td>${badge}</td>
             <td style="font-size:0.78rem;color:GrayText;max-width:120px;
