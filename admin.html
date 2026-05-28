@@ -4032,7 +4032,7 @@
      * @param {string}      [presetEmpId]  - 未打刻行の「代理入力」時：事前セットする employee_id
      * @param {string}      [presetDate]   - 未打刻行の「代理入力」時：事前セットする日付
      */
-    function openEditModal(record, presetEmpId, presetDate) {
+    function openEditModal(record, presetEmpId, presetDate, presetTimeIn) {
       const isNew = !record;
 
       document.getElementById('modal-edit-mode').value = isNew ? 'add' : 'edit';
@@ -4067,7 +4067,9 @@
           presetDate ? presetDate.replace(/\//g, '-') : todayString();
 
         document.getElementById('modal-edit-status').value  = '出勤';
-        document.getElementById('modal-edit-timein').value  = '';
+        // presetTimeIn: 打刻漏れ一覧の clocked_in_at（出勤時刻）をフォールバック時に引き継ぐ。
+        // missing_time_out でレコード取得に失敗した場合でも出勤時刻が入力済みになる。
+        document.getElementById('modal-edit-timein').value  = presetTimeIn || '';
         document.getElementById('modal-edit-timeout').value = '';
         document.getElementById('modal-edit-break').value   = '';
         document.getElementById('modal-edit-lunch').value   = 'false';
@@ -6363,9 +6365,13 @@
         });
 
         if (result.success) {
-          // admin_attendance_list は配列を返す。対象スタッフ×日付の1件を探す
+          // admin_attendance_list は配列を返す。対象スタッフ×日付の1件を探す。
+          // is_absent:true の「未打刻プレースホルダ行」は time_in が空なので除外する。
+          // （打刻漏れパターンが missing_time_out である以上、is_absent:false の行が
+          //   必ず存在するはずだが、念のためフィルタで保護する）
           const records = result.data.records || [];
           record = records.find(r =>
+            !r.is_absent &&
             String(r.employee_id) === String(empId) &&
             // 日付は '/' 区切りと '-' 区切りが混在することがあるので正規化して比較
             r.date.replace(/\//g, '-') === date.replace(/\//g, '-')
@@ -6379,13 +6385,16 @@
       }
 
       if (record) {
-        // 取得成功 → 編集モードで開く（退勤・休憩・弁当を入力させる）
+        // 取得成功 → 編集モードで開く。
+        // record には time_in（出勤時刻）と lunch（boolean）がすでに含まれているため、
+        // openEditModal の編集モードが自動でフォームにセットする。
         openEditModal(record);
       } else {
-        // フォールバック: レコードが見つからない場合は新規モードで開く
-        // clocked_in_at を time_in にセットしておくことで入力の手間を省く
+        // フォールバック: レコードが見つからない場合は新規モードで開く。
+        // checkMissingClocksMonthly が返した clocked_in_at（出勤時刻）を
+        // presetTimeIn として渡し、新規モードでも出勤時刻が入力済みの状態にする。
         showToast('既存レコードが見つからないため新規登録モードで開きます。', 'warning');
-        openEditModal(null, empId, date);
+        openEditModal(null, empId, date, clockedInAt);
       }
     }
 
