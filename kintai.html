@@ -2731,14 +2731,12 @@ p:last-child { margin-bottom: 0; }
       </div>
 
       <!-- ────────────────────────────────────────────────────
-           打刻漏れ確認（当月 + 前月）
+           打刻漏れ確認
            - 「表示」ボタンを押した月 + その前月を対象に取得する
            - get_my_missing_clocks は本日〜過去30日分しか返さないため、
              ここでは check_missing_clocks_monthly を月ごとに2回呼ぶ
            ──────────────────────────────────────────────────── -->
-      <p style="font-size:0.82rem;font-weight:600;color:GrayText;margin:1.25rem 0 0.5rem">
-        打刻漏れ確認（当月・前月）
-      </p>
+
       <div id="mystatus-missing-clocks-panel">
         <div style="text-align:center;color:GrayText;padding:1rem;font-size:0.82rem">
           「表示」ボタンを押すと、当月・前月の打刻漏れを確認できます
@@ -3057,9 +3055,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v1.2.33 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に __VERSION__ をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v1.2.33</div>
+  <div class="version-badge" id="app-version">__VERSION__</div>
 
 
   <script>
@@ -3402,14 +3400,10 @@ p:last-child { margin-bottom: 0; }
       document.getElementById('display-name').textContent = session.name;
       showScreen('main');
 
-      // タブの初期表示を決める。
-      // 【変更理由】
-      //   F5 リロード時は直前に開いていたタブを復元する。
-      //   switchKintaiTab() が切り替えのたびに 'kintai_active_tab' を保存しているので、
-      //   それを読み出してそのまま表示する。
-      //   保存値がない場合（初回ログイン）のみ打刻タブをデフォルトにする。
-      const savedTab   = SumiokaStorage.load('kintai_active_tab');
-      const initialTab = savedTab || 'checkin';
+      // ログイン後は常に打刻タブから始める。
+      // 理由: 出勤・退勤の打刻が最も重要な操作のため、
+      //       リロードや自動ログイン後も迷わず打刻できるようにする。
+      const initialTab = 'checkin';
       document.querySelectorAll('.kintai-tab').forEach(t => {
         t.classList.toggle('active', t.dataset.tab === initialTab);
       });
