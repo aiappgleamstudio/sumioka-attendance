@@ -2344,11 +2344,11 @@
     /**
      * 管理者専用 GAS デプロイ URL。
      * kintai.html と同じ GAS デプロイを使用する（アクションで振り分け）。
-     * https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec は sumioka-uploader の Vault から自動注入される。
+     * __GAS_URL__ は sumioka-uploader の Vault から自動注入される。
      * ローカルテスト時は直接URLを記述してください。
      */
-    const GAS_URL_ADMIN = typeof 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec' !== 'undefined' && 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec'.startsWith('http')
-      ? 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec'
+    const GAS_URL_ADMIN = typeof '__GAS_URL__' !== 'undefined' && '__GAS_URL__'.startsWith('http')
+      ? '__GAS_URL__'
       : 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec';
 
     /**
@@ -6893,9 +6893,9 @@
     crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
   <!-- バージョン表示（左下固定）— kintai.html と同デザイン -->
-  <!-- Uploader がアップロード時に v2.0.1 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に __VERSION__ をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v2.0.1</div>
+  <div class="version-badge" id="app-version">__VERSION__</div>
 
 </body>
 </html>
