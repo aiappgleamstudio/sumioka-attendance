@@ -2731,15 +2731,17 @@ p:last-child { margin-bottom: 0; }
       </div>
 
       <!-- ────────────────────────────────────────────────────
-           打刻漏れ確認
+           打刻漏れ確認（当月 + 前月）
            - 「表示」ボタンを押した月 + その前月を対象に取得する
            - get_my_missing_clocks は本日〜過去30日分しか返さないため、
              ここでは check_missing_clocks_monthly を月ごとに2回呼ぶ
            ──────────────────────────────────────────────────── -->
-
+      <p style="font-size:0.82rem;font-weight:600;color:GrayText;margin:1.25rem 0 0.5rem">
+        打刻漏れ確認（当月・前月）
+      </p>
       <div id="mystatus-missing-clocks-panel">
         <div style="text-align:center;color:GrayText;padding:1rem;font-size:0.82rem">
-          「表示」ボタンを押すと、打刻漏れを確認できます
+          「表示」ボタンを押すと、当月・前月の打刻漏れを確認できます
         </div>
       </div>
 
@@ -3055,9 +3057,9 @@ p:last-child { margin-bottom: 0; }
 
 
   <!-- バージョン表示（左下固定）-->
-  <!-- Uploader がアップロード時に v2.0.1 をバージョン入力欄の値で置換する。
+  <!-- Uploader がアップロード時に __VERSION__ をバージョン入力欄の値で置換する。
        ここを直接書き換えると Uploader の置換が効かなくなるため編集しないこと。 -->
-  <div class="version-badge" id="app-version">v2.0.1</div>
+  <div class="version-badge" id="app-version">__VERSION__</div>
 
 
   <script>
@@ -3428,6 +3430,11 @@ p:last-child { margin-bottom: 0; }
         notifyInput.value = session.scheduledEnd;
       }
       // 定時前通知タイマーは出勤打刻後に開始する（打刻前は不要）
+
+      // ログイン後すぐに残業指示ポーリングを開始する。
+      // どのタブを開いていても未確認の残業指示があればトーストと
+      // ブラウザ通知（許可済みの場合）で即座に知らせる。
+      startOvertimeInstructionPolling();
     }
 
     /**
@@ -3435,6 +3442,8 @@ p:last-child { margin-bottom: 0; }
      * セッションを削除してログイン画面へ戻る。
      */
     async function handleLogout() {
+      // ログアウト時にポーリングを停止する
+      stopOvertimeInstructionPolling();
       const ok = await confirm('ログアウトしますか？');
       if (!ok) return;
 
@@ -3966,6 +3975,137 @@ p:last-child { margin-bottom: 0; }
         banner.classList.add('show');
       } else {
         banner.classList.remove('show');
+      }
+    }
+
+    // ============================================================
+    // 残業指示リアルタイム通知
+    // ============================================================
+
+    /**
+     * 残業指示ポーリングの状態管理。
+     *
+     * _otPollingTimer    : setInterval の ID（停止時に使う）
+     * _otSeenIds         : 通知済みの指示ID セット（二重通知を防ぐ）
+     *
+     * 確認済みIDは sessionStorage に保存する。
+     * sessionStorage はタブを閉じるとリセットされるため、
+     * 翌日ログインしたときに前日の通知が再表示される心配がない。
+     */
+    let _otPollingTimer = null;
+    const _OT_POLLING_INTERVAL_MS = 2 * 60 * 1000; // 2分ごとにポーリング
+    const _OT_SEEN_KEY = 'ot_seen_ids'; // sessionStorage キー
+
+    /**
+     * 通知済みIDのセットを sessionStorage から読み込む。
+     * @returns {Set<string>}
+     */
+    function _loadSeenOtIds() {
+      try {
+        const raw = sessionStorage.getItem(_OT_SEEN_KEY);
+        return raw ? new Set(JSON.parse(raw)) : new Set();
+      } catch {
+        return new Set();
+      }
+    }
+
+    /**
+     * 通知済みIDのセットを sessionStorage に保存する。
+     * @param {Set<string>} ids
+     */
+    function _saveSeenOtIds(ids) {
+      try {
+        sessionStorage.setItem(_OT_SEEN_KEY, JSON.stringify([...ids]));
+      } catch {
+        // sessionStorage が使えない環境では無視する
+      }
+    }
+
+    /**
+     * 残業指示の確認処理を実行する。
+     *
+     * GAS から自分宛の残業指示一覧を取得し、未確認（pending）の指示があれば
+     * ① インページトースト（どのタブでも表示）
+     * ② ブラウザ通知（Notification API・許可済みの場合）
+     * の2経路で通知する。
+     *
+     * 既に通知済みのIDは _loadSeenOtIds() で管理し二重通知を防ぐ。
+     */
+    async function checkOvertimeInstructions() {
+      if (!state.employeeId) return;
+
+      let result;
+      try {
+        result = await callGAS('get_overtime_instructions', {
+          employee_id: state.employeeId,
+        });
+      } catch (e) {
+        console.warn('[checkOvertimeInstructions] 取得エラー:', e);
+        return;
+      }
+      if (!result.success) return;
+
+      const instructions = result.data.instructions || [];
+      const seenIds = _loadSeenOtIds();
+      const newInstructions = instructions.filter(inst =>
+        inst.status === 'pending' && !seenIds.has(inst.id)
+      );
+
+      if (newInstructions.length === 0) return;
+
+      // 通知済みIDを更新する
+      newInstructions.forEach(inst => seenIds.add(inst.id));
+      _saveSeenOtIds(seenIds);
+
+      // ── ① トースト通知（インページ・どのタブでも表示） ──────────
+      newInstructions.forEach(inst => {
+        const msg = `⏰ 残業指示が届きました：${escHtml(inst.target_date)} `
+          + `見込み ${escHtml(inst.estimated_time || '―')}`;
+        showToast(msg, 'warning', 8000); // 8秒間表示
+      });
+
+      // ── ② ブラウザ通知（Windows通知センターに表示） ──────────────
+      // Notification API が使えない環境（非HTTPS・iOSなど）は無視する。
+      // 許可されていない場合は自動リクエストしない（UX上の理由）。
+      if ('Notification' in window && Notification.permission === 'granted') {
+        newInstructions.forEach(inst => {
+          try {
+            new Notification('⏰ 残業指示が届きました', {
+              body: `${inst.target_date} 見込み ${inst.estimated_time || '―'}`,
+              icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%2322c55e'/><text y='.9em' font-size='70' x='50%25' text-anchor='middle' fill='white'>打</text></svg>",
+              tag: 'overtime-' + inst.id, // 同じIDで重複表示しない
+            });
+          } catch (e) {
+            console.warn('[checkOvertimeInstructions] Notification エラー:', e);
+          }
+        });
+      }
+    }
+
+    /**
+     * 残業指示のポーリングを開始する。
+     * ログイン（applySession）後に呼ぶ。
+     * 起動直後に1回即時チェックし、以降は _OT_POLLING_INTERVAL_MS ごとに繰り返す。
+     */
+    function startOvertimeInstructionPolling() {
+      // 二重起動を防ぐ
+      stopOvertimeInstructionPolling();
+      // 起動直後に即時チェック
+      checkOvertimeInstructions();
+      // 定期ポーリング開始
+      _otPollingTimer = setInterval(checkOvertimeInstructions, _OT_POLLING_INTERVAL_MS);
+      console.log('[OT polling] 開始: interval=%dms', _OT_POLLING_INTERVAL_MS);
+    }
+
+    /**
+     * 残業指示のポーリングを停止する。
+     * ログアウト時に呼ぶ。
+     */
+    function stopOvertimeInstructionPolling() {
+      if (_otPollingTimer) {
+        clearInterval(_otPollingTimer);
+        _otPollingTimer = null;
+        console.log('[OT polling] 停止');
       }
     }
 
