@@ -1668,6 +1668,25 @@
               <textarea class="sumioka-textarea" id="admin-deadline-form-memo" rows="3"
                 placeholder="例：担当: 田中 / 入稿データはGoogleDriveの○○フォルダ / 色校正あり"></textarea>
             </div>
+            <!-- 案件共通ファイルパス: 共有フォルダのパスやURLを複数登録できる -->
+            <div class="sumioka-form-group">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">
+                <label class="sumioka-label" style="margin-bottom:0">
+                  納品データの保存場所
+                  <span style="font-size:0.72rem;color:GrayText;font-weight:400">
+                    （フォルダパス・URLなど）
+                  </span>
+                </label>
+                <button type="button" id="btn-admin-filepath-add"
+                  style="font-size:0.75rem;padding:0.2em 0.7em;background:none;
+                    border:1px solid Highlight;color:Highlight;border-radius:3px;cursor:pointer">
+                  ＋ 追加
+                </button>
+              </div>
+              <div id="admin-deadline-filepaths-wrap">
+                <!-- JS で動的生成 -->
+              </div>
+            </div>
             <div style="display:flex;gap:0.65rem;justify-content:flex-end">
               <button class="sumioka-btn" id="btn-admin-deadline-form-cancel">キャンセル</button>
               <button class="sumioka-btn sumioka-btn-primary"
@@ -2606,6 +2625,8 @@
       // フェーズ追加ボタン
       document.getElementById('btn-admin-phase-add').addEventListener('click',
         () => adminAddPhaseRow('', false));
+      document.getElementById('btn-admin-filepath-add').addEventListener('click',
+        () => adminAddFilePathRow(''));
       document.getElementById('btn-admin-deadline-form-save').addEventListener('click',
         saveAdminDeadline);
       document.getElementById('taskview-sort').addEventListener('change', renderAdminDeadlineView);
@@ -5720,6 +5741,30 @@
      * @param {boolean} showOnCal   - カレンダー表示の初期値
      * @param {Object}  [phase]     - 既存フェーズデータ（日付・補足を設定するため）
      */
+    /**
+     * 納品データのファイルパス入力行を1行追加する。
+     * フォルダパス・URL・共有ドライブのリンクなどを自由書式で保存する。
+     *
+     * @param {string} value - 初期値（既存データの読み込み時に使う）
+     */
+    function adminAddFilePathRow(value = '') {
+      const wrap = document.getElementById('admin-deadline-filepaths-wrap');
+      const div  = document.createElement('div');
+      div.style.cssText = 'display:flex;gap:0.4rem;margin-bottom:0.35rem;align-items:center';
+      div.innerHTML = `
+        <input class="sumioka-input admin-filepath-input" type="text"
+          placeholder="例: \\server\folder\project  または  https://drive.google.com/..."
+          value="${escHtml(value)}"
+          style="flex:1;font-size:0.82rem;padding:0.3em 0.5em;font-family:monospace">
+        <button type="button"
+          style="font-size:0.72rem;background:none;border:1px solid #c0392b;
+            color:#c0392b;border-radius:3px;padding:0.15em 0.45em;cursor:pointer;
+            white-space:nowrap;flex-shrink:0"
+          onclick="this.parentElement.remove()">削除</button>
+      `;
+      wrap.appendChild(div);
+    }
+
     function adminAddPhaseRow(name = '', showOnCal = undefined, phase = null) {
       const wrap = document.getElementById('admin-deadline-phases-wrap');
       const div  = document.createElement('div');
@@ -5821,6 +5866,16 @@
         phases.forEach(p => adminAddPhaseRow(p.name || '', p.show_on_calendar, p));
       }
 
+      // ファイルパス欄を初期化する
+      const fpWrap = document.getElementById('admin-deadline-filepaths-wrap');
+      fpWrap.innerHTML = '';
+      const initFilePaths = Array.isArray(deadline?.file_paths) ? deadline.file_paths : [];
+      if (initFilePaths.length > 0) {
+        initFilePaths.forEach(fp => adminAddFilePathRow(fp));
+      } else {
+        adminAddFilePathRow(''); // 空欄を1行用意する
+      }
+
       const formWrap = document.getElementById('admin-deadline-form-wrap');
       formWrap.style.display = '';
       formWrap.scrollIntoView({ behavior: 'smooth' });
@@ -5850,6 +5905,16 @@
       // 担当者: コピー元と同じスタッフを選択状態にする
       const staffSel = document.getElementById('admin-deadline-form-staff');
       Array.from(staffSel.options).forEach(o => { o.selected = o.value === deadline.employee_id; });
+
+      // ファイルパスをコピー元から引き継ぐ
+      const fpWrapCopy = document.getElementById('admin-deadline-filepaths-wrap');
+      fpWrapCopy.innerHTML = '';
+      const copyFilePaths = Array.isArray(deadline.file_paths) ? deadline.file_paths : [];
+      if (copyFilePaths.length > 0) {
+        copyFilePaths.forEach(fp => adminAddFilePathRow(fp));
+      } else {
+        adminAddFilePathRow('');
+      }
 
       // フェーズ: done/done_date をリセットしてコピーする
       const wrap = document.getElementById('admin-deadline-phases-wrap');
@@ -5910,15 +5975,21 @@
         };
       }).filter(p => p.name);
 
+      // ファイルパス欄からデータを収集する（空行は除外）
+      const fpWrap2    = document.getElementById('admin-deadline-filepaths-wrap');
+      const file_paths = Array.from(fpWrap2.querySelectorAll('.admin-filepath-input'))
+        .map(el => el.value.trim())
+        .filter(v => v.length > 0);
+
       showLoading('保存中...');
       const result = await callGAS('upsert_deadline', {
         deadline_id  : id || undefined,
         employee_id  : staffId,
-        name         : staffName,  // 担当者名（GAS 側で NAME 列に保存）
-        title        : name,       // 案件名（GAS 側で TITLE 列に保存）
+        name         : staffName,
+        title        : name,
         memo         : document.getElementById('admin-deadline-form-memo').value.trim(),
         phases,
-        // 旧フィールドとの後方互換（GAS の upsertDeadline が受け取れるよう残す）
+        file_paths,
         type         : '単発',
         recur_mode   : 'manual',
       });
@@ -5992,6 +6063,9 @@
      * 管理者用納期一覧テーブルを描画する（新9列シート構造対応）。
      * @param {Object[]} deadlines
      */
+    // 完了案件の折りたたみ状態（true=折りたたみ中）
+    let _deadlineCompletedCollapsed = true;
+
     function renderAdminDeadlineTable(deadlines) {
       const tbody = document.getElementById('taskview-deadline-body');
       const today = todayString();
@@ -6007,8 +6081,7 @@
       arr.sort((a, b) => {
         if (sortKey === 'name')     return (a.assignee || '').localeCompare(b.assignee || '', 'ja');
         if (sortKey === 'title')    return (a.name     || '').localeCompare(b.name     || '', 'ja');
-        if (sortKey === 'progress') return (b.progress || 0) - (a.progress || 0); // 進捗降順
-        // デフォルト: 納品日順
+        if (sortKey === 'progress') return (b.progress || 0) - (a.progress || 0);
         const na = a.deadline || '', nb = b.deadline || '';
         if (!na && !nb) return 0; if (!na) return 1; if (!nb) return -1;
         return na.localeCompare(nb);
@@ -6019,29 +6092,54 @@
         '修正中': '#c0392b', '納品済': '#1a7f37',
       };
 
-      tbody.innerHTML = arr.map(d => {
-        // 納品フェーズ: phases の中で名前に「納品」を含む最初のフェーズ。なければ先頭フェーズ。
+      // 進行中と完了済みに分ける
+      const active    = arr.filter(d => {
+        const phases = Array.isArray(d.phases) ? d.phases : [];
+        return phases.length === 0 || !phases.every(p => p.done);
+      });
+      const completed = arr.filter(d => {
+        const phases = Array.isArray(d.phases) ? d.phases : [];
+        return phases.length > 0 && phases.every(p => p.done);
+      });
+
+      /**
+       * ファイルパスをクリッカブルなリンクとして描画する。
+       * http/https で始まるものは <a> タグ、それ以外はフォルダパスとして表示する。
+       */
+      const renderFilePaths = (filePaths) => {
+        if (!filePaths || filePaths.length === 0) return '';
+        return `<div style="margin-top:0.3rem">` +
+          filePaths.map(fp => {
+            const isUrl = /^https?:\/\//i.test(fp);
+            if (isUrl) {
+              return `<a href="${escHtml(fp)}" target="_blank" rel="noopener"
+                style="font-size:0.72rem;color:#1d4ed8;display:block;
+                  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px"
+                title="${escHtml(fp)}">🔗 ${escHtml(fp)}</a>`;
+            }
+            return `<span style="font-size:0.72rem;color:#6b7280;display:block;
+              overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;
+              font-family:monospace" title="${escHtml(fp)}">📁 ${escHtml(fp)}</span>`;
+          }).join('') + '</div>';
+      };
+
+      const renderRow = d => {
         const phases = Array.isArray(d.phases) ? d.phases : [];
         const deliveryPhase = phases.find(p => (p.name || '').includes('納品')) || phases[0] || {};
         const nd        = deliveryPhase.planned_date || d.deadline || '';
         const statusVal = deliveryPhase.status || d.status || '';
-
-        // 残日数計算: 納品日が設定されている場合のみ計算する
+        const allDone   = phases.length > 0 && phases.every(p => p.done);
         const daysLeft  = nd ? Math.round((new Date(nd) - new Date(today)) / 86400000) : null;
 
-        // 行のハイライト: 期限超過=薄赤、当日・3日以内=薄黄、納品済=薄緑
-        const allDone = phases.length > 0 && phases.every(p => p.done);
         const rowStyle = allDone
-          ? 'background:#f0fdf4;opacity:0.75'
+          ? 'background:#f0fdf4;opacity:0.8'
           : (daysLeft !== null && daysLeft < 0)
             ? 'background:#fff5f5'
             : (daysLeft !== null && daysLeft <= 3)
               ? 'background:#fffbeb'
               : '';
 
-        // 進捗ステータスの色
         const statusColor = statusColorMap[statusVal] || '#374151';
-
         const daysLabel = daysLeft !== null
           ? (daysLeft < 0  ? `<span style="color:#c0392b;font-size:0.72rem;font-weight:700">超過${Math.abs(daysLeft)}日</span>`
            : daysLeft === 0 ? `<span style="color:#c0392b;font-size:0.72rem;font-weight:700">本日</span>`
@@ -6049,15 +6147,29 @@
            : `<span style="color:GrayText;font-size:0.72rem">残${daysLeft}日</span>`)
           : '';
 
+        // ファイルパス: 案件全体＋納品フェーズのファイルパスを表示
+        const allFilePaths = [
+          ...(Array.isArray(d.file_paths) ? d.file_paths : []),
+          ...(Array.isArray(deliveryPhase.file_paths) ? deliveryPhase.file_paths : []),
+        ];
+        const filePathsHtml = renderFilePaths(allFilePaths);
+
         return `
           <tr style="${rowStyle}">
             <td style="font-size:0.85rem">${escHtml(d.assignee || '―')}</td>
-            <td style="font-weight:600">${escHtml(d.title || d.name || '―')}</td>
+            <td style="font-weight:600">
+              ${escHtml(d.title || d.name || '―')}
+              ${allDone ? '<span style="font-size:0.72rem;background:#d1fae5;color:#065f46;padding:0.1em 0.4em;border-radius:3px;margin-left:0.3rem">完了</span>' : ''}
+            </td>
             <td style="white-space:nowrap;font-size:0.85rem">${escHtml(nd || '―')} ${daysLabel}</td>
             <td style="color:${statusColor};font-weight:600;font-size:0.85rem">${escHtml(statusVal || '―')}</td>
-            <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-              font-size:0.78rem;color:GrayText" title="${escHtml(d.memo || '')}">
-              ${escHtml(d.memo || '―')}</td>
+            <td style="font-size:0.78rem;color:GrayText">
+              <div style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                title="${escHtml(d.memo || '')}">
+                ${escHtml(d.memo || '―')}
+              </div>
+              ${filePathsHtml}
+            </td>
             <td>
               <div style="display:flex;gap:0.3rem;flex-wrap:wrap">
                 <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em"
@@ -6069,7 +6181,58 @@
               </div>
             </td>
           </tr>`;
-      }).join('');
+      };
+
+      // 進行中案件を描画
+      let html = active.map(renderRow).join('');
+
+      // 完了案件セクションを描画（折りたたみ対応）
+      if (completed.length > 0) {
+        const label    = _deadlineCompletedCollapsed
+          ? `▶ 完了済み案件（${completed.length}件）— クリックで展開`
+          : `▼ 完了済み案件（${completed.length}件）— クリックで折りたたむ`;
+        const display  = _deadlineCompletedCollapsed ? 'none' : '';
+
+        html += `
+          <tr id="deadline-completed-toggle-row"
+            onclick="toggleDeadlineCompleted()"
+            style="cursor:pointer;background:#f9fafb;border-top:2px solid #e5e7eb">
+            <td colspan="6"
+              style="font-size:0.82rem;font-weight:600;color:GrayText;
+                padding:0.5rem 0.85rem;user-select:none">
+              ${label}
+            </td>
+          </tr>`;
+
+        // 完了案件の行（折りたたみ状態に応じて表示制御）
+        html += completed.map(d => {
+          const row = renderRow(d);
+          // display:none を tr に当てる
+          return row.replace('<tr style="', `<tr class="deadline-completed-row" style="display:${display};`);
+        }).join('');
+      }
+
+      tbody.innerHTML = html;
+    }
+
+    /**
+     * 完了済み案件の折りたたみをトグルする。
+     * テーブル再描画ではなく DOM 操作で表示を切り替える（高速）。
+     */
+    function toggleDeadlineCompleted() {
+      _deadlineCompletedCollapsed = !_deadlineCompletedCollapsed;
+      const rows   = document.querySelectorAll('.deadline-completed-row');
+      const toggle = document.getElementById('deadline-completed-toggle-row');
+      const count  = rows.length;
+
+      rows.forEach(r => { r.style.display = _deadlineCompletedCollapsed ? 'none' : ''; });
+
+      if (toggle) {
+        const label = _deadlineCompletedCollapsed
+          ? `▶ 完了済み案件（${count}件）— クリックで展開`
+          : `▼ 完了済み案件（${count}件）— クリックで折りたたむ`;
+        toggle.querySelector('td').textContent = label;
+      }
     }
 
     /**
