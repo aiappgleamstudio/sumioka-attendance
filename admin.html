@@ -6233,6 +6233,24 @@
      * ①勤務曜日 ②会社休日でない ③欠勤登録なし ④打刻漏れ
      * の4条件をすべて満たすスタッフ×日付の組み合わせを一覧表示する。
      */
+    // ============================================================
+    // 打刻漏れ月次確認 ── ソート状態管理
+    // ============================================================
+
+    /**
+     * _missingWarnings: GAS から取得した打刻漏れ一覧をクライアントで保持する。
+     * ソート時に再取得せず、この配列を並べ替えて tbody だけ再描画する。
+     *
+     * _missingSortKey: 現在ソート中の列キー。
+     *   'date' | 'name' | 'pattern'
+     *   null のときは GAS が返した順（日付昇順）をそのまま表示する。
+     *
+     * _missingSortAsc: true = 昇順、false = 降順。
+     */
+    let _missingWarnings = [];
+    let _missingSortKey  = null;
+    let _missingSortAsc  = true;
+
     async function loadMonthlyMissingClocks() {
       const monthInput = document.getElementById('missing-clock-month-input');
       const panel      = document.getElementById('missing-clock-monthly-panel');
@@ -6260,8 +6278,13 @@
         return;
       }
 
-      const warnings = result.data.missing || [];
-      const total    = result.data.total_missing || 0;
+      // 取得データをモジュール変数に保持し、ソート操作時に再利用する
+      _missingWarnings = result.data.missing || [];
+      // 新しいデータを取得したらソート状態をリセットする（日付昇順 = GAS のデフォルト）
+      _missingSortKey = null;
+      _missingSortAsc = true;
+
+      const total = result.data.total_missing || 0;
 
       if (total === 0) {
         panel.innerHTML = `<div style="color:#065f46;font-size:0.88rem;padding:0.65rem;
@@ -6270,11 +6293,9 @@
         return;
       }
 
-      // パターンに応じた視覚バッジを生成するヘルパー
-      const patternBadge = p => p === 'missing_time_out'
-        ? '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#fef3c7;color:#92400e">退勤なし</span>'
-        : '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#ffedd5;color:#9a3412">出退勤なし</span>';
-
+      // ヘッダー込みのテーブル骨格を1回だけ描画する。
+      // tbody の中身はソートのたびに renderMissingWarningsBody() で差し替える。
+      // th に data-sort-key を持たせ、クリックで sortMissingWarnings() を呼ぶ。
       panel.innerHTML = `
         <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;
           padding:0.75rem 1rem">
@@ -6285,53 +6306,146 @@
             </span>
           </div>
           <div class="admin-table-wrap">
-            <table class="admin-table" style="font-size:0.82rem">
+            <table class="admin-table" id="missing-clock-table" style="font-size:0.82rem">
               <thead>
                 <tr>
-                  <th>日付</th>
+                  <th data-sort-key="date"
+                      onclick="sortMissingWarnings('date')"
+                      style="cursor:pointer;user-select:none"
+                      title="クリックでソート">
+                    日付 <span id="missing-sort-ind-date"></span>
+                  </th>
                   <th>曜日</th>
-                  <th>氏名</th>
-                  <th>パターン</th>
+                  <th data-sort-key="name"
+                      onclick="sortMissingWarnings('name')"
+                      style="cursor:pointer;user-select:none"
+                      title="クリックでソート">
+                    氏名 <span id="missing-sort-ind-name"></span>
+                  </th>
+                  <th data-sort-key="pattern"
+                      onclick="sortMissingWarnings('pattern')"
+                      style="cursor:pointer;user-select:none"
+                      title="クリックでソート">
+                    パターン <span id="missing-sort-ind-pattern"></span>
+                  </th>
                   <th>出勤時刻</th>
                   <th>操作</th>
                 </tr>
               </thead>
-              <tbody>
-                ${warnings.map(w => `
-                  <tr>
-                    <td style="white-space:nowrap">${escHtml(w.date)}</td>
-                    <td style="text-align:center">${escHtml(w.day_of_week)}</td>
-                    <td>${escHtml(w.name)}</td>
-                    <td>${patternBadge(w.pattern)}</td>
-                    <td style="color:GrayText">${escHtml(w.clocked_in_at || '―')}</td>
-                    <td>
-                      <!--
-                        修正ボタン: onclick で openMissingClockFixModal を呼ぶ。
-                        各行の employee_id・name・date・pattern・clocked_in_at を
-                        引数として渡すことで、モーダル側で新規 or 編集モードを判断する。
-                        escJson ではなく個別 escHtml で渡すのは、
-                        onclick 属性内の JSON パースを省いてシンプルにするため。
-                      -->
-                      <button
-                        class="sumioka-btn"
-                        style="font-size:0.72rem;padding:0.2em 0.6em;white-space:nowrap"
-                        onclick="openMissingClockFixModal(
-                          '${escHtml(w.employee_id)}',
-                          '${escHtml(w.name)}',
-                          '${escHtml(w.date)}',
-                          '${escHtml(w.pattern)}',
-                          '${escHtml(w.clocked_in_at || '')}'
-                        )">
-                        修正
-                      </button>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
+              <tbody id="missing-clock-tbody"></tbody>
             </table>
           </div>
         </div>
       `;
+
+      // 初回は取得順（日付昇順）のままで tbody を描画する
+      renderMissingWarningsBody();
+    }
+
+    /**
+     * 打刻漏れテーブルの列ヘッダークリック時に呼ぶソート切り替え関数。
+     *
+     * 同じ列を続けてクリックすると昇順 ↔ 降順がトグルする。
+     * 別の列をクリックすると昇順にリセットする。
+     *
+     * @param {'date'|'name'|'pattern'} key - ソート対象の列キー
+     */
+    function sortMissingWarnings(key) {
+      if (_missingSortKey === key) {
+        // 同じ列 → 昇降順トグル
+        _missingSortAsc = !_missingSortAsc;
+      } else {
+        // 別の列 → 昇順にリセット
+        _missingSortKey = key;
+        _missingSortAsc = true;
+      }
+      renderMissingWarningsBody();
+    }
+
+    /**
+     * _missingWarnings を現在のソート状態で並べ替え、tbody だけ再描画する。
+     *
+     * テーブル骨格（thead）は loadMonthlyMissingClocks が1回だけ生成するため、
+     * ここでは tbody の innerHTML を差し替えるだけで済む。
+     * GAS への再リクエストは発生しない。
+     */
+    function renderMissingWarningsBody() {
+      const tbody = document.getElementById('missing-clock-tbody');
+      if (!tbody) return;
+
+      // ── ソート ──
+      // _missingSortKey が null のときは元の配列順（日付昇順）をそのまま使う
+      const sorted = [..._missingWarnings];
+      if (_missingSortKey) {
+        sorted.sort((a, b) => {
+          let va, vb;
+          if (_missingSortKey === 'date') {
+            // 日付は文字列辞書順で正しく比較できる（YYYY-MM-DD 形式）
+            va = a.date || '';
+            vb = b.date || '';
+          } else if (_missingSortKey === 'name') {
+            va = a.name || '';
+            vb = b.name || '';
+          } else if (_missingSortKey === 'pattern') {
+            // パターンは 'missing_time_out' / 'missing_both' の2値なので
+            // 文字列比較で十分（同じパターンは日付昇順でサブソート）
+            va = a.pattern || '';
+            vb = b.pattern || '';
+          }
+          const cmp = va.localeCompare(vb, 'ja');
+          return _missingSortAsc ? cmp : -cmp;
+        });
+      }
+
+      // ── ソートインジケーター更新 ──
+      // アクティブな列に ▲/▼ を表示し、他列はクリア
+      ['date', 'name', 'pattern'].forEach(k => {
+        const el = document.getElementById('missing-sort-ind-' + k);
+        if (!el) return;
+        if (k === _missingSortKey) {
+          el.textContent = _missingSortAsc ? ' ▲' : ' ▼';
+          el.style.color = '#92400e';
+        } else {
+          el.textContent = '';
+        }
+      });
+
+      // パターンに応じた視覚バッジを生成するヘルパー
+      const patternBadge = p => p === 'missing_time_out'
+        ? '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#fef3c7;color:#92400e">退勤なし</span>'
+        : '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#ffedd5;color:#9a3412">出退勤なし</span>';
+
+      // ── tbody 再描画 ──
+      tbody.innerHTML = sorted.map(w => `
+        <tr>
+          <td style="white-space:nowrap">${escHtml(w.date)}</td>
+          <td style="text-align:center">${escHtml(w.day_of_week)}</td>
+          <td>${escHtml(w.name)}</td>
+          <td>${patternBadge(w.pattern)}</td>
+          <td style="color:GrayText">${escHtml(w.clocked_in_at || '―')}</td>
+          <td>
+            <!--
+              修正ボタン: onclick で openMissingClockFixModal を呼ぶ。
+              各行の employee_id・name・date・pattern・clocked_in_at を
+              引数として渡すことで、モーダル側で新規 or 編集モードを判断する。
+              escJson ではなく個別 escHtml で渡すのは、
+              onclick 属性内の JSON パースを省いてシンプルにするため。
+            -->
+            <button
+              class="sumioka-btn"
+              style="font-size:0.72rem;padding:0.2em 0.6em;white-space:nowrap"
+              onclick="openMissingClockFixModal(
+                '${escHtml(w.employee_id)}',
+                '${escHtml(w.name)}',
+                '${escHtml(w.date)}',
+                '${escHtml(w.pattern)}',
+                '${escHtml(w.clocked_in_at || '')}'
+              )">
+              修正
+            </button>
+          </td>
+        </tr>
+      `).join('');
     }
 
     // ============================================================
