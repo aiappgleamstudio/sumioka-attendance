@@ -5533,12 +5533,45 @@ p:last-child { margin-bottom: 0; }
 
         const typeBadgeCls = d.type === '継続' ? 'deadline-type-continue' : 'deadline-type-single';
 
+        // ファイルパス表示（案件全体 + 各フェーズのファイルパスを統合）
+        const allDlFilePaths = [
+          ...(Array.isArray(d.file_paths) ? d.file_paths : []),
+          ...phases.flatMap(p => Array.isArray(p.file_paths) ? p.file_paths : []),
+        ];
+        const filePathsSection = allDlFilePaths.length > 0 ? `
+          <div style="margin-top:0.65rem;padding:0.5rem 0.65rem;
+            background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
+            <div style="font-size:0.75rem;font-weight:600;color:GrayText;margin-bottom:0.35rem">
+              📁 納品データの保存場所
+            </div>
+            ${allDlFilePaths.map(fp => {
+              const isUrl = /^https?:\/\//i.test(fp);
+              if (isUrl) {
+                return `<a href="${escHtml(fp)}" target="_blank" rel="noopener"
+                  style="font-size:0.78rem;color:#1d4ed8;display:block;
+                    overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                  title="${escHtml(fp)}">🔗 ${escHtml(fp)}</a>`;
+              }
+              return `<div style="font-size:0.78rem;color:#374151;font-family:monospace;
+                overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                title="${escHtml(fp)}">📂 ${escHtml(fp)}</div>`;
+            }).join('')}
+          </div>` : '';
+
+        // 全フェーズ完了バッジ
+        const isAllDone = phases.length > 0 && phases.every(p => p.done);
+
         return `
-          <div class="deadline-card ${alertCls}" id="dl-card-${escHtml(d.id)}">
+          <div class="deadline-card ${alertCls}${isAllDone ? ' deadline-card-done' : ''}"
+            id="dl-card-${escHtml(d.id)}"
+            style="${isAllDone ? 'opacity:0.8;border-color:#bbf7d0' : ''}">
             <div class="deadline-card-header" onclick="toggleDeadlineCard('${escHtml(d.id)}')">
               <span class="task-card-toggle" id="dl-toggle-${escHtml(d.id)}">▶</span>
               <div class="task-card-title-area">
-                <div class="task-card-main-title">${escHtml(d.title)}</div>
+                <div class="task-card-main-title">
+                  ${escHtml(d.title)}
+                  ${isAllDone ? '<span style="font-size:0.72rem;background:#d1fae5;color:#065f46;padding:0.1em 0.4em;border-radius:3px;margin-left:0.3rem;vertical-align:middle">完了</span>' : ''}
+                </div>
                 ${d.client ? `<div class="task-card-sub-title">顧客: ${escHtml(d.client)}</div>` : ''}
               </div>
               <span class="deadline-type-badge ${typeBadgeCls}">${escHtml(d.type || '単発')}</span>
@@ -5547,6 +5580,7 @@ p:last-child { margin-bottom: 0; }
             <div class="deadline-card-body" id="dl-body-${escHtml(d.id)}">
               ${d.memo ? `<div style="font-size:0.82rem;color:GrayText;margin-top:0.65rem">${escHtml(d.memo)}</div>` : ''}
               ${phasesHtml}
+              ${filePathsSection}
               <div class="ph2-card-actions" style="margin-top:0.85rem">
                 <button class="sumioka-btn" style="font-size:0.78rem;padding:0.25em 0.7em"
                   onclick="openDeadlineForm(${escJson(d)})">編集</button>
