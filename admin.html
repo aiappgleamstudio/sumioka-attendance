@@ -4067,8 +4067,7 @@
           presetDate ? presetDate.replace(/\//g, '-') : todayString();
 
         document.getElementById('modal-edit-status').value  = '出勤';
-        // presetTimeIn: 打刻漏れ一覧の clocked_in_at（出勤時刻）をフォールバック時に引き継ぐ。
-        // missing_time_out でレコード取得に失敗した場合でも出勤時刻が入力済みになる。
+        // presetTimeIn: 打刻漏れ一覧の clocked_in_at をフォールバック時に引き継ぐ
         document.getElementById('modal-edit-timein').value  = presetTimeIn || '';
         document.getElementById('modal-edit-timeout').value = '';
         document.getElementById('modal-edit-break').value   = '';
@@ -4082,15 +4081,13 @@
         document.getElementById('modal-edit-employee-id').value = record.employee_id || '';
         const dateVal = (record.date || '').replace(/\//g, '-');
         document.getElementById('modal-edit-date').value        = dateVal;
-        document.getElementById('modal-edit-status').value      = record.status || '出勤';
+        document.getElementById('modal-edit-status').value      = record.status      || '出勤';
         // fmtTime で正規化する理由:
-        //   GAS から返る time_in/time_out は通常 'HH:MM' 文字列だが、
-        //   シートの書式設定によって ISO 8601 文字列や Date 型に化けることがある。
-        //   input[type=time] は 'HH:MM' 以外を受け付けないため、
-        //   必ず fmtTime を通して正規化してからセットする。
-        //   フォールバックは '' にして input を空にする（'―' を渡すと表示が崩れる）。
-        document.getElementById('modal-edit-timein').value  = fmtTime(record.time_in,  '');
-        document.getElementById('modal-edit-timeout').value = fmtTime(record.time_out, '');
+        //   GAS から返る time_in/time_out はシートの書式によって ISO 文字列や
+        //   Date 型に化けることがある。input[type=time] は 'HH:MM' 以外を受け付けないため
+        //   必ず fmtTime を通して正規化する。フォールバックは '' にする。
+        document.getElementById('modal-edit-timein').value      = fmtTime(record.time_in,  '');
+        document.getElementById('modal-edit-timeout').value     = fmtTime(record.time_out, '');
         document.getElementById('modal-edit-break').value       = record.break_minutes != null ? record.break_minutes : '';
         document.getElementById('modal-edit-lunch').value       = String(record.lunch ?? false);
         document.getElementById('modal-edit-memo').value        = record.memo        || '';
@@ -6428,8 +6425,6 @@
               修正ボタン: onclick で openMissingClockFixModal を呼ぶ。
               各行の employee_id・name・date・pattern・clocked_in_at を
               引数として渡すことで、モーダル側で新規 or 編集モードを判断する。
-              escJson ではなく個別 escHtml で渡すのは、
-              onclick 属性内の JSON パースを省いてシンプルにするため。
             -->
             <button
               class="sumioka-btn"
@@ -6477,7 +6472,6 @@
 
       // ── ケース1: 出退勤なし → 新規登録モードで直接開く ──
       if (pattern === 'missing_both') {
-        // presetEmpId・presetDate を渡すことで、スタッフと日付が事前選択される
         openEditModal(null, empId, date);
         return;
       }
@@ -6493,20 +6487,15 @@
         });
 
         if (result.success) {
-          // admin_attendance_list は配列を返す。対象スタッフ×日付の1件を探す。
-          // is_absent:true の「未打刻プレースホルダ行」は time_in が空なので除外する。
-          // （打刻漏れパターンが missing_time_out である以上、is_absent:false の行が
-          //   必ず存在するはずだが、念のためフィルタで保護する）
+          // is_absent:true の「未打刻プレースホルダ行」は time_in が空なので除外する
           const records = result.data.records || [];
           record = records.find(r =>
             !r.is_absent &&
             String(r.employee_id) === String(empId) &&
-            // 日付は '/' 区切りと '-' 区切りが混在することがあるので正規化して比較
             r.date.replace(/\//g, '-') === date.replace(/\//g, '-')
           ) || null;
         }
       } catch (e) {
-        // 通信エラー時はフォールバックへ進む（ユーザーには toast で通知）
         console.error('[openMissingClockFixModal] レコード取得エラー:', e);
       } finally {
         hideLoading();
@@ -6518,16 +6507,13 @@
         // _safeTimeStr（Code.gs）は 1899-12-30 型 Date を「年 < 1900 → 空文字」で捨てる。
         // 一方 checkMissingClocksMonthly が使う formatTimeDisplay_GAS は
         // 1899 年 Date でも時刻部分を正しく返す。
-        // そのため adminAttendanceList 経由の record.time_in が空文字になることがある。
+        // そのため adminAttendanceList 経由の record.time_in が空文字になる場合がある。
         // その場合は clocked_in_at（正しい値）で補完して openEditModal に渡す。
         if (!record.time_in && clockedInAt) {
           record = Object.assign({}, record, { time_in: clockedInAt });
         }
         openEditModal(record);
       } else {
-        // フォールバック: レコードが見つからない場合は新規モードで開く。
-        // checkMissingClocksMonthly が返した clocked_in_at（出勤時刻）を
-        // presetTimeIn として渡し、新規モードでも出勤時刻が入力済みの状態にする。
         showToast('既存レコードが見つからないため新規登録モードで開きます。', 'warning');
         openEditModal(null, empId, date, clockedInAt);
       }
