@@ -2775,13 +2775,16 @@ p:last-child { margin-bottom: 0; }
             <p>④ 帰る前に休憩時間・業務報告を入力して
               <strong>「退勤打刻」</strong>を押す</p>
           </div>
-          <!-- 15分ルールを明記 -->
+          <!-- 給与計算ルールを最新内容に更新（1分単位・5分切り上げ） -->
           <div style="margin-top:0.85rem;padding:0.75rem 0.85rem;
             background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;font-size:0.82rem;color:#78350f;line-height:1.6">
-            <div style="font-weight:700;margin-bottom:0.2rem">給与計算ルール（重要）</div>
-            <div>給与は <strong>15分単位</strong> で計算されます。</div>
-            <div>1秒でも遅れた場合、給与の発生は <strong>15分後から</strong> になります。</div>
-            <div style="margin-top:0.2rem;color:#92400e">例：9:01 に打刻 → 9:15 から給与発生</div>
+            <div style="font-weight:700;margin-bottom:0.2rem">⏱ 給与計算ルール（重要）</div>
+            <div>給与は <strong>1分単位</strong> で計算されます。</div>
+            <div>出勤打刻時刻は <strong>5分単位に切り上げ</strong> て給与が発生します。</div>
+            <div style="margin-top:0.3rem;color:#92400e">
+              例：10:06 に打刻 → <strong>10:10 から</strong>給与発生（4分分カット）<br>
+              　　10:00・10:05 に打刻 → <strong>そのまま</strong>給与発生（切り上げなし）
+            </div>
           </div>
           <!-- 打刻修正・追加は管理者側でのみ行えることを明記
                【理由】スタッフ側から打刻を変更できると不正操作の抑止が難しくなるため
@@ -2854,11 +2857,11 @@ p:last-child { margin-bottom: 0; }
               実働時間：5時間 − 60分 ＝ <strong>4時間（240分）</strong>
             </div>
           </div>
-          <!-- 15分単位の給与計算ルールと休憩の関係を補足 -->
+          <!-- 1分単位の給与計算ルールと休憩の関係を補足 -->
           <div style="margin-top:0.6rem;padding:0.65rem 0.85rem;
             background:#fffbeb;border:1px solid #fbbf24;border-radius:6px;font-size:0.8rem;color:#78350f;line-height:1.6">
-            給与計算は実働時間を <strong>15分単位（切り捨て）</strong> で行います。<br>
-            例：実働 4時間7分 → <strong>4時間（240分）</strong> として計算
+            給与計算は実働時間を <strong>1分単位</strong> で行います。<br>
+            例：実働 4時間7分 → <strong>4時間7分（247分）</strong> として計算
           </div>
         </div>
 
@@ -3024,6 +3027,169 @@ p:last-child { margin-bottom: 0; }
                 onclick="testNotificationIn1Min()">
                 ⏱ 1分後に通知テスト
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ====================================================
+             給与・補填・残業・早出ルール
+             ==================================================== -->
+        <div style="border:1px solid GrayText;border-radius:10px;padding:1.1rem 1.25rem;
+          margin-bottom:1rem;background:Canvas">
+          <p style="font-weight:700;font-size:0.92rem;margin-bottom:0.75rem">
+            💴 給与・補填・残業・早出のルール
+          </p>
+
+          <!-- 給与計算 -->
+          <div style="margin-bottom:1rem">
+            <p style="font-size:0.85rem;font-weight:700;color:#92400e;margin-bottom:0.5rem">
+              ① 給与計算
+            </p>
+            <div style="overflow-x:auto">
+              <table style="width:100%;font-size:0.82rem;border-collapse:collapse">
+                <thead>
+                  <tr style="background:#fffbeb;border-bottom:2px solid #fbbf24">
+                    <th style="text-align:left;padding:0.4rem 0.65rem;white-space:nowrap">項目</th>
+                    <th style="text-align:left;padding:0.4rem 0.65rem">ルール</th>
+                    <th style="text-align:left;padding:0.4rem 0.65rem">例</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom:1px solid #e5e7eb">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">計算単位</td>
+                    <td style="padding:0.45rem 0.65rem">1分単位</td>
+                    <td style="padding:0.45rem 0.65rem;color:GrayText">247分 → 247分のまま</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #e5e7eb;background:#fafafa">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">出勤打刻の切り上げ</td>
+                    <td style="padding:0.45rem 0.65rem">5分単位に切り上げ</td>
+                    <td style="padding:0.45rem 0.65rem;color:GrayText">10:06打刻 → 10:10から給与発生</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #e5e7eb">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">所定労働時間</td>
+                    <td style="padding:0.45rem 0.65rem">個人設定による（通常4時間）</td>
+                    <td style="padding:0.45rem 0.65rem;color:GrayText">10:00〜15:00（休憩1時間除く）</td>
+                  </tr>
+                  <tr style="background:#fafafa">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">遅刻・早退の控除</td>
+                    <td style="padding:0.45rem 0.65rem">不足分を時給換算で控除</td>
+                    <td style="padding:0.45rem 0.65rem;color:GrayText">30分遅刻 → 時給×0.5時間分を控除</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 残業 -->
+          <div style="margin-bottom:1rem;padding-top:0.85rem;border-top:1px solid #e5e7eb">
+            <p style="font-size:0.85rem;font-weight:700;color:#1d4ed8;margin-bottom:0.5rem">
+              ② 残業
+            </p>
+            <div style="overflow-x:auto">
+              <table style="width:100%;font-size:0.82rem;border-collapse:collapse">
+                <thead>
+                  <tr style="background:#eff6ff;border-bottom:2px solid #93c5fd">
+                    <th style="text-align:left;padding:0.4rem 0.65rem;white-space:nowrap">項目</th>
+                    <th style="text-align:left;padding:0.4rem 0.65rem">ルール</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom:1px solid #e5e7eb">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">実施条件</td>
+                    <td style="padding:0.45rem 0.65rem">
+                      <strong>管理者からの残業指示</strong> または<br>
+                      <strong>スタッフが申請 → 管理者が承認</strong> した場合のみ
+                    </td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #e5e7eb;background:#fafafa">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">割り増し</td>
+                    <td style="padding:0.45rem 0.65rem">
+                      なし（通常時給で計算）<br>
+                      <span style="font-size:0.78rem;color:GrayText">
+                        ※ 所定4時間のため法定残業（8時間超）には該当しない
+                      </span>
+                    </td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #e5e7eb">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">指示なし残業</td>
+                    <td style="padding:0.45rem 0.65rem;color:#c0392b">
+                      給与計算の対象外<br>
+                      <span style="font-size:0.78rem">自己判断での残業は認められません</span>
+                    </td>
+                  </tr>
+                  <tr style="background:#fafafa">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">残業申請の方法</td>
+                    <td style="padding:0.45rem 0.65rem">「申請」タブ → 種別「残業」→ 日付・見込み時間を入力</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 早出 -->
+          <div style="margin-bottom:1rem;padding-top:0.85rem;border-top:1px solid #e5e7eb">
+            <p style="font-size:0.85rem;font-weight:700;color:#065f46;margin-bottom:0.5rem">
+              ③ 早出
+            </p>
+            <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;
+              padding:0.65rem 0.85rem;font-size:0.82rem;line-height:1.7;color:#14532d">
+              早出（所定始業より早く出勤）した場合も、<strong>所定始業時刻から</strong>給与が発生します。<br>
+              始業前の時間は給与計算に含まれません。<br>
+              <span style="font-size:0.78rem;color:#166534">
+                例：所定始業 10:00 のスタッフが 9:30 に出勤 → 給与は 10:00 から発生
+              </span>
+            </div>
+          </div>
+
+          <!-- 補填 -->
+          <div style="padding-top:0.85rem;border-top:1px solid #e5e7eb">
+            <p style="font-size:0.85rem;font-weight:700;color:#7c3aed;margin-bottom:0.5rem">
+              ④ 補填（不足時間の振り替え）
+            </p>
+            <div style="overflow-x:auto;margin-bottom:0.65rem">
+              <table style="width:100%;font-size:0.82rem;border-collapse:collapse">
+                <thead>
+                  <tr style="background:#f5f3ff;border-bottom:2px solid #c4b5fd">
+                    <th style="text-align:left;padding:0.4rem 0.65rem;white-space:nowrap">項目</th>
+                    <th style="text-align:left;padding:0.4rem 0.65rem">ルール</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom:1px solid #e5e7eb">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">対象</td>
+                    <td style="padding:0.45rem 0.65rem">欠席・遅刻・早退による不足時間</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #e5e7eb;background:#fafafa">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">単位</td>
+                    <td style="padding:0.45rem 0.65rem"><strong>5分単位</strong>（5・10・15・…・480分）</td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #e5e7eb">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">月上限</td>
+                    <td style="padding:0.45rem 0.65rem">
+                      <strong>月8時間（480分）</strong> まで<br>
+                      <span style="font-size:0.78rem;color:GrayText">申請中・承認済みを合算してチェック</span>
+                    </td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #e5e7eb;background:#fafafa">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">有効期間</td>
+                    <td style="padding:0.45rem 0.65rem;color:#c0392b">
+                      <strong>当月内のみ</strong>（翌月への繰り越し不可）
+                    </td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #e5e7eb">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">補填日</td>
+                    <td style="padding:0.45rem 0.65rem">対象日と同月内の日を指定</td>
+                  </tr>
+                  <tr style="background:#fafafa">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">申請方法</td>
+                    <td style="padding:0.45rem 0.65rem">「申請」タブ → 休み/遅刻/早退申請時に「補填あり」を選択</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="padding:0.6rem 0.85rem;background:#ede9fe;border-radius:6px;
+              font-size:0.8rem;color:#5b21b6;line-height:1.6">
+              💡 補填の流れ：欠席・遅刻・早退で申請 → 補填日時を入力 → 管理者が承認 → 補填時間分だけ給与が回復します
             </div>
           </div>
         </div>
