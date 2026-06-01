@@ -3144,13 +3144,17 @@ p:last-child { margin-bottom: 0; }
                   <tr style="border-bottom:1px solid #e5e7eb">
                     <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">実施条件</td>
                     <td style="padding:0.45rem 0.65rem">
-                      「申請」タブから<strong>早出申請</strong>を提出するだけで可能<br>
-                      <span style="font-size:0.78rem;color:GrayText">
-                        補填・有休なしの場合と同様に<strong>承認不要</strong>で即時有効
-                      </span>
+                      「申請」タブから<strong>早出申請</strong>を提出するだけで可能
                     </td>
                   </tr>
                   <tr style="border-bottom:1px solid #e5e7eb;background:#fafafa">
+                    <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">承認フロー</td>
+                    <td style="padding:0.45rem 0.65rem">
+                      <strong>補填なし</strong>：承認不要・即時有効<br>
+                      <strong>補填あり</strong>：管理者の承認が必要
+                    </td>
+                  </tr>
+                  <tr style="border-bottom:1px solid #e5e7eb">
                     <td style="padding:0.45rem 0.65rem;font-weight:600;white-space:nowrap">給与の発生</td>
                     <td style="padding:0.45rem 0.65rem">
                       申請した早出時刻（5分単位に切り上げ）から給与が発生<br>
@@ -3449,11 +3453,12 @@ p:last-child { margin-bottom: 0; }
           const paidText        = document.getElementById('comp-paid-text');
           const halfdayNote     = document.getElementById('paid-leave-halfday-note');
           const isAbsence       = type === '休み';
-          // 早出・外出勤務は補填・有給が不要なので有給ラベル自体を非表示にする
+          // 外出勤務は補填・有給が不要なので非表示にする。
+          // 早出は補填あり申請（承認フローあり）が可能なので表示する。
           const compWrapEl      = document.getElementById('compensation-wrap');
-          if (compWrapEl) compWrapEl.style.display = (type === '早出' || type === '外出勤務') ? 'none' : '';
+          if (compWrapEl) compWrapEl.style.display = type === '外出勤務' ? 'none' : '';
 
-          if (paidLabel) paidLabel.style.display = (type === '早出' || type === '外出勤務') ? 'none' : '';
+          if (paidLabel) paidLabel.style.display = type === '外出勤務' ? 'none' : '';
 
           if (paidText) {
             paidText.textContent = isAbsence ? '有給消化する' : '半日有給を使う';
@@ -4841,8 +4846,9 @@ p:last-child { margin-bottom: 0; }
       // 確認ダイアログ
       const timeMsg   = (type !== '休み' && type !== '外出勤務') && time ? ` ${time}` : '';
       const compLabel = compValue === 'fillup' ? '（補填あり）' : compValue === 'paid' ? '（有給消化）' : '';
-      // 早出は承認不要である旨を確認メッセージに明記する
-      const approvalNote = type === '早出' ? '\n※ 承認不要・即時有効' : '';
+      // 早出かつ補填なしのときのみ「承認不要・即時有効」と表示する。
+      // 早出＋補填ありの場合は管理者承認が必要なため注記しない。
+      const approvalNote = (type === '早出' && compValue === 'none') ? '\n※ 承認不要・即時有効' : '';
       const ok = await confirm(`${type}の申請を送信しますか？\n対象日: ${date}${timeMsg}${compLabel}${approvalNote}`);
       if (!ok) return;
 
@@ -6404,11 +6410,12 @@ p:last-child { margin-bottom: 0; }
         if (timeWrap)     timeWrap.style.display     = 'none';
         if (compWrap)     compWrap.style.display     = 'none';
       } else if (type === '早出') {
-        // 早出: 時刻欄を表示（早出開始時刻）・補填/有給欄は不要なので非表示
-        // 承認フローも不要（補填・有給なし申請と同じ即時承認）
+        // 早出: 時刻欄を表示（早出開始時刻）
+        // 補填なし → 即時承認、補填あり → 管理者承認が必要
+        // 補填欄は表示したまま（ユーザーが選択できるようにする）
         if (overtimeWrap) overtimeWrap.style.display = 'none';
         if (timeWrap)     timeWrap.style.display     = '';
-        if (compWrap)     compWrap.style.display     = 'none';
+        if (compWrap)     compWrap.style.display     = '';
       } else {
         if (overtimeWrap) overtimeWrap.style.display = 'none';
         if (compWrap)     compWrap.style.display     = '';
