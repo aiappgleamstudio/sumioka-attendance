@@ -724,6 +724,69 @@
       align-items: center;
       margin-bottom: 0.3rem;
     }
+
+    /* ============================================================
+       制作進行タブ 固有スタイル（Phase 1）
+       ============================================================ */
+
+    /* サブタブナビ */
+    .proj-sub-nav {
+      display        : flex;
+      border-bottom  : 1px solid GrayText;
+      margin-bottom  : 1.25rem;
+      overflow-x     : auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .proj-sub-nav::-webkit-scrollbar { display: none; }
+
+    .proj-sub-tab {
+      flex-shrink  : 0;
+      padding      : 0.55rem 1.1rem;
+      font-size    : 0.84rem;
+      font-weight  : 500;
+      border       : none;
+      border-bottom: 2px solid transparent;
+      background   : none;
+      color        : GrayText;
+      cursor       : pointer;
+      white-space  : nowrap;
+      transition   : color 0.15s, border-color 0.15s;
+    }
+    .proj-sub-tab:hover  { color: CanvasText; }
+    .proj-sub-tab.active {
+      color             : CanvasText;
+      border-bottom-color: #1d4ed8;
+      font-weight       : 700;
+    }
+
+    /* サブパネルはデフォルト非表示 */
+    .proj-sub-panel        { display: none; }
+    .proj-sub-panel.active { display: block; }
+
+    /* 相談スレッド */
+    .pconsult-item {
+      padding      : 0.85rem 1rem;
+      border-bottom: 1px solid GrayText;
+      font-size    : 0.88rem;
+    }
+    .pconsult-item:last-child { border-bottom: none; }
+    .pconsult-item-meta {
+      display      : flex;
+      gap          : 0.5rem;
+      align-items  : baseline;
+      margin-bottom: 0.3rem;
+      font-size    : 0.78rem;
+    }
+    .pconsult-author  { font-weight: 700; }
+    .pconsult-date    { color: GrayText; }
+    .pconsult-content { white-space: pre-wrap; word-break: break-word; }
+    /* 返信は左インデント */
+    .pconsult-item.is-reply {
+      padding-left: 2.5rem;
+      background  : Canvas;
+    }
+
   </style>
 </head>
 <body>
@@ -799,6 +862,7 @@
       <button class="admin-tab"        data-tab="taskview"    role="tab">納期</button>
       <!-- 設定タブ：会社カレンダー登録・ダミーデータ・リセットを集約 -->
       <button class="admin-tab"        data-tab="settings"    role="tab">設定</button>
+      <button class="admin-tab"        data-tab="project"    role="tab">制作進行</button>
       <button class="admin-tab"        data-tab="howto"       role="tab">使い方</button>
     </nav>
 
@@ -1668,25 +1732,6 @@
               <textarea class="sumioka-textarea" id="admin-deadline-form-memo" rows="3"
                 placeholder="例：担当: 田中 / 入稿データはGoogleDriveの○○フォルダ / 色校正あり"></textarea>
             </div>
-            <!-- 案件共通ファイルパス: 共有フォルダのパスやURLを複数登録できる -->
-            <div class="sumioka-form-group">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.4rem">
-                <label class="sumioka-label" style="margin-bottom:0">
-                  納品データの保存場所
-                  <span style="font-size:0.72rem;color:GrayText;font-weight:400">
-                    （フォルダパス・URLなど）
-                  </span>
-                </label>
-                <button type="button" id="btn-admin-filepath-add"
-                  style="font-size:0.75rem;padding:0.2em 0.7em;background:none;
-                    border:1px solid Highlight;color:Highlight;border-radius:3px;cursor:pointer">
-                  ＋ 追加
-                </button>
-              </div>
-              <div id="admin-deadline-filepaths-wrap">
-                <!-- JS で動的生成 -->
-              </div>
-            </div>
             <div style="display:flex;gap:0.65rem;justify-content:flex-end">
               <button class="sumioka-btn" id="btn-admin-deadline-form-cancel">キャンセル</button>
               <button class="sumioka-btn sumioka-btn-primary"
@@ -1733,6 +1778,276 @@
         </div>
 
       </section>
+
+
+      <!-- ============================================================
+           制作進行タブ（Phase 1・閲覧専用）
+           ProjectServices.gs の以下アクションを使用:
+             get_project_masters / get_customers / get_projects /
+             get_project_tasks / get_consultations / project_dashboard
+           ============================================================ -->
+      <section class="tab-panel" id="panel-project">
+
+        <!-- サブタブナビ -->
+        <nav class="proj-sub-nav" id="proj-sub-nav" role="tablist">
+          <button class="proj-sub-tab active" data-stab="proj-dash"      role="tab">ダッシュボード</button>
+          <button class="proj-sub-tab"        data-stab="proj-customers" role="tab">顧客</button>
+          <button class="proj-sub-tab"        data-stab="proj-projects"  role="tab">案件</button>
+          <button class="proj-sub-tab"        data-stab="proj-tasks"     role="tab">タスク</button>
+          <button class="proj-sub-tab"        data-stab="proj-consult"   role="tab">相談</button>
+        </nav>
+
+        <!-- ローディング（サブタブ共通） -->
+        <div class="tab-loading" id="loading-project" style="display:none">読み込み中...</div>
+
+        <!-- ========================================================
+             サブパネル: 制作進行ダッシュボード
+             ======================================================== -->
+        <div class="proj-sub-panel active" id="proj-dash">
+
+          <p class="section-title">制作進行サマリー</p>
+          <div class="summary-grid">
+            <div class="summary-card">
+              <div class="summary-card-label">出勤中</div>
+              <div class="summary-card-value value-green">
+                <span id="pdash-attendance">―</span><span class="summary-card-unit">名</span>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-card-label">作業中</div>
+              <div class="summary-card-value">
+                <span id="pdash-inprogress">―</span><span class="summary-card-unit">件</span>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-card-label">確認待ち</div>
+              <div class="summary-card-value value-orange">
+                <span id="pdash-review">―</span><span class="summary-card-unit">件</span>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-card-label">未着手</div>
+              <div class="summary-card-value value-gray">
+                <span id="pdash-notstarted">―</span><span class="summary-card-unit">件</span>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-card-label">期限超過</div>
+              <div class="summary-card-value value-red">
+                <span id="pdash-overdue">―</span><span class="summary-card-unit">件</span>
+              </div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-card-label">修正依頼</div>
+              <div class="summary-card-value value-red">
+                <span id="pdash-revision">―</span><span class="summary-card-unit">件</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- スタッフ稼働状況 -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+            <p class="section-title" style="margin:0">スタッフ稼働状況</p>
+            <div style="display:flex;align-items:center;gap:0.6rem">
+              <span id="pdash-loaded-at"
+                style="font-size:0.78rem;color:GrayText"></span>
+              <button class="sumioka-btn" id="btn-proj-reload"
+                style="font-size:0.8rem;padding:0.3em 0.8em">🔄 更新</button>
+            </div>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>氏名</th>
+                  <th>出勤</th>
+                  <th>担当タスク</th>
+                  <th>フェーズ</th>
+                  <th>状態</th>
+                  <th>期限</th>
+                  <th>予定h</th>
+                  <th>空きh</th>
+                </tr>
+              </thead>
+              <tbody id="pdash-staff-body">
+                <tr><td colspan="8" class="empty-state">読み込み中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 要注意案件 -->
+          <p class="section-title">要注意案件</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+            <div>
+              <p style="font-size:0.8rem;font-weight:600;color:#c0392b;margin-bottom:0.4rem">⚠️ 納期超過</p>
+              <div class="admin-table-wrap">
+                <table class="admin-table">
+                  <thead><tr><th>案件名</th><th>納期</th><th>超過日数</th></tr></thead>
+                  <tbody id="pdash-overdue-body">
+                    <tr><td colspan="3" class="empty-state">なし</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <p style="font-size:0.8rem;font-weight:600;color:#b45309;margin-bottom:0.4rem">🕐 確認待ちあり</p>
+              <div class="admin-table-wrap">
+                <table class="admin-table">
+                  <thead><tr><th>案件名</th><th>確認待ちタスク</th></tr></thead>
+                  <tbody id="pdash-review-body">
+                    <tr><td colspan="2" class="empty-state">なし</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /#proj-dash -->
+
+
+        <!-- ========================================================
+             サブパネル: 顧客一覧
+             ======================================================== -->
+        <div class="proj-sub-panel" id="proj-customers">
+          <p class="section-title">顧客一覧</p>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>コード</th>
+                  <th>顧客名</th>
+                  <th>担当者</th>
+                  <th>電話番号</th>
+                  <th>メール</th>
+                  <th>備考</th>
+                </tr>
+              </thead>
+              <tbody id="proj-customers-body">
+                <tr><td colspan="6" class="empty-state">読み込み中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div><!-- /#proj-customers -->
+
+
+        <!-- ========================================================
+             サブパネル: 案件一覧
+             ======================================================== -->
+        <div class="proj-sub-panel" id="proj-projects">
+          <div class="filter-row" style="margin-bottom:0.85rem">
+            <div class="filter-group">
+              <span class="filter-label">区分</span>
+              <select class="sumioka-input" id="pproj-filter-division" style="width:100px">
+                <option value="">すべて</option>
+                <option value="社外">社外</option>
+                <option value="社内">社内</option>
+                <option value="練習">練習</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <span class="filter-label">キーワード</span>
+              <input class="sumioka-input" type="text" id="pproj-filter-kw"
+                placeholder="案件名" style="width:180px">
+            </div>
+            <button class="sumioka-btn" id="btn-pproj-filter"
+              style="align-self:flex-end">絞り込み</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>コード</th>
+                  <th>案件名</th>
+                  <th>区分</th>
+                  <th>カテゴリー</th>
+                  <th>顧客</th>
+                  <th>ステータス</th>
+                  <th>納期</th>
+                </tr>
+              </thead>
+              <tbody id="proj-projects-body">
+                <tr><td colspan="7" class="empty-state">読み込み中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div><!-- /#proj-projects -->
+
+
+        <!-- ========================================================
+             サブパネル: タスク一覧
+             ======================================================== -->
+        <div class="proj-sub-panel" id="proj-tasks">
+          <div class="filter-row" style="margin-bottom:0.85rem">
+            <div class="filter-group">
+              <span class="filter-label">状態</span>
+              <select class="sumioka-input" id="ptask-filter-status" style="width:120px">
+                <option value="">すべて（完了除く）</option>
+                <option value="未着手">未着手</option>
+                <option value="作業中">作業中</option>
+                <option value="確認待ち">確認待ち</option>
+                <option value="修正依頼">修正依頼</option>
+                <option value="保留">保留</option>
+                <option value="DONE">完了を含む</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <span class="filter-label">担当者</span>
+              <select class="sumioka-input" id="ptask-filter-assignee" style="width:120px">
+                <option value="">全員</option>
+              </select>
+            </div>
+            <button class="sumioka-btn" id="btn-ptask-filter"
+              style="align-self:flex-end">絞り込み</button>
+          </div>
+          <div class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>コード</th>
+                  <th>タスク名</th>
+                  <th>案件</th>
+                  <th>担当者</th>
+                  <th>状態</th>
+                  <th>フェーズ</th>
+                  <th>優先</th>
+                  <th>期限</th>
+                  <th>予定h</th>
+                  <th>実績h</th>
+                </tr>
+              </thead>
+              <tbody id="proj-tasks-body">
+                <tr><td colspan="10" class="empty-state">読み込み中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div><!-- /#proj-tasks -->
+
+
+        <!-- ========================================================
+             サブパネル: 相談一覧
+             ======================================================== -->
+        <div class="proj-sub-panel" id="proj-consult">
+          <div class="filter-row" style="margin-bottom:0.85rem">
+            <div class="filter-group">
+              <span class="filter-label">タスクで絞り込み</span>
+              <select class="sumioka-input" id="pconsult-filter-task" style="width:260px">
+                <option value="">タスクを選択...</option>
+              </select>
+            </div>
+            <button class="sumioka-btn" id="btn-pconsult-load"
+              style="align-self:flex-end">表示</button>
+          </div>
+          <div id="pconsult-thread-wrap" style="display:none">
+            <div id="pconsult-thread-list"
+              style="border:1px solid GrayText;border-radius:8px;overflow:hidden">
+            </div>
+          </div>
+          <div id="pconsult-empty" style="color:GrayText;font-size:0.88rem;padding:0.5rem 0">
+            タスクを選択して「表示」を押してください
+          </div>
+        </div><!-- /#proj-consult -->
+
+      </section><!-- /#panel-project -->
 
     </main><!-- /.admin-content -->
 
@@ -2429,6 +2744,34 @@
       allTasks            : [],
       allDeadlines        : [],
       fillupChartInstance : null,
+
+      /**
+       * 制作進行タブの状態。adminState 配下に集約することで
+       * グローバル汚染を防ぎ、デバッグ時に console で一元確認できる。
+       */
+      project: {
+        loaded        : false,  // 初回ロード済みフラグ（true なら再取得しない）
+        loadedAt      : null,   // Date.now() で記録。表示: "最終更新 13:48"
+
+        // データキャッシュ
+        customers     : [],     // 顧客マスタ
+        projects      : [],     // 案件一覧
+        tasks         : [],     // タスク一覧（フィルタ前全件）
+        threads       : [],     // 相談スレッド（selectedTaskId に対応する最新取得結果）
+
+        masters       : null,   // get_project_masters レスポンス（ステータスフロー等）
+
+        // 相談サブタブで現在開いているタスクID
+        // フィルタ値ではなく「選択中の対象」なので filters とは分離する
+        selectedTaskId: '',
+
+        // フィルタの最終選択値（フィルタ状態の復元用・将来の拡張に備える）
+        // 将来: status / assignee / phase / keyword も追加可能
+        filters: {
+          project     : '',     // 案件フィルタ: 区分 or キーワード
+          task        : '',     // タスクフィルタ: ステータス
+        },
+      },
     };
 
     /**
@@ -2625,8 +2968,6 @@
       // フェーズ追加ボタン
       document.getElementById('btn-admin-phase-add').addEventListener('click',
         () => adminAddPhaseRow('', false));
-      document.getElementById('btn-admin-filepath-add').addEventListener('click',
-        () => adminAddFilePathRow(''));
       document.getElementById('btn-admin-deadline-form-save').addEventListener('click',
         saveAdminDeadline);
       document.getElementById('taskview-sort').addEventListener('change', renderAdminDeadlineView);
@@ -2726,6 +3067,10 @@
       document.getElementById('mer-type').addEventListener('change', () => {
         updateMerTimeWrap();
       });
+
+      // ── 制作進行タブ ──────────────────────────────────────────
+      // 制作進行タブ専用のイベントをまとめて登録する
+      bindProjectEvents();
     }
 
     // ============================================================
@@ -3061,6 +3406,11 @@
         case 'taskview': loadTaskView();          break;
         case 'monthly':  /* 明示的に検索ボタンを押す運用 */ break;
         case 'settings': /* 設定タブは静的コンテンツ。カレンダー登録のみ操作ベース */ break;
+        case 'project':
+          // 制作進行タブ: 初回表示時のみデータを取得する。
+          // 2回目以降はキャッシュをそのまま使い API を呼ばない。
+          loadProjectTabIfNeeded();
+          break;
       }
     }
 
@@ -4053,7 +4403,7 @@
      * @param {string}      [presetEmpId]  - 未打刻行の「代理入力」時：事前セットする employee_id
      * @param {string}      [presetDate]   - 未打刻行の「代理入力」時：事前セットする日付
      */
-    function openEditModal(record, presetEmpId, presetDate, presetTimeIn) {
+    function openEditModal(record, presetEmpId, presetDate) {
       const isNew = !record;
 
       document.getElementById('modal-edit-mode').value = isNew ? 'add' : 'edit';
@@ -4088,9 +4438,7 @@
           presetDate ? presetDate.replace(/\//g, '-') : todayString();
 
         document.getElementById('modal-edit-status').value  = '出勤';
-        // presetTimeIn: 打刻漏れ一覧の clocked_in_at（出勤時刻）をフォールバック時に引き継ぐ。
-        // missing_time_out でレコード取得に失敗した場合でも出勤時刻が入力済みになる。
-        document.getElementById('modal-edit-timein').value  = presetTimeIn || '';
+        document.getElementById('modal-edit-timein').value  = '';
         document.getElementById('modal-edit-timeout').value = '';
         document.getElementById('modal-edit-break').value   = '';
         document.getElementById('modal-edit-lunch').value   = 'false';
@@ -4103,15 +4451,9 @@
         document.getElementById('modal-edit-employee-id').value = record.employee_id || '';
         const dateVal = (record.date || '').replace(/\//g, '-');
         document.getElementById('modal-edit-date').value        = dateVal;
-        document.getElementById('modal-edit-status').value      = record.status || '出勤';
-        // fmtTime で正規化する理由:
-        //   GAS から返る time_in/time_out は通常 'HH:MM' 文字列だが、
-        //   シートの書式設定によって ISO 8601 文字列や Date 型に化けることがある。
-        //   input[type=time] は 'HH:MM' 以外を受け付けないため、
-        //   必ず fmtTime を通して正規化してからセットする。
-        //   フォールバックは '' にして input を空にする（'―' を渡すと表示が崩れる）。
-        document.getElementById('modal-edit-timein').value  = fmtTime(record.time_in,  '');
-        document.getElementById('modal-edit-timeout').value = fmtTime(record.time_out, '');
+        document.getElementById('modal-edit-status').value      = record.status      || '出勤';
+        document.getElementById('modal-edit-timein').value      = record.time_in     || '';
+        document.getElementById('modal-edit-timeout').value     = record.time_out    || '';
         document.getElementById('modal-edit-break').value       = record.break_minutes != null ? record.break_minutes : '';
         document.getElementById('modal-edit-lunch').value       = String(record.lunch ?? false);
         document.getElementById('modal-edit-memo').value        = record.memo        || '';
@@ -4207,15 +4549,7 @@
 
       showToast(`打刻を${label}しました。`, 'success');
       closeEditModal();
-      loadAttendance(); // 勤怠一覧を再取得して反映する
-
-      // 打刻漏れ月次パネルが表示中であれば自動で再取得する。
-      // 修正後に「F5 → 月選択 → 確認ボタン」という手順を踏まなくても
-      // 結果がその場で更新され、漏れが解消されたことをすぐ確認できる。
-      const missingPanel = document.getElementById('missing-clock-monthly-panel');
-      if (missingPanel && missingPanel.style.display !== 'none') {
-        loadMonthlyMissingClocks();
-      }
+      loadAttendance(); // 一覧を再取得して反映する
     }
 
     // ============================================================
@@ -5741,30 +6075,6 @@
      * @param {boolean} showOnCal   - カレンダー表示の初期値
      * @param {Object}  [phase]     - 既存フェーズデータ（日付・補足を設定するため）
      */
-    /**
-     * 納品データのファイルパス入力行を1行追加する。
-     * フォルダパス・URL・共有ドライブのリンクなどを自由書式で保存する。
-     *
-     * @param {string} value - 初期値（既存データの読み込み時に使う）
-     */
-    function adminAddFilePathRow(value = '') {
-      const wrap = document.getElementById('admin-deadline-filepaths-wrap');
-      const div  = document.createElement('div');
-      div.style.cssText = 'display:flex;gap:0.4rem;margin-bottom:0.35rem;align-items:center';
-      div.innerHTML = `
-        <input class="sumioka-input admin-filepath-input" type="text"
-          placeholder="例: \\server\folder\project  または  https://drive.google.com/..."
-          value="${escHtml(value)}"
-          style="flex:1;font-size:0.82rem;padding:0.3em 0.5em;font-family:monospace">
-        <button type="button"
-          style="font-size:0.72rem;background:none;border:1px solid #c0392b;
-            color:#c0392b;border-radius:3px;padding:0.15em 0.45em;cursor:pointer;
-            white-space:nowrap;flex-shrink:0"
-          onclick="this.parentElement.remove()">削除</button>
-      `;
-      wrap.appendChild(div);
-    }
-
     function adminAddPhaseRow(name = '', showOnCal = undefined, phase = null) {
       const wrap = document.getElementById('admin-deadline-phases-wrap');
       const div  = document.createElement('div');
@@ -5866,16 +6176,6 @@
         phases.forEach(p => adminAddPhaseRow(p.name || '', p.show_on_calendar, p));
       }
 
-      // ファイルパス欄を初期化する
-      const fpWrap = document.getElementById('admin-deadline-filepaths-wrap');
-      fpWrap.innerHTML = '';
-      const initFilePaths = Array.isArray(deadline?.file_paths) ? deadline.file_paths : [];
-      if (initFilePaths.length > 0) {
-        initFilePaths.forEach(fp => adminAddFilePathRow(fp));
-      } else {
-        adminAddFilePathRow(''); // 空欄を1行用意する
-      }
-
       const formWrap = document.getElementById('admin-deadline-form-wrap');
       formWrap.style.display = '';
       formWrap.scrollIntoView({ behavior: 'smooth' });
@@ -5905,16 +6205,6 @@
       // 担当者: コピー元と同じスタッフを選択状態にする
       const staffSel = document.getElementById('admin-deadline-form-staff');
       Array.from(staffSel.options).forEach(o => { o.selected = o.value === deadline.employee_id; });
-
-      // ファイルパスをコピー元から引き継ぐ
-      const fpWrapCopy = document.getElementById('admin-deadline-filepaths-wrap');
-      fpWrapCopy.innerHTML = '';
-      const copyFilePaths = Array.isArray(deadline.file_paths) ? deadline.file_paths : [];
-      if (copyFilePaths.length > 0) {
-        copyFilePaths.forEach(fp => adminAddFilePathRow(fp));
-      } else {
-        adminAddFilePathRow('');
-      }
 
       // フェーズ: done/done_date をリセットしてコピーする
       const wrap = document.getElementById('admin-deadline-phases-wrap');
@@ -5975,21 +6265,15 @@
         };
       }).filter(p => p.name);
 
-      // ファイルパス欄からデータを収集する（空行は除外）
-      const fpWrap2    = document.getElementById('admin-deadline-filepaths-wrap');
-      const file_paths = Array.from(fpWrap2.querySelectorAll('.admin-filepath-input'))
-        .map(el => el.value.trim())
-        .filter(v => v.length > 0);
-
       showLoading('保存中...');
       const result = await callGAS('upsert_deadline', {
         deadline_id  : id || undefined,
         employee_id  : staffId,
-        name         : staffName,
-        title        : name,
+        name         : staffName,  // 担当者名（GAS 側で NAME 列に保存）
+        title        : name,       // 案件名（GAS 側で TITLE 列に保存）
         memo         : document.getElementById('admin-deadline-form-memo').value.trim(),
         phases,
-        file_paths,
+        // 旧フィールドとの後方互換（GAS の upsertDeadline が受け取れるよう残す）
         type         : '単発',
         recur_mode   : 'manual',
       });
@@ -6063,9 +6347,6 @@
      * 管理者用納期一覧テーブルを描画する（新9列シート構造対応）。
      * @param {Object[]} deadlines
      */
-    // 完了案件の折りたたみ状態（true=折りたたみ中）
-    let _deadlineCompletedCollapsed = true;
-
     function renderAdminDeadlineTable(deadlines) {
       const tbody = document.getElementById('taskview-deadline-body');
       const today = todayString();
@@ -6081,7 +6362,8 @@
       arr.sort((a, b) => {
         if (sortKey === 'name')     return (a.assignee || '').localeCompare(b.assignee || '', 'ja');
         if (sortKey === 'title')    return (a.name     || '').localeCompare(b.name     || '', 'ja');
-        if (sortKey === 'progress') return (b.progress || 0) - (a.progress || 0);
+        if (sortKey === 'progress') return (b.progress || 0) - (a.progress || 0); // 進捗降順
+        // デフォルト: 納品日順
         const na = a.deadline || '', nb = b.deadline || '';
         if (!na && !nb) return 0; if (!na) return 1; if (!nb) return -1;
         return na.localeCompare(nb);
@@ -6092,54 +6374,29 @@
         '修正中': '#c0392b', '納品済': '#1a7f37',
       };
 
-      // 進行中と完了済みに分ける
-      const active    = arr.filter(d => {
-        const phases = Array.isArray(d.phases) ? d.phases : [];
-        return phases.length === 0 || !phases.every(p => p.done);
-      });
-      const completed = arr.filter(d => {
-        const phases = Array.isArray(d.phases) ? d.phases : [];
-        return phases.length > 0 && phases.every(p => p.done);
-      });
-
-      /**
-       * ファイルパスをクリッカブルなリンクとして描画する。
-       * http/https で始まるものは <a> タグ、それ以外はフォルダパスとして表示する。
-       */
-      const renderFilePaths = (filePaths) => {
-        if (!filePaths || filePaths.length === 0) return '';
-        return `<div style="margin-top:0.3rem">` +
-          filePaths.map(fp => {
-            const isUrl = /^https?:\/\//i.test(fp);
-            if (isUrl) {
-              return `<a href="${escHtml(fp)}" target="_blank" rel="noopener"
-                style="font-size:0.72rem;color:#1d4ed8;display:block;
-                  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px"
-                title="${escHtml(fp)}">🔗 ${escHtml(fp)}</a>`;
-            }
-            return `<span style="font-size:0.72rem;color:#6b7280;display:block;
-              overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;
-              font-family:monospace" title="${escHtml(fp)}">📁 ${escHtml(fp)}</span>`;
-          }).join('') + '</div>';
-      };
-
-      const renderRow = d => {
+      tbody.innerHTML = arr.map(d => {
+        // 納品フェーズ: phases の中で名前に「納品」を含む最初のフェーズ。なければ先頭フェーズ。
         const phases = Array.isArray(d.phases) ? d.phases : [];
         const deliveryPhase = phases.find(p => (p.name || '').includes('納品')) || phases[0] || {};
         const nd        = deliveryPhase.planned_date || d.deadline || '';
         const statusVal = deliveryPhase.status || d.status || '';
-        const allDone   = phases.length > 0 && phases.every(p => p.done);
+
+        // 残日数計算: 納品日が設定されている場合のみ計算する
         const daysLeft  = nd ? Math.round((new Date(nd) - new Date(today)) / 86400000) : null;
 
+        // 行のハイライト: 期限超過=薄赤、当日・3日以内=薄黄、納品済=薄緑
+        const allDone = phases.length > 0 && phases.every(p => p.done);
         const rowStyle = allDone
-          ? 'background:#f0fdf4;opacity:0.8'
+          ? 'background:#f0fdf4;opacity:0.75'
           : (daysLeft !== null && daysLeft < 0)
             ? 'background:#fff5f5'
             : (daysLeft !== null && daysLeft <= 3)
               ? 'background:#fffbeb'
               : '';
 
+        // 進捗ステータスの色
         const statusColor = statusColorMap[statusVal] || '#374151';
+
         const daysLabel = daysLeft !== null
           ? (daysLeft < 0  ? `<span style="color:#c0392b;font-size:0.72rem;font-weight:700">超過${Math.abs(daysLeft)}日</span>`
            : daysLeft === 0 ? `<span style="color:#c0392b;font-size:0.72rem;font-weight:700">本日</span>`
@@ -6147,29 +6404,15 @@
            : `<span style="color:GrayText;font-size:0.72rem">残${daysLeft}日</span>`)
           : '';
 
-        // ファイルパス: 案件全体＋納品フェーズのファイルパスを表示
-        const allFilePaths = [
-          ...(Array.isArray(d.file_paths) ? d.file_paths : []),
-          ...(Array.isArray(deliveryPhase.file_paths) ? deliveryPhase.file_paths : []),
-        ];
-        const filePathsHtml = renderFilePaths(allFilePaths);
-
         return `
           <tr style="${rowStyle}">
             <td style="font-size:0.85rem">${escHtml(d.assignee || '―')}</td>
-            <td style="font-weight:600">
-              ${escHtml(d.title || d.name || '―')}
-              ${allDone ? '<span style="font-size:0.72rem;background:#d1fae5;color:#065f46;padding:0.1em 0.4em;border-radius:3px;margin-left:0.3rem">完了</span>' : ''}
-            </td>
+            <td style="font-weight:600">${escHtml(d.title || d.name || '―')}</td>
             <td style="white-space:nowrap;font-size:0.85rem">${escHtml(nd || '―')} ${daysLabel}</td>
             <td style="color:${statusColor};font-weight:600;font-size:0.85rem">${escHtml(statusVal || '―')}</td>
-            <td style="font-size:0.78rem;color:GrayText">
-              <div style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-                title="${escHtml(d.memo || '')}">
-                ${escHtml(d.memo || '―')}
-              </div>
-              ${filePathsHtml}
-            </td>
+            <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+              font-size:0.78rem;color:GrayText" title="${escHtml(d.memo || '')}">
+              ${escHtml(d.memo || '―')}</td>
             <td>
               <div style="display:flex;gap:0.3rem;flex-wrap:wrap">
                 <button class="sumioka-btn" style="font-size:0.72rem;padding:0.2em 0.5em"
@@ -6181,58 +6424,7 @@
               </div>
             </td>
           </tr>`;
-      };
-
-      // 進行中案件を描画
-      let html = active.map(renderRow).join('');
-
-      // 完了案件セクションを描画（折りたたみ対応）
-      if (completed.length > 0) {
-        const label    = _deadlineCompletedCollapsed
-          ? `▶ 完了済み案件（${completed.length}件）— クリックで展開`
-          : `▼ 完了済み案件（${completed.length}件）— クリックで折りたたむ`;
-        const display  = _deadlineCompletedCollapsed ? 'none' : '';
-
-        html += `
-          <tr id="deadline-completed-toggle-row"
-            onclick="toggleDeadlineCompleted()"
-            style="cursor:pointer;background:#f9fafb;border-top:2px solid #e5e7eb">
-            <td colspan="6"
-              style="font-size:0.82rem;font-weight:600;color:GrayText;
-                padding:0.5rem 0.85rem;user-select:none">
-              ${label}
-            </td>
-          </tr>`;
-
-        // 完了案件の行（折りたたみ状態に応じて表示制御）
-        html += completed.map(d => {
-          const row = renderRow(d);
-          // display:none を tr に当てる
-          return row.replace('<tr style="', `<tr class="deadline-completed-row" style="display:${display};`);
-        }).join('');
-      }
-
-      tbody.innerHTML = html;
-    }
-
-    /**
-     * 完了済み案件の折りたたみをトグルする。
-     * テーブル再描画ではなく DOM 操作で表示を切り替える（高速）。
-     */
-    function toggleDeadlineCompleted() {
-      _deadlineCompletedCollapsed = !_deadlineCompletedCollapsed;
-      const rows   = document.querySelectorAll('.deadline-completed-row');
-      const toggle = document.getElementById('deadline-completed-toggle-row');
-      const count  = rows.length;
-
-      rows.forEach(r => { r.style.display = _deadlineCompletedCollapsed ? 'none' : ''; });
-
-      if (toggle) {
-        const label = _deadlineCompletedCollapsed
-          ? `▶ 完了済み案件（${count}件）— クリックで展開`
-          : `▼ 完了済み案件（${count}件）— クリックで折りたたむ`;
-        toggle.querySelector('td').textContent = label;
-      }
+      }).join('');
     }
 
     /**
@@ -6396,24 +6588,6 @@
      * ①勤務曜日 ②会社休日でない ③欠勤登録なし ④打刻漏れ
      * の4条件をすべて満たすスタッフ×日付の組み合わせを一覧表示する。
      */
-    // ============================================================
-    // 打刻漏れ月次確認 ── ソート状態管理
-    // ============================================================
-
-    /**
-     * _missingWarnings: GAS から取得した打刻漏れ一覧をクライアントで保持する。
-     * ソート時に再取得せず、この配列を並べ替えて tbody だけ再描画する。
-     *
-     * _missingSortKey: 現在ソート中の列キー。
-     *   'date' | 'name' | 'pattern'
-     *   null のときは GAS が返した順（日付昇順）をそのまま表示する。
-     *
-     * _missingSortAsc: true = 昇順、false = 降順。
-     */
-    let _missingWarnings = [];
-    let _missingSortKey  = null;
-    let _missingSortAsc  = true;
-
     async function loadMonthlyMissingClocks() {
       const monthInput = document.getElementById('missing-clock-month-input');
       const panel      = document.getElementById('missing-clock-monthly-panel');
@@ -6441,13 +6615,8 @@
         return;
       }
 
-      // 取得データをモジュール変数に保持し、ソート操作時に再利用する
-      _missingWarnings = result.data.missing || [];
-      // 新しいデータを取得したらソート状態をリセットする（日付昇順 = GAS のデフォルト）
-      _missingSortKey = null;
-      _missingSortAsc = true;
-
-      const total = result.data.total_missing || 0;
+      const warnings = result.data.missing || [];
+      const total    = result.data.total_missing || 0;
 
       if (total === 0) {
         panel.innerHTML = `<div style="color:#065f46;font-size:0.88rem;padding:0.65rem;
@@ -6456,9 +6625,10 @@
         return;
       }
 
-      // ヘッダー込みのテーブル骨格を1回だけ描画する。
-      // tbody の中身はソートのたびに renderMissingWarningsBody() で差し替える。
-      // th に data-sort-key を持たせ、クリックで sortMissingWarnings() を呼ぶ。
+      const patternBadge = p => p === 'missing_time_out'
+        ? '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#fef3c7;color:#92400e">退勤なし</span>'
+        : '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#ffedd5;color:#9a3412">出退勤なし</span>';
+
       panel.innerHTML = `
         <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;
           padding:0.75rem 1rem">
@@ -6469,239 +6639,31 @@
             </span>
           </div>
           <div class="admin-table-wrap">
-            <table class="admin-table" id="missing-clock-table" style="font-size:0.82rem">
+            <table class="admin-table" style="font-size:0.82rem">
               <thead>
                 <tr>
-                  <th id="missing-th-date"
-                      data-sort-key="date"
-                      style="cursor:pointer;user-select:none"
-                      title="クリックでソート">
-                    日付 <span id="missing-sort-ind-date"></span>
-                  </th>
+                  <th>日付</th>
                   <th>曜日</th>
-                  <th id="missing-th-name"
-                      data-sort-key="name"
-                      style="cursor:pointer;user-select:none"
-                      title="クリックでソート">
-                    氏名 <span id="missing-sort-ind-name"></span>
-                  </th>
-                  <th id="missing-th-pattern"
-                      data-sort-key="pattern"
-                      style="cursor:pointer;user-select:none"
-                      title="クリックでソート">
-                    パターン <span id="missing-sort-ind-pattern"></span>
-                  </th>
+                  <th>氏名</th>
+                  <th>パターン</th>
                   <th>出勤時刻</th>
-                  <th>操作</th>
                 </tr>
               </thead>
-              <tbody id="missing-clock-tbody"></tbody>
+              <tbody>
+                ${warnings.map(w => `
+                  <tr>
+                    <td style="white-space:nowrap">${escHtml(w.date)}</td>
+                    <td style="text-align:center">${escHtml(w.day_of_week)}</td>
+                    <td>${escHtml(w.name)}</td>
+                    <td>${patternBadge(w.pattern)}</td>
+                    <td style="color:GrayText">${escHtml(w.clocked_in_at || '―')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
             </table>
           </div>
         </div>
       `;
-
-      // onclick 属性ではなく addEventListener で登録する。
-      // innerHTML で動的生成した要素の onclick は環境によって無視されることがあるため、
-      // DOM に追加された直後に JS でイベントを登録する方が確実。
-      ['date', 'name', 'pattern'].forEach(key => {
-        const th = document.getElementById('missing-th-' + key);
-        if (th) th.addEventListener('click', () => sortMissingWarnings(key));
-      });
-
-      // 初回は取得順（日付昇順）のままで tbody を描画する
-      renderMissingWarningsBody();
-    }
-
-    /**
-     * 打刻漏れテーブルの列ヘッダークリック時に呼ぶソート切り替え関数。
-     *
-     * 同じ列を続けてクリックすると昇順 ↔ 降順がトグルする。
-     * 別の列をクリックすると昇順にリセットする。
-     *
-     * @param {'date'|'name'|'pattern'} key - ソート対象の列キー
-     */
-    function sortMissingWarnings(key) {
-      if (_missingSortKey === key) {
-        // 同じ列 → 昇降順トグル
-        _missingSortAsc = !_missingSortAsc;
-      } else {
-        // 別の列 → 昇順にリセット
-        _missingSortKey = key;
-        _missingSortAsc = true;
-      }
-      renderMissingWarningsBody();
-    }
-
-    /**
-     * _missingWarnings を現在のソート状態で並べ替え、tbody だけ再描画する。
-     *
-     * テーブル骨格（thead）は loadMonthlyMissingClocks が1回だけ生成するため、
-     * ここでは tbody の innerHTML を差し替えるだけで済む。
-     * GAS への再リクエストは発生しない。
-     */
-    function renderMissingWarningsBody() {
-      const tbody = document.getElementById('missing-clock-tbody');
-      if (!tbody) return;
-
-      // ── ソート ──
-      // _missingSortKey が null のときは元の配列順（日付昇順）をそのまま使う
-      const sorted = [..._missingWarnings];
-      if (_missingSortKey) {
-        sorted.sort((a, b) => {
-          let va, vb;
-          if (_missingSortKey === 'date') {
-            // 日付は文字列辞書順で正しく比較できる（YYYY-MM-DD 形式）
-            va = a.date || '';
-            vb = b.date || '';
-          } else if (_missingSortKey === 'name') {
-            va = a.name || '';
-            vb = b.name || '';
-          } else if (_missingSortKey === 'pattern') {
-            // パターンは 'missing_time_out' / 'missing_both' の2値なので
-            // 文字列比較で十分（同じパターンは日付昇順でサブソート）
-            va = a.pattern || '';
-            vb = b.pattern || '';
-          }
-          const cmp = va.localeCompare(vb, 'ja');
-          return _missingSortAsc ? cmp : -cmp;
-        });
-      }
-
-      // ── ソートインジケーター更新 ──
-      // アクティブな列に ▲/▼ を表示し、他列はクリア
-      ['date', 'name', 'pattern'].forEach(k => {
-        const el = document.getElementById('missing-sort-ind-' + k);
-        if (!el) return;
-        if (k === _missingSortKey) {
-          el.textContent = _missingSortAsc ? ' ▲' : ' ▼';
-          el.style.color = '#92400e';
-        } else {
-          el.textContent = '';
-        }
-      });
-
-      // パターンに応じた視覚バッジを生成するヘルパー
-      const patternBadge = p => p === 'missing_time_out'
-        ? '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#fef3c7;color:#92400e">退勤なし</span>'
-        : '<span style="font-size:0.72rem;padding:0.1em 0.45em;border-radius:3px;background:#ffedd5;color:#9a3412">出退勤なし</span>';
-
-      // ── tbody 再描画 ──
-      tbody.innerHTML = sorted.map(w => `
-        <tr>
-          <td style="white-space:nowrap">${escHtml(w.date)}</td>
-          <td style="text-align:center">${escHtml(w.day_of_week)}</td>
-          <td>${escHtml(w.name)}</td>
-          <td>${patternBadge(w.pattern)}</td>
-          <td style="color:GrayText">${escHtml(w.clocked_in_at || '―')}</td>
-          <td>
-            <!--
-              修正ボタン: onclick で openMissingClockFixModal を呼ぶ。
-              各行の employee_id・name・date・pattern・clocked_in_at を
-              引数として渡すことで、モーダル側で新規 or 編集モードを判断する。
-              escJson ではなく個別 escHtml で渡すのは、
-              onclick 属性内の JSON パースを省いてシンプルにするため。
-            -->
-            <button
-              class="sumioka-btn"
-              style="font-size:0.72rem;padding:0.2em 0.6em;white-space:nowrap"
-              onclick="openMissingClockFixModal(
-                '${escHtml(w.employee_id)}',
-                '${escHtml(w.name)}',
-                '${escHtml(w.date)}',
-                '${escHtml(w.pattern)}',
-                '${escHtml(w.clocked_in_at || '')}'
-              )">
-              修正
-            </button>
-          </td>
-        </tr>
-      `).join('');
-    }
-
-    // ============================================================
-    // 打刻漏れ一覧からの修正モーダル起動
-    // ============================================================
-
-    /**
-     * 打刻漏れ一覧の「修正」ボタンから呼び出す専用ラッパー。
-     *
-     * パターンによって openEditModal の呼び方を変える:
-     *
-     *   missing_both（出退勤なし）
-     *     → 出勤記録がゼロなので「新規登録」モードで開く。
-     *       openEditModal(null, empId, date) を直接呼ぶ。
-     *
-     *   missing_time_out（退勤なし）
-     *     → 出勤記録は存在するので「編集」モードで開きたい。
-     *       admin_attendance_list でその日・その人のレコードを取得し、
-     *       取得できたら openEditModal(record) で編集モードを起動する。
-     *       万が一取得できなければ新規モードにフォールバックする。
-     *
-     * @param {string} empId       - employee_id
-     * @param {string} empName     - 氏名（確認表示用）
-     * @param {string} date        - 対象日（YYYY-MM-DD）
-     * @param {string} pattern     - 'missing_both' or 'missing_time_out'
-     * @param {string} clockedInAt - 出勤時刻（missing_time_out のとき参照用）
-     */
-    async function openMissingClockFixModal(empId, empName, date, pattern, clockedInAt) {
-
-      // ── ケース1: 出退勤なし → 新規登録モードで直接開く ──
-      if (pattern === 'missing_both') {
-        // presetEmpId・presetDate を渡すことで、スタッフと日付が事前選択される
-        openEditModal(null, empId, date);
-        return;
-      }
-
-      // ── ケース2: 退勤なし → 既存レコードを取得して編集モードで開く ──
-      showLoading('レコードを取得中...');
-
-      let record = null;
-      try {
-        const result = await callGAS('admin_attendance_list', {
-          date        : date,
-          employee_id : empId,
-        });
-
-        if (result.success) {
-          // admin_attendance_list は配列を返す。対象スタッフ×日付の1件を探す。
-          // is_absent:true の「未打刻プレースホルダ行」は time_in が空なので除外する。
-          // （打刻漏れパターンが missing_time_out である以上、is_absent:false の行が
-          //   必ず存在するはずだが、念のためフィルタで保護する）
-          const records = result.data.records || [];
-          record = records.find(r =>
-            !r.is_absent &&
-            String(r.employee_id) === String(empId) &&
-            // 日付は '/' 区切りと '-' 区切りが混在することがあるので正規化して比較
-            r.date.replace(/\//g, '-') === date.replace(/\//g, '-')
-          ) || null;
-        }
-      } catch (e) {
-        // 通信エラー時はフォールバックへ進む（ユーザーには toast で通知）
-        console.error('[openMissingClockFixModal] レコード取得エラー:', e);
-      } finally {
-        hideLoading();
-      }
-
-      if (record) {
-        // 取得成功 → 編集モードで開く。
-        //
-        // _safeTimeStr（Code.gs）は 1899-12-30 型 Date を「年 < 1900 → 空文字」で捨てる。
-        // 一方 checkMissingClocksMonthly が使う formatTimeDisplay_GAS は
-        // 1899 年 Date でも時刻部分を正しく返す。
-        // そのため adminAttendanceList 経由の record.time_in が空文字になることがある。
-        // その場合は clocked_in_at（正しい値）で補完して openEditModal に渡す。
-        if (!record.time_in && clockedInAt) {
-          record = Object.assign({}, record, { time_in: clockedInAt });
-        }
-        openEditModal(record);
-      } else {
-        // フォールバック: レコードが見つからない場合は新規モードで開く。
-        // checkMissingClocksMonthly が返した clocked_in_at（出勤時刻）を
-        // presetTimeIn として渡し、新規モードでも出勤時刻が入力済みの状態にする。
-        showToast('既存レコードが見つからないため新規登録モードで開きます。', 'warning');
-        openEditModal(null, empId, date, clockedInAt);
-      }
     }
 
     // ============================================================
@@ -7058,6 +7020,639 @@
       // JSON.stringify 後に属性値として安全なようにシングルクォートをエスケープ
       return escHtml(JSON.stringify(obj));
     }
+
+    /* ============================================================
+       制作進行タブ JS（閲覧専用 Phase 1）
+
+       設計方針:
+         - 状態は adminState.project 配下で管理する
+         - データ取得は初回表示時のみ（loaded フラグで制御）
+         - CRUD・モーダルは実装しない（Phase 2 で追加）
+         - エラーは showToast で通知する
+         - escHtml / todayString は既存関数を使用する
+       ============================================================ */
+
+    /* ----------------------------------------------------------
+       サブタブ切り替え
+       ---------------------------------------------------------- */
+
+    /**
+     * 制作進行サブタブを切り替える。
+     * アクティブクラスを付け替えるだけで、データはキャッシュから使う。
+     *
+     * 相談サブタブを開いた時だけタスク選択肢を構築する。
+     * 初回ロード時には呼ばない（件数増加への対策）。
+     *
+     * @param {string} stabId - data-stab 属性の値
+     */
+    function switchProjSubTab(stabId) {
+      document.querySelectorAll('.proj-sub-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.stab === stabId);
+      });
+      document.querySelectorAll('.proj-sub-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === stabId);
+      });
+
+      // 相談サブタブを開いた時だけタスク選択肢を構築する。
+      // 初回ロード時には呼ばない（件数が増えると重くなるため）。
+      if (stabId === 'proj-consult') {
+        buildConsultTaskOptions();
+      }
+    }
+
+    /* ----------------------------------------------------------
+       初回ロード
+       ---------------------------------------------------------- */
+
+    /**
+     * 制作進行タブを初回表示した時だけ全データを取得する。
+     *
+     * adminState.project.loaded が true なら何もしない。
+     * エラーが発生しても loaded は false のままにし、
+     * 次回タブ切り替え時に再取得を試みる。
+     *
+     * 相談スレッドは件数が増えやすいため初回ロード対象外とする。
+     * → 相談サブタブを開いてタスクを選択した時のみ取得する。
+     */
+    async function loadProjectTabIfNeeded() {
+      if (adminState.project.loaded) return;
+
+      const loadEl = document.getElementById('loading-project');
+      loadEl.style.display = '';
+
+      try {
+        // マスタ・顧客・案件・タスクを並列取得する
+        // ダッシュボードはスタッフ状況も含むため operator_id が必要なので独立して呼ぶ
+        const [mastersRes, custRes, projRes, taskRes] = await Promise.all([
+          callGAS('get_project_masters', {}),
+          callGAS('get_customers',       {}),
+          callGAS('get_projects',        {}),
+          callGAS('get_project_tasks',   {}),
+        ]);
+
+        // 取得成功したデータをキャッシュに格納する
+        if (mastersRes.success) adminState.project.masters   = mastersRes.data;
+        if (custRes.success)    adminState.project.customers = custRes.data.customers || [];
+        if (projRes.success)    adminState.project.projects  = projRes.data.projects  || [];
+        if (taskRes.success)    adminState.project.tasks     = taskRes.data.tasks     || [];
+
+        // いずれか1つでも成功していれば初回ロード済みとみなす
+        const anySuccess =
+          mastersRes.success || custRes.success || projRes.success || taskRes.success;
+        if (anySuccess) {
+          adminState.project.loaded   = true;
+          adminState.project.loadedAt = Date.now(); // 最終ロード日時を記録する
+          _updateProjLoadedAt();                    // ダッシュボードに「最終更新」を表示する
+        }
+
+        // エラーがあった API はトーストで通知する
+        if (!mastersRes.success) showToast('マスタ取得に失敗しました。',       'error');
+        if (!custRes.success)    showToast('顧客一覧の取得に失敗しました。',   'error');
+        if (!projRes.success)    showToast('案件一覧の取得に失敗しました。',   'error');
+        if (!taskRes.success)    showToast('タスク一覧の取得に失敗しました。', 'error');
+
+      } catch (err) {
+        console.error('[loadProjectTabIfNeeded]', err);
+        showToast('制作進行データの取得中にエラーが発生しました。', 'error');
+      } finally {
+        loadEl.style.display = 'none';
+      }
+
+      // データが揃ったらダッシュボードを取得してすべて描画する
+      // ダッシュボードは別 API（スタッフ勤怠含む）なので独立して呼ぶ
+      await loadProjDashboard();
+
+      // 取得済みデータで各一覧を描画する
+      renderCustomersTable();
+      renderProjectsTable(adminState.project.projects);
+      renderTasksTable(adminState.project.tasks);
+
+      // 相談スレッドは初回ロード対象外。
+      // 件数が増えると重くなるため「相談サブタブを開いた時だけ取得」する設計にする。
+      // buildConsultTaskOptions() は switchProjSubTab('proj-consult') 時に呼ぶ。
+    }
+
+    /* ----------------------------------------------------------
+       ダッシュボード
+       ---------------------------------------------------------- */
+
+    /**
+     * project_dashboard アクションを呼んでダッシュボードを描画する。
+     * 更新ボタン押下時にも直接呼ばれる。
+     */
+    async function loadProjDashboard() {
+      const result = await callGAS('project_dashboard', {
+        operator_id: adminState.employeeId,
+      });
+
+      if (!result.success) {
+        showToast('ダッシュボードデータの取得に失敗しました。', 'error');
+        return;
+      }
+
+      // ダッシュボードを（再）取得した時刻も loadedAt に記録する
+      adminState.project.loadedAt = Date.now();
+      _updateProjLoadedAt();
+
+      const { summary, staff_status, project_alerts } = result.data;
+
+      // サマリーカードの数値を更新する
+      document.getElementById('pdash-attendance').textContent  = summary.today_attendance    ?? '―';
+      document.getElementById('pdash-inprogress').textContent  = summary.task_in_progress    ?? '―';
+      document.getElementById('pdash-review').textContent      = summary.task_review_waiting ?? '―';
+      document.getElementById('pdash-notstarted').textContent  = summary.task_not_started    ?? '―';
+      document.getElementById('pdash-overdue').textContent     = summary.task_overdue        ?? '―';
+      document.getElementById('pdash-revision').textContent    = summary.task_revision       ?? '―';
+
+      // スタッフ稼働状況テーブルを描画する
+      renderProjDashStaff(staff_status || []);
+
+      // 要注意案件を描画する
+      renderProjDashAlerts(project_alerts || {});
+    }
+
+    /**
+     * スタッフ稼働状況テーブルを描画する。
+     * @param {Object[]} staffStatus
+     */
+    function renderProjDashStaff(staffStatus) {
+      const tbody = document.getElementById('pdash-staff-body');
+      const today = todayString();
+
+      if (staffStatus.length === 0) {
+        tbody.innerHTML =
+          '<tr><td colspan="8" class="empty-state">スタッフ情報がありません</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = staffStatus.map(s => {
+        const presentBadge = s.is_present
+          ? '<span class="badge badge-green">出勤中</span>'
+          : '<span class="badge badge-gray">未出勤</span>';
+
+        if (s.current_tasks.length === 0) {
+          return `<tr>
+            <td style="font-weight:600">${escHtml(s.name)}</td>
+            <td>${presentBadge}</td>
+            <td colspan="4" style="color:GrayText;font-size:0.82rem">担当タスクなし</td>
+            <td style="text-align:right">―</td>
+            <td style="text-align:right">―</td>
+          </tr>`;
+        }
+
+        // 担当タスクの1件目を表示し、複数件ある場合は「他N件」を付記する
+        const t         = s.current_tasks[0];
+        const isOverdue = t.due_date && t.due_date < today;
+        const dueCls    = isOverdue ? 'value-red' : '';
+        const moreLabel = s.current_tasks.length > 1
+          ? ` <span style="font-size:0.75rem;color:GrayText">他${s.current_tasks.length - 1}件</span>`
+          : '';
+
+        return `<tr>
+          <td style="font-weight:600">${escHtml(s.name)}</td>
+          <td>${presentBadge}</td>
+          <td>${escHtml(t.task_title)}${moreLabel}</td>
+          <td style="font-size:0.82rem">${escHtml(t.current_phase || '―')}</td>
+          <td>${pTaskStatusBadge(t.status)}</td>
+          <td class="${dueCls}">${escHtml(t.due_date || '―')}</td>
+          <td style="text-align:right">${s.planned_hours    ?? '―'}</td>
+          <td style="text-align:right">${s.available_hours  ?? '―'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    /**
+     * 要注意案件テーブルを描画する。
+     * @param {{ overdue: Object[], review_waiting: Object[] }} alerts
+     */
+    function renderProjDashAlerts(alerts) {
+      // 納期超過テーブル
+      const overdueBody = document.getElementById('pdash-overdue-body');
+      if (!alerts.overdue || alerts.overdue.length === 0) {
+        overdueBody.innerHTML = '<tr><td colspan="3" class="empty-state">なし</td></tr>';
+      } else {
+        overdueBody.innerHTML = alerts.overdue.map(p => `
+          <tr>
+            <td>${escHtml(p.name)}</td>
+            <td class="value-red">${escHtml(p.due_date)}</td>
+            <td class="value-red">${p.overdue_days}日超過</td>
+          </tr>
+        `).join('');
+      }
+
+      // 確認待ちテーブル
+      const reviewBody = document.getElementById('pdash-review-body');
+      if (!alerts.review_waiting || alerts.review_waiting.length === 0) {
+        reviewBody.innerHTML = '<tr><td colspan="2" class="empty-state">なし</td></tr>';
+      } else {
+        reviewBody.innerHTML = alerts.review_waiting.map(p => `
+          <tr>
+            <td>${escHtml(p.name)}</td>
+            <td style="font-size:0.8rem">
+              ${(p.tasks || []).map(t => escHtml(t.task_title)).join('、')}
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    /* ----------------------------------------------------------
+       顧客テーブル
+       ---------------------------------------------------------- */
+
+    /**
+     * 顧客一覧テーブルを描画する。
+     */
+    function renderCustomersTable() {
+      const tbody     = document.getElementById('proj-customers-body');
+      const customers = adminState.project.customers;
+
+      if (customers.length === 0) {
+        tbody.innerHTML =
+          '<tr><td colspan="6" class="empty-state">顧客データがありません</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = customers.map(c => `
+        <tr>
+          <td style="font-size:0.8rem;color:GrayText">${escHtml(c.id)}</td>
+          <td style="font-weight:600">${escHtml(c.name)}</td>
+          <td>${escHtml(c.contact)}</td>
+          <td>${escHtml(c.phone)}</td>
+          <td>${escHtml(c.email)}</td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+            title="${escHtml(c.notes)}">${escHtml(c.notes)}</td>
+        </tr>
+      `).join('');
+    }
+
+    /* ----------------------------------------------------------
+       案件テーブル
+       ---------------------------------------------------------- */
+
+    /**
+     * 案件一覧テーブルを描画する。
+     * フィルタ後の配列を受け取る設計にして、
+     * 絞り込みボタン押下時に renderProjectsTable(filtered) の形で再呼び出しする。
+     *
+     * @param {Object[]} projects
+     */
+    function renderProjectsTable(projects) {
+      const tbody   = document.getElementById('proj-projects-body');
+      const today   = todayString();
+      const custMap = {};
+      adminState.project.customers.forEach(c => { custMap[c.id] = c.name; });
+
+      if (projects.length === 0) {
+        tbody.innerHTML =
+          '<tr><td colspan="7" class="empty-state">案件データがありません</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = projects.map(p => {
+        const isOver   = p.due_date && p.due_date < today;
+        const dueCls   = isOver ? 'value-red' : '';
+        const custName = custMap[p.customer_id] || '';
+
+        return `<tr>
+          <td style="font-size:0.8rem">
+            ${escHtml(p.id)}
+            ${p.legacy_code
+              ? `<br><span style="color:GrayText">${escHtml(p.legacy_code)}</span>`
+              : ''}
+          </td>
+          <td style="font-weight:600">${escHtml(p.name)}</td>
+          <td>${escHtml(p.division)}</td>
+          <td>${escHtml(p.category)}</td>
+          <td style="font-size:0.82rem">${escHtml(custName)}</td>
+          <td>${pProjectStatusBadge(p.status)}</td>
+          <td class="${dueCls}">${escHtml(p.due_date || '―')}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    /**
+     * 案件フィルタを適用してキャッシュから再描画する。
+     * APIは呼ばない。
+     */
+    function applyProjectFilter() {
+      const division = document.getElementById('pproj-filter-division').value;
+      const kw       = document.getElementById('pproj-filter-kw').value.trim().toLowerCase();
+
+      // フィルタ値を状態に保存する（将来の復元用）
+      adminState.project.filters.project = division + '|' + kw;
+
+      let filtered = adminState.project.projects;
+      if (division) filtered = filtered.filter(p => p.division === division);
+      if (kw)       filtered = filtered.filter(p =>
+        (p.name || '').toLowerCase().includes(kw)
+      );
+
+      renderProjectsTable(filtered);
+    }
+
+    /* ----------------------------------------------------------
+       タスクテーブル
+       ---------------------------------------------------------- */
+
+    /**
+     * タスク一覧テーブルを描画する。
+     * @param {Object[]} tasks
+     */
+    function renderTasksTable(tasks) {
+      const tbody   = document.getElementById('proj-tasks-body');
+      const today   = todayString();
+      const projMap = {};
+      adminState.project.projects.forEach(p => { projMap[p.id] = p.name; });
+
+      if (tasks.length === 0) {
+        tbody.innerHTML =
+          '<tr><td colspan="10" class="empty-state">タスクデータがありません</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = tasks.map(t => {
+        const isOver   = t.due_date && t.due_date < today && t.status !== '完了';
+        const dueCls   = isOver ? 'value-red' : '';
+        const projName = projMap[t.project_id] || '';
+
+        return `<tr>
+          <td style="font-size:0.78rem;color:GrayText">
+            ${escHtml(t.id)}
+            ${t.legacy_task_code
+              ? `<br><span>${escHtml(t.legacy_task_code)}</span>`
+              : ''}
+          </td>
+          <td style="font-weight:600">${escHtml(t.title)}</td>
+          <td style="font-size:0.82rem">${escHtml(projName)}</td>
+          <td>${escHtml(t.assignee_name || '―')}</td>
+          <td>${pTaskStatusBadge(t.status)}</td>
+          <td style="font-size:0.82rem">${escHtml(t.current_phase || '―')}</td>
+          <td>${pPriorityBadge(t.priority)}</td>
+          <td class="${dueCls}">${escHtml(t.due_date || '―')}</td>
+          <td style="text-align:right">${t.scheduled_hours ?? '―'}</td>
+          <td style="text-align:right">${t.actual_hours    ?? '―'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    /**
+     * タスクフィルタを適用してキャッシュから再描画する。
+     * APIは呼ばない。
+     */
+    function applyTaskFilter() {
+      const status     = document.getElementById('ptask-filter-status').value;
+      const assigneeId = document.getElementById('ptask-filter-assignee').value;
+
+      // フィルタ値を状態に保存する（将来の復元用）
+      adminState.project.filters.task = status + '|' + assigneeId;
+
+      let filtered = adminState.project.tasks;
+
+      if (status === 'DONE') {
+        // 「完了を含む」: 全件そのまま
+      } else if (status) {
+        filtered = filtered.filter(t => t.status === status);
+      } else {
+        // デフォルト: 完了を除外する
+        filtered = filtered.filter(t => t.status !== '完了');
+      }
+
+      if (assigneeId) {
+        filtered = filtered.filter(t => t.assignee_id === assigneeId);
+      }
+
+      renderTasksTable(filtered);
+    }
+
+    /**
+     * タスクフィルタの担当者セレクトにスタッフ一覧を設定する。
+     * adminState.staffList を使う（loadInitialData で取得済み）。
+     */
+    function buildTaskAssigneeSelect() {
+      const sel   = document.getElementById('ptask-filter-assignee');
+      if (!sel) return;
+      const staff = adminState.staffList || [];
+      sel.innerHTML = '<option value="">全員</option>' +
+        staff.map(s =>
+          `<option value="${escHtml(s.id)}">${escHtml(s.name)}</option>`
+        ).join('');
+    }
+
+    /* ----------------------------------------------------------
+       相談スレッド
+       ---------------------------------------------------------- */
+
+    /**
+     * 相談フィルタのタスク選択肢を構築する。
+     * キャッシュ済みのタスク一覧から生成するため API は呼ばない。
+     * 相談サブタブを開いた時に switchProjSubTab から呼ばれる。
+     */
+    function buildConsultTaskOptions() {
+      const sel   = document.getElementById('pconsult-filter-task');
+      const tasks = adminState.project.tasks;
+
+      if (tasks.length === 0) {
+        sel.innerHTML = '<option value="">（タスクデータなし）</option>';
+        return;
+      }
+
+      const projMap = {};
+      adminState.project.projects.forEach(p => { projMap[p.id] = p.name; });
+
+      sel.innerHTML = '<option value="">タスクを選択...</option>' +
+        tasks.map(t => {
+          const projName = projMap[t.project_id] || '';
+          const label    = projName ? `${t.title}（${projName}）` : t.title;
+          return `<option value="${escHtml(t.id)}">${escHtml(label)}</option>`;
+        }).join('');
+
+      // 前回の選択状態を復元する
+      if (adminState.project.selectedTaskId) {
+        sel.value = adminState.project.selectedTaskId;
+      }
+    }
+
+    /**
+     * 選択中のタスクの相談スレッドを取得して描画する。
+     * 「表示」ボタン押下時に呼ばれる。
+     */
+    async function loadConsultThread() {
+      const taskId = document.getElementById('pconsult-filter-task').value;
+      if (!taskId) {
+        showToast('タスクを選択してください。', 'warning');
+        return;
+      }
+
+      const loadEl = document.getElementById('loading-project');
+      loadEl.style.display = '';
+
+      const result = await callGAS('get_consultations', { task_id: taskId });
+
+      loadEl.style.display = 'none';
+
+      if (!result.success) {
+        showToast('相談スレッドの取得に失敗しました。', 'error');
+        return;
+      }
+
+      // 取得結果をキャッシュに保存する（再描画・将来の投稿後リフレッシュに使用）
+      adminState.project.threads        = result.data.consultations || [];
+      adminState.project.selectedTaskId = taskId; // フィルタではなく「選択中の対象」
+
+      renderConsultThread(adminState.project.threads);
+      document.getElementById('pconsult-thread-wrap').style.display = '';
+      document.getElementById('pconsult-empty').style.display        = 'none';
+    }
+
+    /**
+     * 相談スレッドを描画する。
+     * parent_id を持つものを返信として字下げ表示する。
+     *
+     * @param {Object[]} consultations
+     */
+    function renderConsultThread(consultations) {
+      const area = document.getElementById('pconsult-thread-list');
+
+      if (consultations.length === 0) {
+        area.innerHTML =
+          '<div style="padding:1rem;color:GrayText;font-size:0.88rem">まだ相談はありません。</div>';
+        return;
+      }
+
+      // 起点投稿と返信を分類する
+      const roots    = consultations.filter(c => !c.parent_id);
+      const replyMap = {};
+      consultations
+        .filter(c => c.parent_id)
+        .forEach(c => {
+          if (!replyMap[c.parent_id]) replyMap[c.parent_id] = [];
+          replyMap[c.parent_id].push(c);
+        });
+
+      function itemHtml(c, isReply = false) {
+        const dateStr = c.created_at
+          ? new Date(c.created_at).toLocaleString('ja-JP')
+          : '';
+        const replies = (replyMap[c.id] || []).map(r => itemHtml(r, true)).join('');
+        return `<div class="pconsult-item${isReply ? ' is-reply' : ''}">
+          <div class="pconsult-item-meta">
+            <span class="pconsult-author">${escHtml(c.author_name)}</span>
+            <span class="pconsult-date">${escHtml(dateStr)}</span>
+          </div>
+          <div class="pconsult-content">${escHtml(c.content)}</div>
+        </div>${replies}`;
+      }
+
+      area.innerHTML = roots.map(c => itemHtml(c)).join('');
+    }
+
+    /* ----------------------------------------------------------
+       最終更新時刻の表示
+       ---------------------------------------------------------- */
+
+    /**
+     * ダッシュボードの「最終更新」ラベルを更新する。
+     *
+     * loadedAt が null の場合は何もしない。
+     * 更新ボタンを押したあと「13:48 更新」のように表示することで
+     * 管理者が「データが最新かどうか」を判断できるようにする。
+     */
+    function _updateProjLoadedAt() {
+      const el = document.getElementById('pdash-loaded-at');
+      if (!el) return;
+      const ts = adminState.project.loadedAt;
+      if (!ts) return;
+      const d  = new Date(ts);
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      el.textContent = `最終更新 ${hh}:${mm}`;
+    }
+
+    /* ----------------------------------------------------------
+       バッジ描画（制作進行タブ専用、既存バッジと命名衝突を避けるため p プレフィックス）
+       ---------------------------------------------------------- */
+
+    /**
+     * タスクステータスバッジ HTML を返す。
+     * 既存の badge クラスをそのまま使う。
+     * @param {string} status
+     * @returns {string}
+     */
+    function pTaskStatusBadge(status) {
+      const map = {
+        '未着手'  : 'badge-gray',
+        '作業中'  : 'badge-blue',
+        '確認待ち': 'badge-yellow',
+        '修正依頼': 'badge-orange',
+        '完了'    : 'badge-green',
+        '保留'    : 'badge-gray',
+      };
+      return `<span class="badge ${map[status] || 'badge-gray'}">${escHtml(status || '―')}</span>`;
+    }
+
+    /**
+     * 案件ステータスバッジ HTML を返す。
+     * @param {string} status
+     * @returns {string}
+     */
+    function pProjectStatusBadge(status) {
+      const green  = new Set(['完了', '入金確認', '納品済']);
+      const red    = new Set(['キャンセル']);
+      const orange = new Set(['社内確認', '先方確認', '修正対応']);
+      const blue   = new Set(['受注確定', '制作中', '進行中']);
+      const yellow = new Set(['引合い', '見積中']);
+      let cls = 'badge-gray';
+      if (green.has(status))  cls = 'badge-green';
+      else if (red.has(status))    cls = 'badge-red';
+      else if (orange.has(status)) cls = 'badge-orange';
+      else if (blue.has(status))   cls = 'badge-blue';
+      else if (yellow.has(status)) cls = 'badge-yellow';
+      return `<span class="badge ${cls}">${escHtml(status || '―')}</span>`;
+    }
+
+    /**
+     * 優先度バッジ HTML を返す。
+     * @param {string} priority
+     * @returns {string}
+     */
+    function pPriorityBadge(priority) {
+      const map = { '高': 'badge-red', '中': 'badge-yellow', '低': 'badge-gray' };
+      return `<span class="badge ${map[priority] || 'badge-gray'}">${escHtml(priority || '―')}</span>`;
+    }
+
+    /* ----------------------------------------------------------
+       イベントリスナー登録
+       bindEvents() 末尾から bindProjectEvents() として呼ばれる
+       ---------------------------------------------------------- */
+
+    /**
+     * 制作進行タブのイベントをまとめて登録する。
+     * 既存の bindEvents() 末尾から呼ぶ。
+     */
+    function bindProjectEvents() {
+      // サブタブ切り替え
+      document.querySelectorAll('.proj-sub-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchProjSubTab(btn.dataset.stab));
+      });
+
+      // ダッシュボード更新ボタン
+      // 更新ボタンは初回ロード済みでも強制再取得する
+      document.getElementById('btn-proj-reload').addEventListener('click', () => {
+        adminState.project.loaded = false;
+        loadProjectTabIfNeeded();
+      });
+
+      // 案件フィルタ: APIを呼ばずキャッシュから絞り込む
+      document.getElementById('btn-pproj-filter').addEventListener('click', applyProjectFilter);
+
+      // タスクフィルタ: APIを呼ばずキャッシュから絞り込む
+      document.getElementById('btn-ptask-filter').addEventListener('click', applyTaskFilter);
+
+      // 相談スレッド表示: 選択中タスクの相談をAPIから取得する
+      document.getElementById('btn-pconsult-load').addEventListener('click', loadConsultThread);
+    }
+
   </script>
 
   <!--
