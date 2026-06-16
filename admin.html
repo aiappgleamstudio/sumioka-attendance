@@ -7378,10 +7378,9 @@
 
         return `<tr>
           <td style="font-size:0.78rem;color:GrayText">
-            ${escHtml(t.id)}
             ${t.legacy_task_code
-              ? `<br><span>${escHtml(t.legacy_task_code)}</span>`
-              : ''}
+              ? escHtml(t.legacy_task_code)
+              : `<span title="${escHtml(t.id)}">${escHtml(t.id.slice(0, 8))}…</span>`}
           </td>
           <td style="font-weight:600">${escHtml(t.title)}</td>
           <td style="font-size:0.82rem">${escHtml(projName)}</td>
