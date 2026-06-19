@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>職員ホーム | 住岡</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%231d4ed8'/><text y='.9em' font-size='75' x='50%' text-anchor='middle' fill='white'>職</text></svg>">
+  <meta name="theme-color" content="#1d4ed8">
+
+  <style>
+/* =============================================================
+   staff.html — 職員ホーム
+   優先表示順:
+     1. レビュー待ち（今日やること最優先）
+     2. 未返信相談
+     3. 本日の出勤状況
+     4. 案件一覧
+   設計思想:
+     職員が今日対応すべきものを画面トップに集約する。
+     タブは「ホーム / タスク / 相談 / 案件」の4本構成。
+============================================================= */
+
+/* ─── リセット ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root { color-scheme: light dark; }
+
+html {
+  font-family: 'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',
+               'Yu Gothic UI','Meiryo UI',sans-serif;
+  font-size: 16px; line-height: 1.5;
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  min-height: 100dvh;
+  background: #f3f4f6;
+  color: #111;
+}
+@media (prefers-color-scheme: dark) {
+  body { background: #0f0f0f; color: #f3f4f6; }
+}
+
+/* ─── ローディング ──────────────────────────────── */
+#loading-overlay {
+  display: none; position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.5);
+  align-items: center; justify-content: center; flex-direction: column; gap: 12px;
+}
+#loading-overlay.active { display: flex; }
+.spinner {
+  width: 44px; height: 44px;
+  border: 4px solid rgba(255,255,255,0.25);
+  border-top-color: #fff; border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { color: #fff; font-size: 0.9rem; }
+
+/* ─── トースト ──────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  z-index: 9998; max-width: 320px; width: calc(100% - 32px);
+  padding: 12px 18px; border-radius: 10px;
+  font-size: 0.88rem; font-weight: 500; text-align: center;
+  opacity: 0; transition: opacity 0.25s; pointer-events: none;
+}
+#toast.show { opacity: 1; }
+#toast.success { background: #1d4ed8; color: #fff; }
+#toast.error   { background: #c0392b; color: #fff; }
+#toast.warning { background: #d97706; color: #fff; }
+#toast.info    { background: #374151; color: #fff; }
+
+/* ─── ログイン画面 ──────────────────────────────── */
+#screen-login {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 100dvh; padding: 24px 16px;
+}
+.login-card {
+  width: 100%; max-width: 380px; background: #fff;
+  border-radius: 20px; padding: 36px 28px 32px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+}
+@media (prefers-color-scheme: dark) {
+  .login-card { background: #1a1a1a; box-shadow: 0 4px 24px rgba(0,0,0,0.5); }
+}
+.login-logo {
+  width: 64px; height: 64px; border-radius: 16px; background: #1d4ed8;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; color: #fff; margin: 0 auto 20px;
+  box-shadow: 0 2px 8px rgba(29,78,216,0.35);
+}
+.login-title {
+  text-align: center; font-size: 1.2rem; font-weight: 700; margin-bottom: 4px;
+}
+.login-subtitle { text-align: center; font-size: 0.82rem; color: #6b7280; margin-bottom: 28px; }
+.field-label { display: block; font-size: 0.8rem; font-weight: 600; color: #374151; margin-bottom: 6px; }
+@media (prefers-color-scheme: dark) { .field-label { color: #d1d5db; } }
+.field-input {
+  width: 100%; padding: 13px 14px; border-radius: 10px;
+  border: 1.5px solid #d1d5db; background: #f9fafb;
+  font-size: 1.1rem; outline: none; transition: border-color 0.15s; margin-bottom: 14px;
+}
+.field-input:focus { border-color: #1d4ed8; background: #fff; }
+@media (prefers-color-scheme: dark) {
+  .field-input { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
+  .field-input:focus { background: #333; border-color: #1d4ed8; }
+}
+.btn-login {
+  width: 100%; padding: 14px; border-radius: 12px; border: none;
+  background: #1d4ed8; color: #fff; font-size: 1rem; font-weight: 700;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.btn-login:hover:not(:disabled) { opacity: 0.88; }
+.btn-login:disabled { opacity: 0.45; cursor: not-allowed; }
+.login-error { color: #c0392b; font-size: 0.82rem; text-align: center; margin-top: 10px; display: none; }
+
+/* ─── メイン画面 ────────────────────────────────── */
+#screen-main { display: none; min-height: 100dvh; }
+#screen-main.active { display: block; }
+
+/* ─── ヘッダー ──────────────────────────────────── */
+.app-header {
+  position: sticky; top: 0; z-index: 100;
+  background: #1d4ed8; height: 56px;
+  display: flex; align-items: center; gap: 10px; padding: 0 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+.app-header-title { flex: 1; font-size: 0.95rem; font-weight: 700; color: #fff; }
+.header-role-badge {
+  font-size: 0.7rem; padding: 3px 8px; border-radius: 20px;
+  background: rgba(255,255,255,0.2); color: #fff; font-weight: 600;
+}
+.header-user { font-size: 0.78rem; color: rgba(255,255,255,0.85); white-space: nowrap; }
+.header-notif-btn {
+  position: relative; background: none; border: none; color: #fff;
+  font-size: 1.25rem; cursor: pointer; padding: 4px; line-height: 1;
+}
+.notif-badge {
+  position: absolute; top: 0; right: 0; background: #ef4444; color: #fff;
+  font-size: 0.6rem; font-weight: 700; width: 16px; height: 16px;
+  border-radius: 50%; display: none; align-items: center; justify-content: center;
+}
+.notif-badge.show { display: flex; }
+.header-btn {
+  background: rgba(255,255,255,0.18); border: none; color: #fff;
+  font-size: 0.78rem; padding: 5px 10px; border-radius: 8px; cursor: pointer;
+  white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center;
+}
+.header-btn:hover { background: rgba(255,255,255,0.30); }
+
+/* ─── ボトムナビ ────────────────────────────────── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: #fff; border-top: 1px solid #e5e7eb;
+  display: flex; height: 60px;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
+}
+@media (prefers-color-scheme: dark) {
+  .bottom-nav { background: #1a1a1a; border-top-color: #2d2d2d; }
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  background: none; border: none; cursor: pointer;
+  color: #9ca3af; padding: 6px 4px; font-size: 0.65rem; font-weight: 500;
+  transition: color 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.nav-btn .nav-icon { font-size: 1.35rem; line-height: 1; }
+.nav-btn.active { color: #1d4ed8; }
+.nav-badge {
+  position: absolute; top: 6px; right: calc(50% - 18px);
+  background: #ef4444; color: #fff;
+  font-size: 0.58rem; font-weight: 700;
+  min-width: 14px; height: 14px; border-radius: 7px;
+  display: none; align-items: center; justify-content: center; padding: 0 3px;
+}
+.nav-badge.show { display: flex; }
+.nav-btn { position: relative; }
+
+/* ─── コンテンツ ────────────────────────────────── */
+.content-area {
+  padding: 14px 16px calc(72px + env(safe-area-inset-bottom, 0));
+  max-width: 640px; margin: 0 auto;
+}
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ─── 共通カード ────────────────────────────────── */
+.card {
+  background: #fff; border-radius: 14px; padding: 16px;
+  margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+}
+@media (prefers-color-scheme: dark) {
+  .card { background: #1a1a1a; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.section-label {
+  font-size: 0.72rem; font-weight: 700; color: #6b7280;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  display: flex; align-items: center; gap: 6px;
+}
+.count-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: #ef4444; color: #fff;
+  font-size: 0.68rem; font-weight: 700;
+  min-width: 18px; height: 18px; border-radius: 9px; padding: 0 5px;
+}
+.count-badge.blue   { background: #1d4ed8; }
+.count-badge.green  { background: #1a7f37; }
+.count-badge.yellow { background: #d97706; }
+.count-badge.gray   { background: #6b7280; }
+
+/* ─── ホームサマリーカード ──────────────────────── */
+.summary-row {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px;
+}
+.summary-chip {
+  background: #fff; border-radius: 12px; padding: 12px 10px;
+  text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  border: 1.5px solid #e5e7eb; cursor: pointer; transition: border-color 0.15s;
+}
+@media (prefers-color-scheme: dark) {
+  .summary-chip { background: #1a1a1a; border-color: #2d2d2d; }
+}
+.summary-chip:hover { border-color: #1d4ed8; }
+.summary-chip .chip-num {
+  font-size: 1.6rem; font-weight: 800; line-height: 1; display: block;
+}
+.summary-chip .chip-label {
+  font-size: 0.7rem; color: #6b7280; margin-top: 4px; display: block;
+}
+.summary-chip.urgent .chip-num { color: #ef4444; }
+.summary-chip.warn   .chip-num { color: #d97706; }
+.summary-chip.ok     .chip-num { color: #1a7f37; }
+
+/* ─── レビューカード ────────────────────────────── */
+.review-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid #f3f4f6; cursor: pointer;
+}
+@media (prefers-color-scheme: dark) { .review-item { border-bottom-color: #2d2d2d; } }
+.review-item:last-child { border-bottom: none; padding-bottom: 0; }
+.review-item-icon {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+}
+.review-icon-bg { background: #fef3c7; }
+.review-item-body { flex: 1; min-width: 0; }
+.review-item-title {
+  font-size: 0.9rem; font-weight: 600; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px;
+}
+.review-item-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.review-project { font-size: 0.72rem; color: #6b7280; }
+.review-due { font-size: 0.72rem; }
+.review-due.overdue { color: #ef4444; font-weight: 600; }
+.review-assignees { font-size: 0.72rem; color: #9ca3af; }
+.review-item-actions {
+  display: flex; gap: 6px; flex-shrink: 0; align-items: center;
+}
+.btn-approve {
+  padding: 6px 12px; border-radius: 8px; border: none;
+  background: #1a7f37; color: #fff; font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: opacity 0.15s;
+}
+.btn-approve:hover { opacity: 0.85; }
+.btn-reject {
+  padding: 6px 12px; border-radius: 8px; border: 1.5px solid #ef4444;
+  background: transparent; color: #ef4444; font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; white-space: nowrap; transition: all 0.15s;
+}
+.btn-reject:hover { background: #fee2e2; }
+
+/* ─── 相談カード ────────────────────────────────── */
+.consult-item {
+  padding: 12px 0; border-bottom: 1px solid #f3f4f6; cursor: pointer;
+}
+@media (prefers-color-scheme: dark) { .consult-item { border-bottom-color: #2d2d2d; } }
+.consult-item:last-child { border-bottom: none; padding-bottom: 0; }
+.consult-item-header { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+.consult-unread-dot {
+  width: 8px; height: 8px; border-radius: 50%; background: #ef4444;
+  flex-shrink: 0; margin-top: 5px;
+}
+.consult-item-title { font-size: 0.9rem; font-weight: 600; flex: 1; }
+.consult-item-from  { font-size: 0.78rem; color: #4b5563; margin-bottom: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-color-scheme: dark) { .consult-item-from { color: #9ca3af; } }
+.consult-item-preview {
+  font-size: 0.8rem; color: #6b7280; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.consult-item-meta { font-size: 0.7rem; color: #9ca3af; margin-top: 4px; }
+.consult-resolved-tag {
+  font-size: 0.68rem; padding: 1px 6px; border-radius: 4px;
+  background: #d1fae5; color: #065f46; margin-left: 6px;
+}
+
+/* ─── 出勤状況カード ────────────────────────────── */
+.attendance-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;
+}
+.attendance-chip {
+  background: #f9fafb; border-radius: 10px; padding: 10px 8px;
+  text-align: center; border: 1.5px solid #e5e7eb;
+}
+@media (prefers-color-scheme: dark) {
+  .attendance-chip { background: #252525; border-color: #333; }
+}
+.attendance-chip.present { border-color: #1a7f37; background: #f0fdf4; }
+.attendance-chip.absent  { border-color: #e5e7eb; opacity: 0.55; }
+.attendance-chip-name { font-size: 0.78rem; font-weight: 600; margin-bottom: 3px; }
+.attendance-chip-time { font-size: 0.68rem; color: #6b7280; }
+.attendance-chip.present .attendance-chip-time { color: #1a7f37; }
+
+/* ─── タスクパネル ──────────────────────────────── */
+.task-filters {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.filter-btn {
+  padding: 5px 12px; border-radius: 20px; border: 1.5px solid #e5e7eb;
+  background: transparent; font-size: 0.78rem; cursor: pointer;
+  color: #6b7280; transition: all 0.15s; white-space: nowrap;
+}
+.filter-btn.active { border-color: #1d4ed8; background: #dbeafe; color: #1d4ed8; font-weight: 600; }
+@media (prefers-color-scheme: dark) {
+  .filter-btn { border-color: #333; color: #9ca3af; }
+  .filter-btn.active { background: #1e2d4a; color: #60a5fa; border-color: #1d4ed8; }
+}
+
+.task-item {
+  background: #fff; border-radius: 12px; padding: 14px;
+  margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border-left: 4px solid #d1d5db; cursor: pointer; transition: border-color 0.15s;
+}
+@media (prefers-color-scheme: dark) {
+  .task-item { background: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+}
+.task-item:hover { border-left-color: #1d4ed8; }
+.task-item.review  { border-left-color: #d97706; }
+.task-item.rejected{ border-left-color: #ef4444; }
+.task-item.inprogress { border-left-color: #2563eb; }
+.task-item.done    { border-left-color: #1a7f37; opacity: 0.6; }
+.task-item-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
+.task-item-title { flex: 1; font-size: 0.9rem; font-weight: 600; line-height: 1.4; }
+.task-status-badge {
+  font-size: 0.68rem; padding: 2px 8px; border-radius: 12px; font-weight: 600;
+  white-space: nowrap; flex-shrink: 0;
+}
+.badge-review   { background: #fef3c7; color: #92400e; }
+.badge-rejected { background: #fee2e2; color: #991b1b; }
+.badge-inprogress { background: #dbeafe; color: #1e3a8a; }
+.badge-notstarted { background: #f3f4f6; color: #374151; }
+.badge-done     { background: #d1fae5; color: #064e3b; }
+.task-item-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.task-meta-text { font-size: 0.72rem; color: #9ca3af; }
+.task-meta-overdue { font-size: 0.72rem; color: #ef4444; font-weight: 600; }
+.task-item-actions { display: flex; gap: 6px; margin-top: 10px; }
+
+/* ─── 案件パネル ────────────────────────────────── */
+.project-item {
+  background: #fff; border-radius: 12px; padding: 14px;
+  margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); cursor: pointer;
+}
+@media (prefers-color-scheme: dark) {
+  .project-item { background: #1a1a1a; }
+}
+.project-item:hover { box-shadow: 0 2px 8px rgba(29,78,216,0.12); }
+.project-item-top { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
+.project-item-code { font-size: 0.7rem; color: #6b7280; font-family: monospace; }
+.project-item-name { font-size: 0.92rem; font-weight: 700; flex: 1; }
+.project-status-badge {
+  font-size: 0.68rem; padding: 2px 8px; border-radius: 12px;
+  background: #e0e7ff; color: #3730a3; font-weight: 600; white-space: nowrap;
+}
+.project-item-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+.project-meta-text { font-size: 0.72rem; color: #9ca3af; }
+.project-meta-due  { font-size: 0.72rem; }
+.project-meta-due.overdue { color: #ef4444; font-weight: 600; }
+.project-task-summary {
+  display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;
+}
+.task-count-chip {
+  font-size: 0.68rem; padding: 2px 8px; border-radius: 8px;
+  display: flex; align-items: center; gap: 3px;
+}
+.chip-review  { background: #fef3c7; color: #92400e; }
+.chip-progress{ background: #dbeafe; color: #1e3a8a; }
+.chip-done    { background: #d1fae5; color: #064e3b; }
+
+/* ─── モーダル（差戻理由入力）─────────────────── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.55); align-items: center; justify-content: center; padding: 24px;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: #fff; border-radius: 16px; padding: 24px;
+  width: 100%; max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+}
+@media (prefers-color-scheme: dark) { .modal { background: #1a1a1a; } }
+.modal-title { font-size: 1rem; font-weight: 700; margin-bottom: 14px; }
+.modal-desc  { font-size: 0.85rem; color: #6b7280; margin-bottom: 14px; line-height: 1.5; }
+.modal-textarea {
+  width: 100%; min-height: 100px; padding: 10px 12px;
+  border-radius: 10px; border: 1.5px solid #d1d5db; background: #f9fafb;
+  font-size: 0.9rem; resize: vertical; font-family: inherit; outline: none;
+  transition: border-color 0.15s; margin-bottom: 14px;
+}
+.modal-textarea:focus { border-color: #ef4444; background: #fff; }
+@media (prefers-color-scheme: dark) {
+  .modal-textarea { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
+}
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.btn-cancel {
+  padding: 10px 18px; border-radius: 10px; border: 1.5px solid #d1d5db;
+  background: transparent; font-size: 0.88rem; cursor: pointer; color: #374151;
+}
+.btn-cancel:hover { background: #f3f4f6; }
+.btn-danger {
+  padding: 10px 18px; border-radius: 10px; border: none;
+  background: #ef4444; color: #fff; font-size: 0.88rem; font-weight: 600;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.btn-danger:hover:not(:disabled) { opacity: 0.85; }
+.btn-danger:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ─── 相談ドロワー ──────────────────────────────── */
+.drawer-overlay {
+  display: none; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.5);
+}
+.drawer-overlay.active { display: block; }
+.drawer {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 201;
+  background: #fff; border-radius: 20px 20px 0 0;
+  padding: 20px 16px calc(28px + env(safe-area-inset-bottom, 0));
+  max-height: 88dvh; overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+}
+@media (prefers-color-scheme: dark) { .drawer { background: #1a1a1a; } }
+.drawer.open { transform: translateY(0); }
+.drawer-handle { width: 40px; height: 4px; border-radius: 2px; background: #d1d5db; margin: 0 auto 18px; }
+.drawer-title { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+.drawer-sender { font-size: 0.8rem; color: #6b7280; margin-bottom: 14px; }
+.drawer-message { font-size: 0.9rem; line-height: 1.6; margin-bottom: 16px; }
+.drawer-divider { height: 1px; background: #e5e7eb; margin: 14px 0; }
+@media (prefers-color-scheme: dark) { .drawer-divider { background: #2d2d2d; } }
+.reply-label { font-size: 0.78rem; font-weight: 700; color: #6b7280; margin-bottom: 8px; display: block; }
+.reply-textarea {
+  width: 100%; min-height: 90px; padding: 10px 12px;
+  border-radius: 10px; border: 1.5px solid #d1d5db; background: #f9fafb;
+  font-size: 0.9rem; resize: vertical; font-family: inherit; outline: none;
+  transition: border-color 0.15s; margin-bottom: 10px;
+}
+.reply-textarea:focus { border-color: #1d4ed8; background: #fff; }
+@media (prefers-color-scheme: dark) {
+  .reply-textarea { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
+}
+.btn-reply {
+  width: 100%; padding: 12px; border-radius: 10px; border: none;
+  background: #1d4ed8; color: #fff; font-size: 0.9rem; font-weight: 700;
+  cursor: pointer; transition: opacity 0.15s; margin-bottom: 10px;
+}
+.btn-reply:hover:not(:disabled) { opacity: 0.88; }
+.btn-reply:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-resolve {
+  width: 100%; padding: 10px; border-radius: 10px;
+  border: 1.5px solid #1a7f37; background: transparent;
+  color: #1a7f37; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.btn-resolve:hover { background: #f0fdf4; }
+
+/* ─── 担当者管理 ──────────────────────────────── */
+.assignee-list {
+  display: flex; flex-direction: column; gap: 6px; margin: 10px 0;
+}
+.assignee-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.85rem; padding: 7px 10px; border-radius: 8px;
+  background: #f9fafb;
+}
+@media (prefers-color-scheme: dark) { .assignee-item { background: #252525; } }
+.assignee-role {
+  font-size: 0.68rem; padding: 1px 6px; border-radius: 6px;
+  background: #e0e7ff; color: #3730a3; font-weight: 600; margin-left: auto;
+}
+.btn-unassign {
+  background: none; border: none; color: #ef4444; cursor: pointer;
+  font-size: 0.78rem; padding: 2px 6px; margin-left: 6px;
+}
+
+/* ─── ユーティリティ ────────────────────────────── */
+.empty-state { text-align: center; padding: 32px 16px; color: #9ca3af; }
+.empty-icon { font-size: 2.5rem; margin-bottom: 8px; }
+.empty-text { font-size: 0.88rem; }
+.divider { height: 1px; background: #e5e7eb; margin: 10px 0; }
+@media (prefers-color-scheme: dark) { .divider { background: #2d2d2d; } }
+.see-all-btn {
+  width: 100%; padding: 10px; border-radius: 10px; border: 1.5px solid #e5e7eb;
+  background: transparent; font-size: 0.82rem; color: #6b7280; cursor: pointer; margin-top: 6px;
+}
+.see-all-btn:hover { border-color: #1d4ed8; color: #1d4ed8; }
+.btn-primary-sm {
+  padding: 8px 14px; border-radius: 8px; border: none;
+  background: #1d4ed8; color: #fff; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.btn-primary-sm:hover { opacity: 0.85; }
+</style>
+</head>
+<body>
+
+<!-- ローディング -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loading-text">読み込み中...</div>
+</div>
+
+<!-- トースト -->
+<div id="toast"></div>
+
+<!-- 差戻モーダル -->
+<div class="modal-overlay" id="reject-modal">
+  <div class="modal">
+    <div class="modal-title">⚠️ 差戻理由を入力</div>
+    <div class="modal-desc" id="reject-modal-task-name"></div>
+    <textarea class="modal-textarea" id="reject-reason" placeholder="差戻理由を入力してください（必須）"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeRejectModal()">キャンセル</button>
+      <button class="btn-danger" id="btn-confirm-reject" onclick="confirmReject()">差戻する</button>
+    </div>
+  </div>
+</div>
+
+<!-- 相談ドロワー -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeConsultDrawer()"></div>
+<div class="drawer" id="consult-drawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-title" id="drawer-consult-title"></div>
+  <div class="drawer-sender" id="drawer-consult-sender"></div>
+  <div class="drawer-message" id="drawer-consult-message"></div>
+  <div class="drawer-divider"></div>
+  <label class="reply-label">返信する</label>
+  <textarea class="reply-textarea" id="reply-textarea" placeholder="返信内容を入力してください"></textarea>
+  <button class="btn-reply" id="btn-reply">返信を送る</button>
+  <button class="btn-resolve" id="btn-resolve">✅ 解決済みにする</button>
+</div>
+
+<!-- ===== ログイン画面 ===== -->
+<div id="screen-login">
+  <div class="login-card">
+    <div class="login-logo">職</div>
+    <div class="login-title">職員ホーム</div>
+    <div class="login-subtitle">住岡 運営プラットフォーム</div>
+
+    <label class="field-label" for="input-pin">PIN（4桁）</label>
+    <input class="field-input" type="tel" id="input-pin"
+      inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="off">
+
+    <label class="field-label" for="input-password">パスワード</label>
+    <input class="field-input" type="password" id="input-password"
+      placeholder="パスワードを入力" autocomplete="current-password">
+
+    <button class="btn-login" id="btn-login">ログイン</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ===== メイン画面 ===== -->
+<div id="screen-main">
+
+  <!-- ヘッダー -->
+  <header class="app-header">
+    <div class="app-header-title">住岡 職員ホーム</div>
+    <span class="header-role-badge" id="header-role-badge">職員</span>
+    <div class="header-user" id="header-username"></div>
+    <button class="header-notif-btn" onclick="switchPanel('home')" title="通知">
+      🔔
+      <span class="notif-badge" id="notif-badge"></span>
+    </button>
+    <a class="header-btn" href="admin.html" id="admin-link" style="display:none">⚙️</a>
+    <button class="header-btn" id="btn-logout">ログアウト</button>
+  </header>
+
+  <!-- コンテンツ -->
+  <div class="content-area">
+
+    <!-- ── ホームパネル ── -->
+    <div class="panel active" id="panel-home">
+
+      <!-- サマリー3チップ -->
+      <div class="summary-row">
+        <div class="summary-chip urgent" onclick="switchPanel('tasks')" id="chip-review">
+          <span class="chip-num" id="chip-review-num">-</span>
+          <span class="chip-label">レビュー待ち</span>
+        </div>
+        <div class="summary-chip warn" onclick="switchPanel('consult')" id="chip-consult">
+          <span class="chip-num" id="chip-consult-num">-</span>
+          <span class="chip-label">未返信相談</span>
+        </div>
+        <div class="summary-chip ok" id="chip-attendance">
+          <span class="chip-num" id="chip-attendance-num">-</span>
+          <span class="chip-label">本日出勤</span>
+        </div>
+      </div>
+
+      <!-- 1. レビュー待ち -->
+      <div class="card" id="home-review-card">
+        <div class="card-header">
+          <div class="section-label">
+            🔍 レビュー待ち
+            <span class="count-badge yellow" id="home-review-count">0</span>
+          </div>
+          <button class="see-all-btn" style="width:auto;padding:4px 10px;font-size:0.72rem"
+            onclick="switchPanel('tasks'); setTaskFilter('レビュー待ち')">すべて見る</button>
+        </div>
+        <div id="home-review-list">
+          <div class="empty-state" style="padding:16px">
+            <div class="empty-text">レビュー待ちはありません ✨</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. 未返信相談 -->
+      <div class="card" id="home-consult-card">
+        <div class="card-header">
+          <div class="section-label">
+            💬 未返信の相談
+            <span class="count-badge" id="home-consult-count">0</span>
+          </div>
+          <button class="see-all-btn" style="width:auto;padding:4px 10px;font-size:0.72rem"
+            onclick="switchPanel('consult')">すべて見る</button>
+        </div>
+        <div id="home-consult-list">
+          <div class="empty-state" style="padding:16px">
+            <div class="empty-text">未返信の相談はありません</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. 本日の出勤状況 -->
+      <div class="card">
+        <div class="card-header">
+          <div class="section-label">👥 本日の出勤状況</div>
+          <span id="today-date-label" style="font-size:0.72rem;color:#9ca3af"></span>
+        </div>
+        <div class="attendance-grid" id="attendance-grid">
+          <div class="empty-state" style="padding:16px">
+            <div class="empty-text">読み込み中...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. 案件一覧（ホーム版：進行中のみ） -->
+      <div class="card">
+        <div class="card-header">
+          <div class="section-label">📁 進行中の案件</div>
+          <button class="see-all-btn" style="width:auto;padding:4px 10px;font-size:0.72rem"
+            onclick="switchPanel('projects')">すべて見る</button>
+        </div>
+        <div id="home-project-list">
+          <div class="empty-state" style="padding:16px">
+            <div class="empty-text">読み込み中...</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /panel-home -->
+
+    <!-- ── タスクパネル ── -->
+    <div class="panel" id="panel-tasks">
+      <div class="task-filters" id="task-filters">
+        <button class="filter-btn active" data-filter="すべて" onclick="setTaskFilter('すべて')">すべて</button>
+        <button class="filter-btn" data-filter="レビュー待ち" onclick="setTaskFilter('レビュー待ち')">🔍 レビュー待ち</button>
+        <button class="filter-btn" data-filter="差戻" onclick="setTaskFilter('差戻')">↩️ 差戻</button>
+        <button class="filter-btn" data-filter="進行中" onclick="setTaskFilter('進行中')">▶️ 進行中</button>
+        <button class="filter-btn" data-filter="未着手" onclick="setTaskFilter('未着手')">⏸️ 未着手</button>
+      </div>
+      <div id="task-list-wrap">
+        <div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">読み込み中...</div></div>
+      </div>
+    </div>
+
+    <!-- ── 相談パネル ── -->
+    <div class="panel" id="panel-consult">
+      <div id="consult-list-wrap">
+        <div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">読み込み中...</div></div>
+      </div>
+    </div>
+
+    <!-- ── 案件パネル ── -->
+    <div class="panel" id="panel-projects">
+      <div class="task-filters">
+        <button class="filter-btn active" data-filter-proj="進行中" onclick="setProjectFilter('進行中')">進行中</button>
+        <button class="filter-btn" data-filter-proj="全件" onclick="setProjectFilter('全件')">全件</button>
+      </div>
+      <div id="project-list-wrap">
+        <div class="empty-state"><div class="empty-icon">📁</div><div class="empty-text">読み込み中...</div></div>
+      </div>
+    </div>
+
+  </div><!-- /content-area -->
+
+  <!-- ボトムナビ -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-home" onclick="switchPanel('home')">
+      <span class="nav-icon">🏠</span>ホーム
+    </button>
+    <button class="nav-btn" id="nav-tasks" onclick="switchPanel('tasks')">
+      <span class="nav-icon">📋</span>タスク
+      <span class="nav-badge" id="nav-task-badge"></span>
+    </button>
+    <button class="nav-btn" id="nav-consult" onclick="switchPanel('consult')">
+      <span class="nav-icon">💬</span>相談
+      <span class="nav-badge" id="nav-consult-badge"></span>
+    </button>
+    <button class="nav-btn" id="nav-projects" onclick="switchPanel('projects')">
+      <span class="nav-icon">📁</span>案件
+    </button>
+  </nav>
+
+</div><!-- /screen-main -->
+
+<script>
+'use strict';
+
+// ============================================================
+// 設定
+// ============================================================
+const GAS_URL = 'YOUR_GAS_DEPLOY_URL_HERE';
+
+// ============================================================
+// 状態管理
+// ============================================================
+const state = {
+  userId       : '',
+  userName     : '',
+  employeeType : '',
+  adminRole    : '',
+
+  // データ
+  reviewTasks     : [],   // レビュー待ちタスク一覧
+  allTasks        : [],   // タスク一覧（タスクパネル用）
+  consultations   : [],   // 相談一覧
+  projects        : [],   // 案件一覧
+  attendanceToday : [],   // 本日の出退勤レコード
+  employees       : [],   // 人員マスタ
+
+  // UI状態
+  currentPanel    : 'home',
+  taskFilter      : 'すべて',
+  projectFilter   : '進行中',
+  currentConsult  : null,   // ドロワーで開いている相談
+  rejectTargetId  : '',     // 差戻対象のタスクID
+};
+
+const SESSION_KEY = 'sumioka_staff_session';
+
+// ============================================================
+// 通信
+// ============================================================
+async function api(action, data = {}) {
+  const payload = { app: 'attendance', action, data };
+  try {
+    const ctrl     = new AbortController();
+    const timer    = setTimeout(() => ctrl.abort(), 15000);
+    const res      = await fetch(GAS_URL, {
+      method: 'POST', headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload), signal: ctrl.signal, redirect: 'follow',
+    });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (!json.success) return { success: false, error_message: json.error_message };
+    return { success: true, data: json.data };
+  } catch (err) {
+    if (err.name === 'AbortError') return { success: false, error_message: 'タイムアウトしました。' };
+    return { success: false, error_message: err.message || '通信エラーが発生しました。' };
+  }
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('btn-login').addEventListener('click', handleLogin);
+  document.getElementById('btn-logout').addEventListener('click', handleLogout);
+  document.getElementById('btn-reply').addEventListener('click', handleReply);
+  document.getElementById('btn-resolve').addEventListener('click', handleResolve);
+  ['input-pin', 'input-password'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') handleLogin();
+    });
+  });
+
+  document.getElementById('today-date-label').textContent = todayLabel();
+
+  const session = loadSession();
+  if (session) { applySession(session); loadAllData(); }
+});
+
+// ============================================================
+// 認証
+// ============================================================
+async function handleLogin() {
+  const pin      = document.getElementById('input-pin').value.trim();
+  const password = document.getElementById('input-password').value.trim();
+  const errEl    = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  if (!pin || !password) {
+    errEl.textContent = 'PIN とパスワードを入力してください。';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  showLoading('認証中...');
+  const result = await api('kintai_authenticate', { pin, password });
+  hideLoading();
+
+  if (!result.success) {
+    errEl.textContent = result.error_message || '認証に失敗しました。';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const { employee } = result.data;
+
+  // 職員・管理者のみアクセス可
+  if (employee.employment_type !== '職員') {
+    errEl.textContent = 'この画面は職員・管理者専用です。';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  const session = {
+    userId       : employee.id,
+    userName     : employee.name,
+    employeeType : employee.employment_type,
+    adminRole    : employee.admin_role || '',
+  };
+  saveSession(session);
+  applySession(session);
+  await loadAllData();
+}
+
+function applySession(session) {
+  Object.assign(state, session);
+
+  document.getElementById('header-username').textContent = state.userName;
+  document.getElementById('header-role-badge').textContent =
+    state.adminRole === '管理者' ? '管理者' : '職員';
+
+  // 管理者なら管理画面リンクを表示
+  if (state.adminRole === '管理者') {
+    document.getElementById('admin-link').style.display = 'inline-flex';
+  }
+
+  document.getElementById('screen-login').style.display = 'none';
+  document.getElementById('screen-main').classList.add('active');
+}
+
+function handleLogout() { clearSession(); location.reload(); }
+
+function saveSession(s) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+function loadSession()  {
+  try { const s = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); return s?.userId ? s : null; }
+  catch { return null; }
+}
+function clearSession() { localStorage.removeItem(SESSION_KEY); }
+
+// ============================================================
+// データロード
+// ============================================================
+async function loadAllData() {
+  showLoading('データを読み込み中...');
+  await Promise.all([
+    loadReviewTasks(),
+    loadConsultations(),
+    loadTodayAttendance(),
+    loadProjects(),
+    loadEmployees(),
+  ]);
+  hideLoading();
+
+  // ホームの各セクションを描画
+  renderHomeSummary();
+  renderHomeReview();
+  renderHomeConsult();
+  renderHomeAttendance();
+  renderHomeProjects();
+}
+
+// レビュー待ちタスク
+async function loadReviewTasks() {
+  const r = await api('get_review_waiting_tasks', { operator_id: state.userId });
+  state.reviewTasks = r.success ? (r.data.tasks || []) : [];
+}
+
+// 相談一覧（自分が受信者のもの）
+async function loadConsultations() {
+  const r = await api('get_consultation_list', { operator_id: state.userId, include_resolved: false });
+  state.consultations = r.success ? (r.data.consultations || []) : [];
+}
+
+// 本日の出退勤
+async function loadTodayAttendance() {
+  const r = await api('load_daily', { date: todayString() });
+  state.attendanceToday = r.success ? (r.data.records || []) : [];
+}
+
+// 案件一覧
+async function loadProjects() {
+  const r = await api('get_projects', { operator_id: state.userId });
+  state.projects = r.success ? (r.data.projects || []) : [];
+}
+
+// 人員マスタ
+async function loadEmployees() {
+  const r = await api('load_employees', {});
+  state.employees = r.success ? (r.data.employees || []).filter(e => !e.deleted) : [];
+}
+
+// タスク一覧（タスクパネル用）
+async function loadAllTasks() {
+  const r = await api('get_all_tasks', {
+    operator_id  : state.userId,
+    include_done : false,
+  });
+  state.allTasks = r.success ? (r.data.tasks || []) : [];
+  renderTaskList();
+}
+
+// ============================================================
+// ホームパネル描画
+// ============================================================
+
+/** サマリーチップを更新する */
+function renderHomeSummary() {
+  const reviewCount  = state.reviewTasks.length;
+  // 未返信相談: 自分が受信者で is_read=false のもの（ここでは全未解決で代用）
+  const unreadConsult = state.consultations.filter(c => {
+    const myRec = (c.recipients || []).find(r => r.recipient_id === state.userId);
+    return myRec && !myRec.is_read;
+  }).length;
+  const presentCount = state.attendanceToday.filter(r => r.data?.time_in).length;
+
+  document.getElementById('chip-review-num').textContent    = reviewCount;
+  document.getElementById('chip-consult-num').textContent   = unreadConsult;
+  document.getElementById('chip-attendance-num').textContent = presentCount;
+
+  // ナビバッジ
+  setBadge('nav-task-badge',    reviewCount);
+  setBadge('nav-consult-badge', unreadConsult);
+  setBadge('notif-badge',       reviewCount + unreadConsult);
+}
+
+/** ホーム: レビュー待ちセクション（上位3件）*/
+function renderHomeReview() {
+  const list = document.getElementById('home-review-list');
+  const count = state.reviewTasks.length;
+  document.getElementById('home-review-count').textContent = count;
+
+  if (!count) {
+    list.innerHTML = `<div class="empty-state" style="padding:16px"><div class="empty-text">レビュー待ちはありません ✨</div></div>`;
+    return;
+  }
+
+  list.innerHTML = state.reviewTasks.slice(0, 3).map(task => reviewItemHTML(task)).join('');
+  bindReviewBtns(list);
+}
+
+/** ホーム: 未返信相談セクション（上位3件）*/
+function renderHomeConsult() {
+  const list  = document.getElementById('home-consult-list');
+  // 未返信: 自分が受信者かつ未読
+  const unreplied = state.consultations.filter(c => {
+    const myRec = (c.recipients || []).find(r => r.recipient_id === state.userId);
+    return myRec && !myRec.is_read;
+  });
+  document.getElementById('home-consult-count').textContent = unreplied.length;
+
+  if (!unreplied.length) {
+    list.innerHTML = `<div class="empty-state" style="padding:16px"><div class="empty-text">未返信の相談はありません</div></div>`;
+    return;
+  }
+
+  list.innerHTML = unreplied.slice(0, 3).map(c => consultItemHTML(c, true)).join('');
+  bindConsultItems(list);
+}
+
+/** ホーム: 出勤状況セクション */
+function renderHomeAttendance() {
+  const grid = document.getElementById('attendance-grid');
+  const empMap = {};
+  state.employees.forEach(e => { empMap[e.id] = e; });
+
+  const attMap = {};
+  state.attendanceToday.forEach(r => { attMap[r.employee_id] = r; });
+
+  const chips = state.employees
+    .filter(e => e.employment_type === '職員' || e.employment_type === '利用者')
+    .map(e => {
+      const rec      = attMap[e.id];
+      const timeIn   = rec?.data?.time_in  || '';
+      const timeOut  = rec?.data?.time_out || '';
+      const present  = !!timeIn;
+      const timeText = present
+        ? (timeOut ? `${timeIn}〜${timeOut}` : `${timeIn}〜`)
+        : '未出勤';
+      return `
+        <div class="attendance-chip ${present ? 'present' : 'absent'}">
+          <div class="attendance-chip-name">${esc(e.name)}</div>
+          <div class="attendance-chip-time">${esc(timeText)}</div>
+        </div>`;
+    });
+
+  grid.innerHTML = chips.length ? chips.join('') :
+    `<div class="empty-state" style="padding:12px"><div class="empty-text">データなし</div></div>`;
+}
+
+/** ホーム: 進行中案件（上位5件）*/
+function renderHomeProjects() {
+  const list = document.getElementById('home-project-list');
+  const active = state.projects
+    .filter(p => p.status !== '完了' && p.status !== 'キャンセル')
+    .slice(0, 5);
+
+  if (!active.length) {
+    list.innerHTML = `<div class="empty-state" style="padding:12px"><div class="empty-text">進行中の案件はありません</div></div>`;
+    return;
+  }
+  list.innerHTML = active.map(p => projectItemHTML(p)).join('');
+}
+
+// ============================================================
+// タスクパネル
+// ============================================================
+
+/** タスクフィルタを変更して再描画 */
+function setTaskFilter(filter) {
+  state.taskFilter = filter;
+  document.querySelectorAll('[data-filter]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+
+  // タスクパネルが未ロードなら取得する
+  if (!state.allTasks.length) {
+    loadAllTasks();
+  } else {
+    renderTaskList();
+  }
+}
+
+function renderTaskList() {
+  const wrap   = document.getElementById('task-list-wrap');
+  const filter = state.taskFilter;
+
+  let tasks = [...state.allTasks];
+  if (filter !== 'すべて') {
+    tasks = tasks.filter(t => t.status === filter);
+  }
+
+  // 優先順: レビュー待ち > 差戻 > 進行中 > 未着手 > 完了
+  const ORDER = { 'レビュー待ち': 0, '差戻': 1, '進行中': 2, '未着手': 3, '完了': 4 };
+  tasks.sort((a, b) => (ORDER[a.status] ?? 9) - (ORDER[b.status] ?? 9));
+
+  if (!tasks.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-text">該当するタスクはありません</div></div>`;
+    return;
+  }
+
+  wrap.innerHTML = tasks.map(task => fullTaskItemHTML(task)).join('');
+  wrap.querySelectorAll('.btn-approve-task').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      quickApprove(btn.dataset.id);
+    });
+  });
+  wrap.querySelectorAll('.btn-reject-task').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openRejectModal(btn.dataset.id, btn.dataset.title);
+    });
+  });
+}
+
+// ============================================================
+// レビュー操作
+// ============================================================
+
+/** クイック承認（ホーム / タスクパネル両方から呼ぶ）*/
+async function quickApprove(taskId) {
+  showLoading('承認中...');
+  const r = await api('review_approve', { task_id: taskId, operator_id: state.userId });
+  hideLoading();
+
+  if (!r.success) { showToast(r.error_message || '承認に失敗しました。', 'error'); return; }
+
+  showToast('承認しました ✅', 'success');
+  state.reviewTasks = state.reviewTasks.filter(t => t.id !== taskId);
+  state.allTasks    = state.allTasks.map(t =>
+    t.id === taskId ? { ...t, status: '完了' } : t
+  );
+
+  renderHomeSummary();
+  renderHomeReview();
+  if (state.currentPanel === 'tasks') renderTaskList();
+}
+
+/** 差戻モーダルを開く */
+function openRejectModal(taskId, taskTitle) {
+  state.rejectTargetId = taskId;
+  document.getElementById('reject-modal-task-name').textContent = `タスク「${taskTitle}」を差戻します`;
+  document.getElementById('reject-reason').value = '';
+  document.getElementById('reject-modal').classList.add('active');
+}
+function closeRejectModal() {
+  document.getElementById('reject-modal').classList.remove('active');
+  state.rejectTargetId = '';
+}
+
+/** 差戻確定 */
+async function confirmReject() {
+  const reason = document.getElementById('reject-reason').value.trim();
+  if (!reason) { showToast('差戻理由を入力してください。', 'warning'); return; }
+
+  const btn = document.getElementById('btn-confirm-reject');
+  btn.disabled = true;
+  showLoading('差戻中...');
+
+  const r = await api('review_reject', {
+    task_id     : state.rejectTargetId,
+    operator_id : state.userId,
+    reason,
+  });
+  hideLoading();
+  btn.disabled = false;
+
+  if (!r.success) { showToast(r.error_message || '差戻に失敗しました。', 'error'); return; }
+
+  showToast('差戻しました', 'warning');
+  closeRejectModal();
+
+  state.reviewTasks = state.reviewTasks.filter(t => t.id !== state.rejectTargetId);
+  state.allTasks    = state.allTasks.map(t =>
+    t.id === state.rejectTargetId ? { ...t, status: '差戻' } : t
+  );
+  renderHomeSummary();
+  renderHomeReview();
+  if (state.currentPanel === 'tasks') renderTaskList();
+}
+
+// ============================================================
+// 相談パネル
+// ============================================================
+
+function renderConsultList() {
+  const wrap = document.getElementById('consult-list-wrap');
+  if (!state.consultations.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">💬</div><div class="empty-text">相談はありません</div></div>`;
+    return;
+  }
+  wrap.innerHTML = state.consultations.map(c => consultItemHTML(c, false)).join('');
+  bindConsultItems(wrap);
+}
+
+function bindConsultItems(container) {
+  container.querySelectorAll('.consult-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const id = el.dataset.id;
+      const c  = state.consultations.find(x => x.id === id);
+      if (c) openConsultDrawer(c);
+    });
+  });
+}
+
+async function openConsultDrawer(c) {
+  state.currentConsult = c;
+
+  // 送信者名を人員マスタから引く
+  const sender = state.employees.find(e => e.id === c.sender_id);
+  const senderName = sender ? sender.name : c.sender_id;
+
+  document.getElementById('drawer-consult-title').textContent   = c.title;
+  document.getElementById('drawer-consult-sender').textContent  = `送信者: ${senderName}　${c.created_at.slice(0,10)}`;
+  document.getElementById('drawer-consult-message').textContent = c.message;
+  document.getElementById('reply-textarea').value = '';
+
+  // 解決済みなら「解決済みにする」ボタンを非表示
+  document.getElementById('btn-resolve').style.display = c.is_resolved ? 'none' : 'block';
+
+  // 既読にする
+  if (!c.is_resolved) {
+    await api('mark_consultation_read', {
+      consultation_id : c.id,
+      operator_id     : state.userId,
+    });
+    // state の既読フラグを更新
+    const myRec = (c.recipients || []).find(r => r.recipient_id === state.userId);
+    if (myRec) myRec.is_read = true;
+  }
+
+  document.getElementById('consult-drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('active');
+}
+
+function closeConsultDrawer() {
+  document.getElementById('consult-drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('active');
+  state.currentConsult = null;
+  renderHomeSummary();
+}
+
+async function handleReply() {
+  const message = document.getElementById('reply-textarea').value.trim();
+  if (!message) { showToast('返信内容を入力してください。', 'warning'); return; }
+  if (!state.currentConsult) return;
+
+  const btn = document.getElementById('btn-reply');
+  btn.disabled = true;
+  showLoading('送信中...');
+
+  const r = await api('reply_consultation', {
+    consultation_id : state.currentConsult.id,
+    operator_id     : state.userId,
+    message,
+  });
+  hideLoading();
+  btn.disabled = false;
+
+  if (!r.success) { showToast(r.error_message || '送信に失敗しました。', 'error'); return; }
+
+  showToast('返信を送りました', 'success');
+  document.getElementById('reply-textarea').value = '';
+  closeConsultDrawer();
+}
+
+async function handleResolve() {
+  if (!state.currentConsult) return;
+
+  showLoading('更新中...');
+  const r = await api('change_consultation_status', {
+    consultation_id : state.currentConsult.id,
+    operator_id     : state.userId,
+  });
+  hideLoading();
+
+  if (!r.success) { showToast(r.error_message || '更新に失敗しました。', 'error'); return; }
+
+  showToast('解決済みにしました ✅', 'success');
+  state.consultations = state.consultations.filter(c => c.id !== state.currentConsult.id);
+  closeConsultDrawer();
+  renderHomeSummary();
+  renderHomeConsult();
+  if (state.currentPanel === 'consult') renderConsultList();
+}
+
+// ============================================================
+// 案件パネル
+// ============================================================
+
+function setProjectFilter(filter) {
+  state.projectFilter = filter;
+  document.querySelectorAll('[data-filter-proj]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filterProj === filter);
+  });
+  renderProjectList();
+}
+
+function renderProjectList() {
+  const wrap = document.getElementById('project-list-wrap');
+  let projects = [...state.projects];
+  if (state.projectFilter !== '全件') {
+    projects = projects.filter(p => p.status !== '完了' && p.status !== 'キャンセル');
+  }
+  if (!projects.length) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-icon">📁</div><div class="empty-text">案件はありません</div></div>`;
+    return;
+  }
+  wrap.innerHTML = projects.map(p => projectItemHTML(p)).join('');
+}
+
+// ============================================================
+// パネル切替
+// ============================================================
+function switchPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+  const panel  = document.getElementById(`panel-${name}`);
+  const navBtn = document.getElementById(`nav-${name}`);
+  if (panel)  panel.classList.add('active');
+  if (navBtn) navBtn.classList.add('active');
+  state.currentPanel = name;
+
+  if (name === 'tasks'    && !state.allTasks.length) loadAllTasks();
+  if (name === 'consult')                             renderConsultList();
+  if (name === 'projects')                            renderProjectList();
+}
+
+// ============================================================
+// HTML生成ヘルパー
+// ============================================================
+
+/** レビュー待ちアイテム（ホーム用・承認/差戻ボタンつき）*/
+function reviewItemHTML(task) {
+  const today   = todayString();
+  const overdue = task.due_date && task.due_date < today;
+  const assigneeNames = (task.assignees || []).map(a => {
+    const e = state.employees.find(x => x.id === a.user_id);
+    return e ? e.name : a.user_id;
+  }).join(', ');
+
+  return `
+    <div class="review-item" data-id="${esc(task.id)}">
+      <div class="review-item-icon review-icon-bg">🔍</div>
+      <div class="review-item-body">
+        <div class="review-item-title">${esc(task.title)}</div>
+        <div class="review-item-meta">
+          ${task.project_name ? `<span class="review-project">📁 ${esc(task.project_name)}</span>` : ''}
+          ${task.due_date ? `<span class="review-due ${overdue ? 'overdue' : ''}">期限: ${esc(task.due_date)}${overdue ? ' ⚠️' : ''}</span>` : ''}
+          ${assigneeNames ? `<span class="review-assignees">👤 ${esc(assigneeNames)}</span>` : ''}
+        </div>
+      </div>
+      <div class="review-item-actions">
+        <button class="btn-approve btn-approve-task" data-id="${esc(task.id)}">承認</button>
+        <button class="btn-reject  btn-reject-task"
+          data-id="${esc(task.id)}" data-title="${esc(task.title)}">差戻</button>
+      </div>
+    </div>`;
+}
+
+function bindReviewBtns(container) {
+  container.querySelectorAll('.btn-approve-task').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); quickApprove(btn.dataset.id); });
+  });
+  container.querySelectorAll('.btn-reject-task').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openRejectModal(btn.dataset.id, btn.dataset.title);
+    });
+  });
+}
+
+/** 相談アイテム */
+function consultItemHTML(c, compact) {
+  const sender   = state.employees.find(e => e.id === c.sender_id);
+  const senderName = sender ? sender.name : '不明';
+  const myRec    = (c.recipients || []).find(r => r.recipient_id === state.userId);
+  const isUnread = myRec && !myRec.is_read;
+
+  return `
+    <div class="consult-item${compact ? '' : ' card'}" data-id="${esc(c.id)}"
+      style="${compact ? '' : 'cursor:pointer;margin-bottom:8px'}">
+      <div class="consult-item-header">
+        ${isUnread ? '<div class="consult-unread-dot"></div>' : ''}
+        <div class="consult-item-title">${esc(c.title)}</div>
+        ${c.is_resolved ? '<span class="consult-resolved-tag">解決済み</span>' : ''}
+      </div>
+      <div class="consult-item-from">送信者: ${esc(senderName)}</div>
+      <div class="consult-item-preview">${esc(c.message)}</div>
+      <div class="consult-item-meta">${esc(c.created_at.slice(0,10))}</div>
+    </div>`;
+}
+
+/** タスクアイテム（タスクパネル用・フル）*/
+function fullTaskItemHTML(task) {
+  const STATUS_CLS = {
+    'レビュー待ち': 'review', '差戻': 'rejected',
+    '進行中': 'inprogress',   '完了': 'done', '未着手': '',
+  };
+  const BADGE_CLS = {
+    'レビュー待ち': 'badge-review', '差戻': 'badge-rejected',
+    '進行中': 'badge-inprogress',   '完了': 'badge-done', '未着手': 'badge-notstarted',
+  };
+  const cls       = STATUS_CLS[task.status] || '';
+  const badgeCls  = BADGE_CLS[task.status]  || 'badge-notstarted';
+  const today     = todayString();
+  const overdue   = task.due_date && task.due_date < today && task.status !== '完了';
+  const isReview  = task.status === 'レビュー待ち';
+
+  return `
+    <div class="task-item ${cls}">
+      <div class="task-item-top">
+        <div class="task-item-title">${esc(task.title)}</div>
+        <span class="task-status-badge ${badgeCls}">${esc(task.status)}</span>
+      </div>
+      <div class="task-item-meta">
+        ${task.project_name ? `<span class="task-meta-text">📁 ${esc(task.project_name || '')}</span>` : ''}
+        ${task.due_date ? `<span class="${overdue ? 'task-meta-overdue' : 'task-meta-text'}">期限: ${esc(task.due_date)}${overdue ? ' ⚠️' : ''}</span>` : ''}
+      </div>
+      ${isReview ? `
+      <div class="task-item-actions">
+        <button class="btn-approve btn-approve-task" data-id="${esc(task.id)}">承認</button>
+        <button class="btn-reject btn-reject-task"
+          data-id="${esc(task.id)}" data-title="${esc(task.title)}">差戻</button>
+      </div>` : ''}
+    </div>`;
+}
+
+/** 案件アイテム */
+function projectItemHTML(p) {
+  const today   = todayString();
+  const overdue = p.due_date && p.due_date < today;
+  return `
+    <div class="project-item">
+      <div class="project-item-top">
+        <div>
+          <div class="project-item-code">${esc(p.id)}</div>
+          <div class="project-item-name">${esc(p.name)}</div>
+        </div>
+        <span class="project-status-badge">${esc(p.status)}</span>
+      </div>
+      <div class="project-item-meta">
+        ${p.customer_id ? `<span class="project-meta-text">顧客: ${esc(p.customer_id)}</span>` : ''}
+        ${p.due_date ? `<span class="project-meta-due ${overdue ? 'overdue' : ''}">納期: ${esc(p.due_date)}${overdue ? ' ⚠️' : ''}</span>` : ''}
+        <span class="project-meta-text">${esc(p.division || '')}</span>
+      </div>
+    </div>`;
+}
+
+// ============================================================
+// ユーティリティ
+// ============================================================
+function todayString() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function todayLabel() {
+  const d    = new Date();
+  const DAYS = ['日','月','火','水','木','金','土'];
+  return `${d.getMonth()+1}/${d.getDate()}（${DAYS[d.getDay()]}）`;
+}
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function setBadge(id, count) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (count > 0) {
+    el.textContent = count > 99 ? '99+' : String(count);
+    el.classList.add('show');
+  } else {
+    el.classList.remove('show');
+  }
+}
+function showLoading(text = '読み込み中...') {
+  document.getElementById('loading-text').textContent = text;
+  document.getElementById('loading-overlay').classList.add('active');
+}
+function hideLoading() { document.getElementById('loading-overlay').classList.remove('active'); }
+function showToast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = `show ${type}`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = ''; }, 3000);
+}
+</script>
+</body>
+</html>
