@@ -11,7 +11,7 @@ A型事業所向け運営プラットフォーム。
 |------|-----|------|------|
 | 利用者ホーム | [user.html](https://aiappgleamstudio.github.io/sumioka-attendance/user.html) | 利用者・職員・管理者（打刻） | ✅ 開発中 |
 | 管理者ダッシュボード | [admin.html](https://aiappgleamstudio.github.io/sumioka-attendance/admin.html) | 職員・管理者 | ✅ 稼働中 |
-| 職員ダッシュボード | 🟨【URL未確定】`staff.html` | 職員 | 🔧 未実装 |
+| 職員ダッシュボード | [staff.html](https://aiappgleamstudio.github.io/sumioka-attendance/staff.html) | 職員 | 🔧 未実装 |
 | 旧打刻画面 | [kintai.html](https://aiappgleamstudio.github.io/sumioka-attendance/kintai.html) | 全員 | ⚠️ 移行中（削除予定） |
 
 > **補足:**  
