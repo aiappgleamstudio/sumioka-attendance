@@ -280,11 +280,24 @@ body {
 .lunch-btn:hover { border-color: #1a7f37; }
 .lunch-btn.selected {
   border-color: #1a7f37; background: #f0fdf4; color: #1a7f37;
+  animation: none;
 }
 .lunch-btn .lunch-icon { display: block; font-size: 1.6rem; margin-bottom: 4px; }
 @media (prefers-color-scheme: dark) {
   .lunch-btn { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
   .lunch-btn.selected { background: #1a2e1a; border-color: #1a7f37; color: #4ade80; }
+}
+/* 未選択であることを軽く知らせる（選択完了で自動的にanimation:noneになる） */
+.lunch-row:not(:has(.selected)) .lunch-btn {
+  animation: lunch-pulse 2s ease-in-out infinite;
+}
+/* :has() 未対応ブラウザ向けフォールバック（JSがhas-selectionクラスを付与） */
+.lunch-row.has-selection .lunch-btn {
+  animation: none;
+}
+@keyframes lunch-pulse {
+  0%, 100% { border-color: #e5e7eb; }
+  50% { border-color: #93c5a8; }
 }
 
 /* 大ボタン（打刻用） */
@@ -1164,6 +1177,8 @@ function selectLunch(value) {
   state.lunch = value;
   document.getElementById('lunch-yes').classList.toggle('selected',  value === true);
   document.getElementById('lunch-no' ).classList.toggle('selected',  value === false);
+  // :has() 未対応ブラウザのフォールバック: 選択完了したら明示的にpulseを止める
+  document.querySelector('.lunch-row').classList.add('has-selection');
   updateCheckinBtn();
 }
 
@@ -1653,7 +1668,14 @@ async function handleSaveComment() {
  */
 async function loadStaffList() {
   const result = await api('load_employees', {});
-  if (!result.success) return;
+  // API失敗時も早期returnせず、空配列として描画する
+  // （returnすると recipient-list が初期コメントのまま空白になり、
+  //  ユーザーが「壊れている」と誤解するバグを防ぐ）
+  if (!result.success) {
+    state.staffList = [];
+    renderRecipientList();
+    return;
+  }
 
   state.staffList = (result.data.employees || []).filter(e =>
     e.employment_type === '職員' && !e.deleted && e.id !== state.userId

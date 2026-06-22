@@ -124,12 +124,22 @@ body {
   display: flex; align-items: center; gap: 10px; padding: 0 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
-.app-header-title { flex: 1; font-size: 0.95rem; font-weight: 700; color: #fff; }
+.app-header-title {
+  flex: 1; font-size: 0.88rem; font-weight: 700; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0;
+}
 .header-role-badge {
   font-size: 0.7rem; padding: 3px 8px; border-radius: 20px;
   background: rgba(255,255,255,0.2); color: #fff; font-weight: 600;
 }
-.header-user { font-size: 0.78rem; color: rgba(255,255,255,0.85); white-space: nowrap; }
+.header-user {
+  font-size: 0.78rem; color: rgba(255,255,255,0.85); white-space: nowrap;
+  max-width: 90px; overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 400px) {
+  .header-user { display: none; } /* 狭い画面ではユーザー名を優先度低として隠す */
+}
 .header-notif-btn {
   position: relative; background: none; border: none; color: #fff;
   font-size: 1.25rem; cursor: pointer; padding: 4px; line-height: 1;
@@ -262,14 +272,14 @@ body {
   display: flex; gap: 6px; flex-shrink: 0; align-items: center;
 }
 .btn-approve {
-  padding: 6px 12px; border-radius: 8px; border: none;
-  background: #1a7f37; color: #fff; font-size: 0.78rem; font-weight: 600;
+  padding: 10px 14px; min-height: 40px; border-radius: 8px; border: none;
+  background: #1a7f37; color: #fff; font-size: 0.8rem; font-weight: 600;
   cursor: pointer; white-space: nowrap; transition: opacity 0.15s;
 }
 .btn-approve:hover { opacity: 0.85; }
 .btn-reject {
-  padding: 6px 12px; border-radius: 8px; border: 1.5px solid #ef4444;
-  background: transparent; color: #ef4444; font-size: 0.78rem; font-weight: 600;
+  padding: 10px 14px; min-height: 40px; border-radius: 8px; border: 1.5px solid #ef4444;
+  background: transparent; color: #ef4444; font-size: 0.8rem; font-weight: 600;
   cursor: pointer; white-space: nowrap; transition: all 0.15s;
 }
 .btn-reject:hover { background: #fee2e2; }
@@ -576,7 +586,7 @@ body {
 
   <!-- ヘッダー -->
   <header class="app-header">
-    <div class="app-header-title">住岡 職員ホーム</div>
+    <div class="app-header-title">職員ホーム</div>
     <span class="header-role-badge" id="header-role-badge">職員</span>
     <div class="header-user" id="header-username"></div>
     <button class="header-notif-btn" onclick="switchPanel('home')" title="通知">
@@ -732,7 +742,7 @@ body {
 // ============================================================
 // 設定
 // ============================================================
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec';
+const GAS_URL = 'YOUR_GAS_DEPLOY_URL_HERE';
 
 // ============================================================
 // 状態管理

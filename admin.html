@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>管理者ダッシュボード | 住岡</title>
+  <title>管理者ダッシュボード v2(検証用) | 住岡</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%237c3aed'/><text y='.9em' font-size='75' x='50%' text-anchor='middle' fill='white'>管</text></svg>">
   <meta name="theme-color" content="#7c3aed">
 
   <style>
 /* =============================================================
-   admin.html Phase1 — 管理者ダッシュボード（カード中心・シンプル）
+   admin_v2.html Phase1 — 管理者ダッシュボード（カード中心・シンプル）
+   ※ 検証用ファイル。運用確認後に admin.html へ正式切替予定。
    目的:
      管理者が毎朝30秒で状況把握できること。
    優先表示順:
@@ -115,8 +116,18 @@ body { min-height: 100dvh; background: #f3f4f6; color: #111; }
   display: flex; align-items: center; gap: 10px; padding: 0 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
-.app-header-title { flex: 1; font-size: 0.95rem; font-weight: 700; color: #fff; }
-.header-user { font-size: 0.78rem; color: rgba(255,255,255,0.85); white-space: nowrap; }
+.app-header-title {
+  flex: 1; font-size: 0.88rem; font-weight: 700; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0;
+}
+.header-user {
+  font-size: 0.78rem; color: rgba(255,255,255,0.85); white-space: nowrap;
+  max-width: 90px; overflow: hidden; text-overflow: ellipsis;
+}
+@media (max-width: 400px) {
+  .header-user { display: none; }
+}
 .header-btn {
   background: rgba(255,255,255,0.18); border: none; color: #fff;
   font-size: 0.78rem; padding: 5px 10px; border-radius: 8px; cursor: pointer;
@@ -187,7 +198,7 @@ body { min-height: 100dvh; background: #f3f4f6; color: #111; }
 .card-rank.r3 { background: #d97706; }
 .card-rank.r4 { background: #1a7f37; }
 .card-rank.r5 { background: #2563eb; }
-.card-rank.r6 { background: #6366f1; }
+.card-rank.r6 { background: #0d9488; }
 
 .card-icon { font-size: 1.5rem; }
 .card-value {
@@ -276,7 +287,7 @@ body { min-height: 100dvh; background: #f3f4f6; color: #111; }
 <div id="screen-main">
 
   <header class="app-header">
-    <div class="app-header-title">📊 管理者ダッシュボード</div>
+    <div class="app-header-title">📊 管理者</div>
     <div class="header-user" id="header-username"></div>
     <a class="header-btn" href="staff.html">💼 職員</a>
     <button class="header-btn" id="btn-logout">ログアウト</button>
@@ -381,7 +392,7 @@ body { min-height: 100dvh; background: #f3f4f6; color: #111; }
 // ============================================================
 // 設定
 // ============================================================
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbzr_U7LyysRif0HKFou1pc6x4wGcW2K395JAT0iJr7uFNnX3rRyP8RYawOST-Tjwm2Y8w/exec';
+const GAS_URL = 'YOUR_GAS_DEPLOY_URL_HERE';
 const SESSION_KEY = 'sumioka_admin_session';
 
 const state = {
