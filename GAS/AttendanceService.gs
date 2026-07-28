@@ -10,12 +10,17 @@
  *   - date 列の自動Date変換を防ぐため setNumberFormat('@') を必ず使う
  *   - 上書き・削除前に必ずバックアップを取る（saveBackup）
  *   - 日付はフロント↔API間は YYYY-MM-DD、シート保存は YYYY/MM/DD で統一する
+ *   - saveAttendanceRecord は LockService で排他制御し、同時保存による
+ *     行重複（読み込み→書き込みの非アトミック性に起因）を防ぐ
+ *   - break_minutes / work_minutes は保存前に数値検証する
  *
  * エントリポイント:
  *   handleAttendanceAction(action, data) — Code.gs の switch から委譲される
+ *   （2026-07-28: Code.gs 側にあった同名関数の重複実装を削除し、
+ *    この委譲構造に完全一本化した）
  *
  * 実装するアクション:
- *   save       - 出退勤記録の保存（upsert）
+ *   save       - 出退勤記録の保存（upsert・排他制御あり）
  *   load       - 出退勤記録を1件取得
  *   load_range - 期間指定で出退勤記録を取得
  *   load_daily - 特定日の全ユーザー分を取得（管理者用）
@@ -26,8 +31,9 @@
  *             createSuccessResponse / createErrorResponse /
  *             saveBackup / validateDateFormat / convertDateForDisplay /
  *             _safeTimeStr / SHEET / ATTENDANCE_COL / ATTENDANCE_NUM_COLS
+ *   GAS組み込み — LockService（saveAttendanceRecord の排他制御に使用）
  *
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 'use strict';
@@ -115,52 +121,100 @@ function saveAttendanceRecord(sheet, data) {
   // フロントから YYYY-MM-DD で渡ってくる date をスプシ表示用の YYYY/MM/DD に変換する
   const date = convertDateForDisplay(rawDate);
   const ad   = data.attendance_data || {};
-  const now  = new Date().toISOString();
 
-  // employee_id + date の複合キーで既存行を検索する
-  const rows     = getAllRows(sheet);
-  const existIdx = rows.findIndex(
-    r => r[ATTENDANCE_COL.EMPLOYEE_ID - 1] === employee_id &&
-         r[ATTENDANCE_COL.DATE        - 1] === date
-  );
+  // break_minutes / work_minutes は数値であることを保証する。
+  // 【なぜ検証するか】 空文字/undefinedは有効値として許容する一方、
+  //   フロントの実装ミスなどで文字列("abc"等)が来た場合に
+  //   NaN がそのままシートに書き込まれると月次集計・給与計算が
+  //   サイレントに壊れる（合計がNaNになる）ため、ここで早期に弾く。
+  _validateNumericField(ad.break_minutes, 'break_minutes');
+  _validateNumericField(ad.work_minutes,  'work_minutes');
 
-  let recordId;
-  let targetRowNum;
+  const now = new Date().toISOString();
 
-  if (existIdx !== -1) {
-    // 上書き: バックアップを取ってから既存行を更新する
-    recordId     = rows[existIdx][ATTENDANCE_COL.ID - 1];
-    targetRowNum = existIdx + 2;
-    saveBackup(SHEET.ATTENDANCE, recordId, rows[existIdx]);
-    Logger.log('[saveAttendanceRecord] Updated: id=%s', recordId);
-  } else {
-    // 新規追加
-    recordId     = generateId();
-    targetRowNum = sheet.getLastRow() + 1;
-    Logger.log('[saveAttendanceRecord] Created: id=%s', recordId);
+  // 【排他制御】同一 employee_id + date への同時保存（多重クリック・
+  // 通信リトライ・複数タブ操作）が発生すると、下の「既存行検索→書き込み」が
+  // 非アトミックであるため行が重複してしまう可能性がある。
+  // GAS の LockService でこの関数全体を排他区間にすることで、
+  // 「読んでから書く」までを1つの操作として直列化する。
+  // 待機上限は 10秒。取得できない場合は「時間をおいて再試行」を促すエラーとする
+  // （UI側の多重クリック防止と併用する二重対策の位置づけ）。
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch (err) {
+    Logger.log('[saveAttendanceRecord] Lock取得失敗: employee_id=%s, date=%s', employee_id, date);
+    throw new Error('他の処理と競合しました。少し時間をおいて再度お試しください。');
   }
 
-  // 文字列として保存すべき列をテキスト形式に固定する（setValues より必ず前に呼ぶ）
-  sheet.getRange(targetRowNum, ATTENDANCE_COL.DATE    ).setNumberFormat('@');
-  sheet.getRange(targetRowNum, ATTENDANCE_COL.TIME_IN ).setNumberFormat('@');
-  sheet.getRange(targetRowNum, ATTENDANCE_COL.TIME_OUT).setNumberFormat('@');
+  try {
+    // employee_id + date の複合キーで既存行を検索する
+    const rows     = getAllRows(sheet);
+    const existIdx = rows.findIndex(
+      r => r[ATTENDANCE_COL.EMPLOYEE_ID - 1] === employee_id &&
+           r[ATTENDANCE_COL.DATE        - 1] === date
+    );
 
-  sheet.getRange(targetRowNum, 1, 1, ATTENDANCE_NUM_COLS).setValues([[
-    recordId,
-    employee_id,
-    date,
-    ad.status        || '',
-    ad.time_in       || '',
-    ad.time_out      || '',
-    ad.break_minutes ?? '',
-    ad.work_minutes  ?? '',
-    ad.lunch === true ? '有' : '無',
-    ad.memo          || '',
-    now,
-  ]]);
+    let recordId;
+    let targetRowNum;
 
-  SpreadsheetApp.flush();
-  return { id: recordId, saved: true, timestamp: now };
+    if (existIdx !== -1) {
+      // 上書き: バックアップを取ってから既存行を更新する
+      recordId     = rows[existIdx][ATTENDANCE_COL.ID - 1];
+      targetRowNum = existIdx + 2;
+      saveBackup(SHEET.ATTENDANCE, recordId, rows[existIdx]);
+      Logger.log('[saveAttendanceRecord] Updated: id=%s', recordId);
+    } else {
+      // 新規追加
+      recordId     = generateId();
+      targetRowNum = sheet.getLastRow() + 1;
+      Logger.log('[saveAttendanceRecord] Created: id=%s', recordId);
+    }
+
+    // 文字列として保存すべき列をテキスト形式に固定する（setValues より必ず前に呼ぶ）
+    sheet.getRange(targetRowNum, ATTENDANCE_COL.DATE    ).setNumberFormat('@');
+    sheet.getRange(targetRowNum, ATTENDANCE_COL.TIME_IN ).setNumberFormat('@');
+    sheet.getRange(targetRowNum, ATTENDANCE_COL.TIME_OUT).setNumberFormat('@');
+
+    sheet.getRange(targetRowNum, 1, 1, ATTENDANCE_NUM_COLS).setValues([[
+      recordId,
+      employee_id,
+      date,
+      ad.status        || '',
+      ad.time_in       || '',
+      ad.time_out      || '',
+      ad.break_minutes ?? '',
+      ad.work_minutes  ?? '',
+      ad.lunch === true ? '有' : '無',
+      ad.memo          || '',
+      now,
+    ]]);
+
+    SpreadsheetApp.flush();
+    return { id: recordId, saved: true, timestamp: now };
+
+  } finally {
+    // 【重要】例外発生時も必ずロックを解放する。
+    // finally で解放しないと、エラー発生のたびにロックが残留し、
+    // 以降10秒間すべての保存処理が待たされる／失敗する事態になる。
+    lock.releaseLock();
+  }
+}
+
+/**
+ * 数値であるべきフィールドの型を検証する。
+ * 空文字・null・undefined は「未入力」として許容する（既存仕様を維持）。
+ * それ以外で Number() が NaN になる値はエラーとする。
+ *
+ * @param {*} value
+ * @param {string} fieldName - エラーメッセージ用のフィールド名
+ * @throws {Error} 数値に変換できない値が渡された場合
+ */
+function _validateNumericField(value, fieldName) {
+  if (value === '' || value === null || value === undefined) return;
+  if (Number.isNaN(Number(value))) {
+    throw new Error(`${fieldName} は数値で指定してください（受信値: ${value}）。`);
+  }
 }
 
 /**
