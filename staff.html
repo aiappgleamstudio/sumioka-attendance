@@ -38,11 +38,8 @@ html {
 }
 body {
   min-height: 100dvh;
-  background: #f3f4f6;
-  color: #111;
-}
-@media (prefers-color-scheme: dark) {
-  body { background: #111; color: #f3f4f6; }
+  background: Canvas;
+  color: CanvasText;
 }
 
 /* ─── ローディング／トースト／エラー／確認ダイアログ ──────
@@ -59,13 +56,11 @@ body {
 }
 .login-card {
   width: 100%; max-width: 380px;
-  background: #fff;
+  background: Canvas;
+  border: 1px solid GrayText;
   border-radius: 20px;
   padding: 36px 28px 32px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.10);
-}
-@media (prefers-color-scheme: dark) {
-  .login-card { background: #1e1e1e; box-shadow: 0 4px 24px rgba(0,0,0,0.4); }
 }
 .login-logo {
   width: 64px; height: 64px; border-radius: 16px;
@@ -76,28 +71,22 @@ body {
 }
 .login-title {
   text-align: center; font-size: 1.25rem; font-weight: 700;
-  margin-bottom: 6px; color: #111;
+  margin-bottom: 6px; color: CanvasText;
 }
-@media (prefers-color-scheme: dark) { .login-title { color: #f3f4f6; } }
 .login-subtitle {
-  text-align: center; font-size: 0.82rem; color: #6b7280; margin-bottom: 28px;
+  text-align: center; font-size: 0.82rem; color: GrayText; margin-bottom: 28px;
 }
 .field-label {
   display: block; font-size: 0.8rem; font-weight: 600;
-  color: #374151; margin-bottom: 6px;
+  color: GrayText; margin-bottom: 6px;
 }
-@media (prefers-color-scheme: dark) { .field-label { color: #d1d5db; } }
 .field-input {
   width: 100%; padding: 13px 14px; border-radius: 10px;
-  border: 1.5px solid #d1d5db; background: #f9fafb;
+  border: 1.5px solid GrayText; background: Field; color: FieldText;
   font-size: 1.1rem; outline: none; transition: border-color 0.15s;
   margin-bottom: 14px;
 }
-.field-input:focus { border-color: #1a7f37; background: #fff; }
-@media (prefers-color-scheme: dark) {
-  .field-input { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
-  .field-input:focus { background: #333; border-color: #1a7f37; }
-}
+.field-input:focus { border-color: #1a7f37; background: Canvas; }
 .btn-login {
   width: 100%; padding: 14px; border-radius: 12px; border: none;
   background: #1a7f37; color: #fff; font-size: 1rem; font-weight: 700;
@@ -106,7 +95,7 @@ body {
 .btn-login:hover:not(:disabled) { opacity: 0.88; }
 .btn-login:disabled { opacity: 0.45; cursor: not-allowed; }
 .login-hint {
-  text-align: center; font-size: 0.78rem; color: #9ca3af; margin-top: 14px;
+  text-align: center; font-size: 0.78rem; color: GrayText; margin-top: 14px;
 }
 
 /* ─── メイン画面 共通ラッパー ──────────────────────────── */
@@ -164,21 +153,18 @@ body {
 /* ─── ボトムナビゲーション ─────────────────────────────── */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-  background: #fff;
-  border-top: 1px solid #e5e7eb;
+  background: Canvas;
+  border-top: 1px solid GrayText;
   display: flex;
   height: 60px;
   padding-bottom: env(safe-area-inset-bottom, 0);
   box-shadow: 0 -2px 10px rgba(0,0,0,0.06);
 }
-@media (prefers-color-scheme: dark) {
-  .bottom-nav { background: #1a1a1a; border-top-color: #333; }
-}
 .nav-btn {
   flex: 1; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 3px;
   background: none; border: none; cursor: pointer;
-  color: #9ca3af; padding: 6px 4px;
+  color: GrayText; padding: 6px 4px;
   font-size: 0.65rem; font-weight: 500;
   transition: color 0.15s;
   -webkit-tap-highlight-color: transparent;
@@ -206,7 +192,7 @@ body {
   letter-spacing: -2px; line-height: 1;
 }
 .clock-date {
-  font-size: 0.88rem; color: #6b7280; margin-top: 6px;
+  font-size: 0.88rem; color: GrayText; margin-top: 6px;
 }
 
 /* ステータスバー */
@@ -215,31 +201,24 @@ body {
 }
 .status-chip {
   flex: 1; padding: 8px 10px; border-radius: 10px;
-  background: #fff; border: 1.5px solid #e5e7eb;
-  text-align: center; font-size: 0.72rem; color: #6b7280;
-}
-@media (prefers-color-scheme: dark) {
-  .status-chip { background: #1e1e1e; border-color: #333; }
+  background: Canvas; border: 1.5px solid GrayText;
+  text-align: center; font-size: 0.72rem; color: GrayText;
 }
 .status-chip .chip-val {
   display: block; font-size: 1rem; font-weight: 700;
-  color: #111; margin-top: 2px;
+  color: CanvasText; margin-top: 2px;
 }
-@media (prefers-color-scheme: dark) { .status-chip .chip-val { color: #f3f4f6; } }
 .status-chip.done .chip-val { color: #1a7f37; }
 .status-chip.pending .chip-val { color: #d97706; }
 
 /* カード */
 .card {
-  background: #fff; border-radius: 16px;
+  background: Canvas; border-radius: 16px;
   padding: 18px 16px; margin-bottom: 12px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.07);
 }
-@media (prefers-color-scheme: dark) {
-  .card { background: #1e1e1e; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
-}
 .card-title {
-  font-size: 0.78rem; font-weight: 700; color: #6b7280;
+  font-size: 0.78rem; font-weight: 700; color: GrayText;
   text-transform: uppercase; letter-spacing: 0.05em;
   margin-bottom: 12px;
 }
@@ -250,7 +229,7 @@ body {
 }
 .lunch-btn {
   flex: 1; padding: 14px 10px; border-radius: 12px;
-  border: 2px solid #e5e7eb; background: #f9fafb;
+  border: 2px solid GrayText; background: Field;
   font-size: 1rem; cursor: pointer; text-align: center;
   font-weight: 600; transition: all 0.15s;
 }
@@ -260,10 +239,7 @@ body {
   animation: none;
 }
 .lunch-btn .lunch-icon { display: block; font-size: 1.6rem; margin-bottom: 4px; }
-@media (prefers-color-scheme: dark) {
-  .lunch-btn { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
-  .lunch-btn.selected { background: #1a2e1a; border-color: #1a7f37; color: #4ade80; }
-}
+/* ダークモードは Field / GrayText / #1a7f37 が自動追従するため個別指定は不要 */
 /* 未選択であることを軽く知らせる（選択完了で自動的にanimation:noneになる） */
 .lunch-row:not(:has(.selected)) .lunch-btn {
   animation: lunch-pulse 2s ease-in-out infinite;
@@ -273,7 +249,7 @@ body {
   animation: none;
 }
 @keyframes lunch-pulse {
-  0%, 100% { border-color: #e5e7eb; }
+  0%, 100% { border-color: GrayText; }
   50% { border-color: #93c5a8; }
 }
 
@@ -302,32 +278,24 @@ body {
 /* 日報・引継ぎ */
 .report-textarea {
   width: 100%; min-height: 90px; padding: 12px;
-  border-radius: 10px; border: 1.5px solid #d1d5db;
-  background: #f9fafb; font-size: 0.95rem; resize: vertical;
+  border-radius: 10px; border: 1.5px solid GrayText;
+  background: Field; color: FieldText; font-size: 0.95rem; resize: vertical;
   font-family: inherit; outline: none; transition: border-color 0.15s;
 }
-.report-textarea:focus { border-color: #1a7f37; background: #fff; }
-@media (prefers-color-scheme: dark) {
-  .report-textarea { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
-  .report-textarea:focus { background: #333; border-color: #1a7f37; }
-}
+.report-textarea:focus { border-color: #1a7f37; background: Canvas; }
 .report-label {
-  font-size: 0.82rem; font-weight: 600; color: #374151;
+  font-size: 0.82rem; font-weight: 600; color: GrayText;
   display: block; margin-bottom: 6px;
 }
-@media (prefers-color-scheme: dark) { .report-label { color: #d1d5db; } }
 
 /* 休憩選択 */
 .break-select {
   width: 100%; padding: 11px 12px; border-radius: 10px;
-  border: 1.5px solid #d1d5db; background: #f9fafb;
+  border: 1.5px solid GrayText; background: Field; color: FieldText;
   font-size: 0.95rem; outline: none; cursor: pointer;
   transition: border-color 0.15s;
 }
 .break-select:focus { border-color: #1a7f37; }
-@media (prefers-color-scheme: dark) {
-  .break-select { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
-}
 
 /* 完了バナー */
 .done-banner {
@@ -339,18 +307,15 @@ body {
 .done-banner .done-text {
   font-size: 1.05rem; font-weight: 700; color: #1a7f37; margin-top: 8px;
 }
-.done-banner .done-sub { font-size: 0.82rem; color: #4b5563; margin-top: 4px; }
+.done-banner .done-sub { font-size: 0.82rem; color: GrayText; margin-top: 4px; }
 
 /* ─── タスクパネル ──────────────────────────────────────── */
 .task-list { display: flex; flex-direction: column; gap: 8px; }
 .task-item {
-  background: #fff; border-radius: 12px; padding: 14px 14px 14px 16px;
-  border-left: 4px solid #d1d5db;
+  background: Canvas; border-radius: 12px; padding: 14px 14px 14px 16px;
+  border-left: 4px solid GrayText;
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   display: flex; align-items: flex-start; gap: 12px; cursor: pointer;
-}
-@media (prefers-color-scheme: dark) {
-  .task-item { background: #1e1e1e; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 }
 .task-item.status-inprogress  { border-left-color: #2563eb; }
 .task-item.status-review      { border-left-color: #d97706; }
@@ -359,10 +324,9 @@ body {
 .task-item.status-done        { border-left-color: #1a7f37; opacity: 0.65; }
 .task-item-body { flex: 1; min-width: 0; }
 .task-item-title {
-  font-size: 0.95rem; font-weight: 600; color: #111;
+  font-size: 0.95rem; font-weight: 600; color: CanvasText;
   margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-@media (prefers-color-scheme: dark) { .task-item-title { color: #f3f4f6; } }
 .task-item-meta {
   display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
 }
@@ -375,12 +339,12 @@ body {
 .badge-rejected    { background: #fee2e2; color: #dc2626; }
 .badge-done        { background: #d1fae5; color: #065f46; }
 .task-due {
-  font-size: 0.72rem; color: #9ca3af;
+  font-size: 0.72rem; color: GrayText;
 }
 .task-due.overdue { color: #ef4444; font-weight: 600; }
 .task-review-icon { font-size: 0.75rem; color: #d97706; }
 .task-item-arrow {
-  color: #d1d5db; font-size: 0.9rem; align-self: center;
+  color: GrayText; font-size: 0.9rem; align-self: center;
 }
 
 /* タスク詳細ドロワー */
@@ -391,30 +355,29 @@ body {
 .drawer-overlay.active { display: block; }
 .drawer {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 201;
-  background: #fff; border-radius: 20px 20px 0 0;
+  background: Canvas; border-radius: 20px 20px 0 0;
   padding: 20px 16px calc(28px + env(safe-area-inset-bottom, 0));
   max-height: 85dvh; overflow-y: auto;
   transform: translateY(100%);
   transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
 }
-@media (prefers-color-scheme: dark) { .drawer { background: #1a1a1a; } }
 .drawer.open { transform: translateY(0); }
 .drawer-handle {
   width: 40px; height: 4px; border-radius: 2px;
-  background: #d1d5db; margin: 0 auto 18px;
+  background: GrayText; margin: 0 auto 18px;
 }
 .drawer-title {
   font-size: 1.05rem; font-weight: 700; margin-bottom: 14px;
 }
 .drawer-section { margin-bottom: 14px; }
 .drawer-section-label {
-  font-size: 0.75rem; font-weight: 700; color: #6b7280;
+  font-size: 0.75rem; font-weight: 700; color: GrayText;
   text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px;
 }
 .drawer-section-val {
-  font-size: 0.92rem; color: #374151; line-height: 1.6;
+  font-size: 0.92rem; color: CanvasText; line-height: 1.6;
 }
-@media (prefers-color-scheme: dark) { .drawer-section-val { color: #d1d5db; } }
 
 /* ステータス変更ボタン群 */
 .status-change-row {
@@ -434,15 +397,12 @@ body {
 /* コメント入力 */
 .comment-input {
   width: 100%; padding: 10px 12px; border-radius: 10px;
-  border: 1.5px solid #d1d5db; background: #f9fafb;
+  border: 1.5px solid GrayText; background: Field; color: FieldText;
   font-size: 0.9rem; resize: vertical; min-height: 70px;
   font-family: inherit; outline: none; margin-bottom: 8px;
   transition: border-color 0.15s;
 }
-.comment-input:focus { border-color: #1a7f37; background: #fff; }
-@media (prefers-color-scheme: dark) {
-  .comment-input { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
-}
+.comment-input:focus { border-color: #1a7f37; background: Canvas; }
 .btn-comment-save {
   width: 100%; padding: 11px; border-radius: 10px; border: none;
   background: #374151; color: #fff; font-size: 0.88rem; font-weight: 600;
@@ -453,11 +413,10 @@ body {
 /* コメント履歴 */
 .comment-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .comment-item {
-  background: #f9fafb; border-radius: 10px; padding: 10px 12px;
+  background: Field; border-radius: 10px; padding: 10px 12px;
   font-size: 0.85rem; line-height: 1.5;
 }
-@media (prefers-color-scheme: dark) { .comment-item { background: #2a2a2a; } }
-.comment-item-meta { font-size: 0.72rem; color: #9ca3af; margin-bottom: 3px; }
+.comment-item-meta { font-size: 0.72rem; color: GrayText; margin-bottom: 3px; }
 
 /* 差戻理由 */
 .reject-reason-box {
@@ -469,55 +428,46 @@ body {
 /* タスク空表示 */
 .empty-state {
   text-align: center; padding: 48px 16px;
-  color: #9ca3af;
+  color: GrayText;
 }
 .empty-icon { font-size: 3rem; margin-bottom: 10px; }
 .empty-text { font-size: 0.9rem; }
 
 /* ─── 相談パネル ────────────────────────────────────────── */
 .consult-form {
-  background: #fff; border-radius: 16px; padding: 18px 16px;
+  background: Canvas; border-radius: 16px; padding: 18px 16px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 16px;
 }
-@media (prefers-color-scheme: dark) {
-  .consult-form { background: #1e1e1e; }
-}
 .consult-form-title {
-  font-size: 0.78rem; font-weight: 700; color: #6b7280;
+  font-size: 0.78rem; font-weight: 700; color: GrayText;
   text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;
 }
 .consult-input {
   width: 100%; padding: 11px 12px; border-radius: 10px;
-  border: 1.5px solid #d1d5db; background: #f9fafb;
+  border: 1.5px solid GrayText; background: Field; color: FieldText;
   font-size: 0.92rem; font-family: inherit; outline: none;
   margin-bottom: 10px; transition: border-color 0.15s;
 }
-.consult-input:focus { border-color: #1a7f37; background: #fff; }
-@media (prefers-color-scheme: dark) {
-  .consult-input { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
-}
+.consult-input:focus { border-color: #1a7f37; background: Canvas; }
 .consult-textarea {
   width: 100%; min-height: 90px; padding: 11px 12px;
-  border-radius: 10px; border: 1.5px solid #d1d5db;
-  background: #f9fafb; font-size: 0.92rem; resize: vertical;
+  border-radius: 10px; border: 1.5px solid GrayText;
+  background: Field; color: FieldText; font-size: 0.92rem; resize: vertical;
   font-family: inherit; outline: none; margin-bottom: 10px;
   transition: border-color 0.15s;
 }
-.consult-textarea:focus { border-color: #1a7f37; background: #fff; }
-@media (prefers-color-scheme: dark) {
-  .consult-textarea { background: #2a2a2a; border-color: #444; color: #f3f4f6; }
-}
+.consult-textarea:focus { border-color: #1a7f37; background: Canvas; }
 .recipient-list {
   display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px;
 }
 .recipient-item {
   display: flex; align-items: center; gap: 10px;
   padding: 9px 12px; border-radius: 10px;
-  border: 1.5px solid #e5e7eb; background: #f9fafb;
+  border: 1.5px solid GrayText; background: Field;
   cursor: pointer; transition: all 0.15s; font-size: 0.88rem;
 }
 .recipient-item.selected { border-color: #1a7f37; background: #f0fdf4; }
-.recipient-check { font-size: 1rem; color: #9ca3af; }
+.recipient-check { font-size: 1rem; color: GrayText; }
 .recipient-item.selected .recipient-check { color: #1a7f37; }
 .btn-send {
   width: 100%; padding: 13px; border-radius: 12px; border: none;
@@ -530,34 +480,27 @@ body {
 /* 相談履歴 */
 .consult-list { display: flex; flex-direction: column; gap: 10px; }
 .consult-item {
-  background: #fff; border-radius: 12px; padding: 14px;
+  background: Canvas; border-radius: 12px; padding: 14px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-}
-@media (prefers-color-scheme: dark) {
-  .consult-item { background: #1e1e1e; }
 }
 .consult-item-title {
   font-size: 0.92rem; font-weight: 600; margin-bottom: 4px;
 }
 .consult-item-message {
-  font-size: 0.85rem; color: #4b5563; margin-bottom: 6px; line-height: 1.5;
+  font-size: 0.85rem; color: GrayText; margin-bottom: 6px; line-height: 1.5;
 }
-@media (prefers-color-scheme: dark) { .consult-item-message { color: #9ca3af; } }
 .consult-item-meta {
-  font-size: 0.72rem; color: #9ca3af; display: flex; gap: 8px;
+  font-size: 0.72rem; color: GrayText; display: flex; gap: 8px;
 }
 .consult-resolved { color: #1a7f37; font-weight: 600; }
 
 /* ─── 通知パネル ────────────────────────────────────────── */
 .notif-list { display: flex; flex-direction: column; gap: 8px; }
 .notif-item {
-  background: #fff; border-radius: 12px; padding: 14px;
+  background: Canvas; border-radius: 12px; padding: 14px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   display: flex; gap: 12px; align-items: flex-start;
   border-left: 3px solid transparent;
-}
-@media (prefers-color-scheme: dark) {
-  .notif-item { background: #1e1e1e; }
 }
 .notif-item.unread { border-left-color: #1a7f37; background: #f0fdf4; }
 @media (prefers-color-scheme: dark) {
@@ -566,24 +509,23 @@ body {
 .notif-icon { font-size: 1.3rem; flex-shrink: 0; }
 .notif-body { flex: 1; min-width: 0; }
 .notif-title { font-size: 0.88rem; font-weight: 600; margin-bottom: 2px; }
-.notif-text { font-size: 0.8rem; color: #6b7280; }
-.notif-time { font-size: 0.7rem; color: #9ca3af; margin-top: 3px; }
+.notif-text { font-size: 0.8rem; color: GrayText; }
+.notif-time { font-size: 0.7rem; color: GrayText; margin-top: 3px; }
 
 .btn-read-all {
   width: 100%; padding: 10px; border-radius: 10px;
-  border: 1.5px solid #d1d5db; background: transparent;
-  font-size: 0.85rem; color: #6b7280; cursor: pointer; margin-bottom: 12px;
+  border: 1.5px solid GrayText; background: transparent;
+  font-size: 0.85rem; color: GrayText; cursor: pointer; margin-bottom: 12px;
 }
 .btn-read-all:hover { border-color: #1a7f37; color: #1a7f37; }
 
 /* ─── ユーティリティ ────────────────────────────────────── */
 .section-title {
-  font-size: 0.78rem; font-weight: 700; color: #6b7280;
+  font-size: 0.78rem; font-weight: 700; color: GrayText;
   text-transform: uppercase; letter-spacing: 0.05em;
   margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
 }
-.divider { height: 1px; background: #e5e7eb; margin: 14px 0; }
-@media (prefers-color-scheme: dark) { .divider { background: #2d2d2d; } }
+.divider { height: 1px; background: GrayText; margin: 14px 0; opacity: 0.4; }
 .tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
 </style>
 </head>
