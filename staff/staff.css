@@ -1,0 +1,567 @@
+/* =============================================================
+   staff.html — ATM型 打刻 + タスク + 相談 + 日報
+   デザインコンセプト: Apple / Linear / Notion / Stripe Dashboard
+   方針:
+     余白を広く取り、装飾を削ぎ落とす。影より境界線（hairline border）。
+     角丸は12px前後に統一し、過度な丸み・過度な影を避ける。
+     色はトークン化し、ライト/ダークとも :root の変数だけで完結させる。
+   設計思想（維持）:
+     1画面1操作。ユーザーが次に何をすべきかが一目でわかる。
+     ロール（利用者/職員/管理者）でメニューを切り替える。
+============================================================= */
+
+/* ─── デザイントークン ────────────────────────────────── */
+:root {
+  color-scheme: light dark;
+  --bg:          #FAFAFA;
+  --surface:     #FFFFFF;
+  --surface-2:   #F5F5F5;
+  --border:      #E4E4E7;
+  --text:        #18181B;
+  --text-2:      #71717A;
+  --text-3:      #A1A1AA;
+  --brand:       #1A7F37;
+  --brand-tint:  #ECFAF0;
+  --danger:      #DC2626;
+  --warning:     #D97706;
+  --info:        #2563EB;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --shadow-elev: 0 12px 32px rgba(0,0,0,0.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:         #0A0A0B;
+    --surface:    #141416;
+    --surface-2:  #1C1C1F;
+    --border:     #27272A;
+    --text:       #F4F4F5;
+    --text-2:     #A1A1AA;
+    --text-3:     #71717A;
+    --brand:      #2FBF57;
+    --brand-tint: #0F2818;
+    --shadow-elev: 0 12px 32px rgba(0,0,0,0.45);
+  }
+}
+
+/* ─── リセット ────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  font-family: 'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',
+               'Yu Gothic UI','Meiryo UI',sans-serif;
+  font-size: 16px; line-height: 1.55;
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* ─── ローディング／トースト／エラー／確認ダイアログ ──────
+   2026-07-29: styles.css + ui.js の共通実装（.sumioka-*）に統一したため、
+   このファイル固有のCSSは削除した。呼び出し側の関数名（showLoading/
+   hideLoading/showToast）は ui.js 側と同名のため呼び出し箇所の変更は不要。
+   ────────────────────────────────────────────────────── */
+
+/* ─── ログイン画面 ─────────────────────────────────────── */
+#screen-login {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 100dvh;
+  padding: 24px 20px;
+}
+.login-card {
+  width: 100%; max-width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 44px 32px 36px;
+}
+.login-logo {
+  width: 56px; height: 56px; border-radius: var(--radius-md);
+  background: var(--brand);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; color: #fff; margin: 0 auto 24px;
+}
+.login-title {
+  text-align: center; font-size: 1.3rem; font-weight: 600;
+  margin-bottom: 8px; color: var(--text); letter-spacing: -0.01em;
+}
+.login-subtitle {
+  text-align: center; font-size: 0.85rem; color: var(--text-2); margin-bottom: 32px;
+}
+.field-label {
+  display: block; font-size: 0.78rem; font-weight: 600;
+  color: var(--text-2); margin-bottom: 8px;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.field-input {
+  width: 100%; padding: 13px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font-size: 1.05rem; outline: none; transition: border-color 0.15s, background 0.15s;
+  margin-bottom: 16px;
+}
+.field-input:focus { border-color: var(--brand); background: var(--surface); }
+.btn-login {
+  width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none;
+  background: var(--brand); color: #fff; font-size: 0.98rem; font-weight: 600;
+  cursor: pointer; transition: opacity 0.15s; margin-top: 8px;
+}
+.btn-login:hover:not(:disabled) { opacity: 0.88; }
+.btn-login:disabled { opacity: 0.4; cursor: not-allowed; }
+.login-hint {
+  text-align: center; font-size: 0.76rem; color: var(--text-3); margin-top: 18px;
+}
+
+/* ─── メイン画面 共通ラッパー ──────────────────────────── */
+#screen-main { display: none; min-height: 100dvh; }
+#screen-main.active { display: block; }
+
+/* ─── ヘッダー ─────────────────────────────────────────── */
+.app-header {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  display: flex; align-items: center; gap: 12px;
+  height: 60px;
+}
+.app-header-title {
+  flex: 1; font-size: 0.95rem; font-weight: 600; color: var(--text);
+}
+.header-user {
+  font-size: 0.78rem; color: var(--text-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 120px;
+}
+.header-notif-btn {
+  position: relative; background: none; border: none;
+  color: var(--text-2); font-size: 1.25rem; cursor: pointer; padding: 6px;
+  line-height: 1; border-radius: var(--radius-sm); transition: background 0.15s;
+}
+.header-notif-btn:hover { background: var(--surface-2); }
+.notif-badge {
+  position: absolute; top: 2px; right: 2px;
+  background: var(--danger); color: #fff;
+  font-size: 0.6rem; font-weight: 700;
+  width: 15px; height: 15px; border-radius: 50%;
+  align-items: center; justify-content: center;
+  display: none;
+}
+.notif-badge.show { display: flex; }
+.header-logout-btn {
+  background: none; border: 1px solid var(--border);
+  color: var(--text-2); font-size: 0.78rem; padding: 6px 12px;
+  border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+.header-logout-btn:hover { border-color: var(--text-2); color: var(--text); }
+
+/* 管理画面リンク（職員・管理者のみ表示） */
+.header-admin-link {
+  background: none; border: 1px solid var(--border);
+  color: var(--text-2); font-size: 0.78rem; padding: 6px 12px;
+  border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap;
+  text-decoration: none; display: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+.header-admin-link.show { display: inline-flex; align-items: center; gap: 4px; }
+.header-admin-link:hover { border-color: var(--text-2); color: var(--text); }
+
+/* ─── ボトムナビゲーション ─────────────────────────────── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  height: 64px;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); padding: 6px 4px;
+  font-size: 0.66rem; font-weight: 500;
+  transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-btn .nav-icon { font-size: 1.35rem; line-height: 1; }
+.nav-btn.active { color: var(--brand); }
+.nav-btn:hover { color: var(--brand); }
+
+/* ─── コンテンツエリア ─────────────────────────────────── */
+.content-area {
+  padding: 28px 20px calc(84px + env(safe-area-inset-bottom, 0));
+  max-width: 560px; margin: 0 auto;
+}
+
+/* ─── パネル共通 ────────────────────────────────────────── */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ─── 打刻パネル ────────────────────────────────────────── */
+.clock-display {
+  text-align: center; padding: 8px 0 28px;
+}
+.clock-time {
+  font-size: 3.4rem; font-weight: 600; color: var(--text);
+  letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums;
+}
+.clock-date {
+  font-size: 0.86rem; color: var(--text-2); margin-top: 10px;
+}
+
+/* ステータスバー */
+.status-bar {
+  display: flex; gap: 10px; margin-bottom: 24px;
+}
+.status-chip {
+  flex: 1; padding: 12px 10px; border-radius: var(--radius-md);
+  background: var(--surface); border: 1px solid var(--border);
+  text-align: center; font-size: 0.72rem; color: var(--text-2);
+}
+.status-chip .chip-val {
+  display: block; font-size: 1.05rem; font-weight: 600;
+  color: var(--text); margin-top: 4px;
+}
+.status-chip.done .chip-val { color: var(--brand); }
+.status-chip.pending .chip-val { color: var(--warning); }
+
+/* カード */
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 22px 20px; margin-bottom: 16px;
+}
+.card-title {
+  font-size: 0.74rem; font-weight: 600; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 16px;
+}
+
+/* 弁当選択 */
+.lunch-row {
+  display: flex; gap: 10px;
+}
+.lunch-btn {
+  flex: 1; padding: 16px 10px; border-radius: var(--radius-md);
+  border: 1px solid var(--border); background: var(--surface-2);
+  font-size: 1rem; cursor: pointer; text-align: center;
+  font-weight: 600; color: var(--text); transition: all 0.15s;
+}
+.lunch-btn:hover { border-color: var(--brand); }
+.lunch-btn.selected {
+  border-color: var(--brand); background: var(--brand-tint); color: var(--brand);
+  animation: none;
+}
+.lunch-btn .lunch-icon { display: block; font-size: 1.5rem; margin-bottom: 6px; }
+/* 未選択であることを軽く知らせる（選択完了で自動的にanimation:noneになる） */
+.lunch-row:not(:has(.selected)) .lunch-btn {
+  animation: lunch-pulse 2s ease-in-out infinite;
+}
+/* :has() 未対応ブラウザ向けフォールバック（JSがhas-selectionクラスを付与） */
+.lunch-row.has-selection .lunch-btn {
+  animation: none;
+}
+@keyframes lunch-pulse {
+  0%, 100% { border-color: var(--border); }
+  50% { border-color: var(--brand); }
+}
+
+/* 大ボタン（打刻用） */
+.clock-btn {
+  width: 100%; padding: 18px; border-radius: var(--radius-md); border: none;
+  font-size: 1.1rem; font-weight: 600; cursor: pointer;
+  transition: all 0.15s; margin-top: 10px; display: flex;
+  align-items: center; justify-content: center; gap: 10px;
+}
+.clock-btn-checkin {
+  background: var(--brand); color: #fff;
+}
+.clock-btn-checkout {
+  background: var(--info); color: #fff;
+}
+.clock-btn:hover:not(:disabled) { opacity: 0.9; }
+.clock-btn:disabled {
+  opacity: 0.35; cursor: not-allowed;
+}
+.clock-btn-icon { font-size: 1.3rem; }
+
+/* 日報・引継ぎ */
+.report-textarea {
+  width: 100%; min-height: 96px; padding: 13px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font-size: 0.95rem; resize: vertical;
+  font-family: inherit; outline: none; transition: border-color 0.15s, background 0.15s;
+}
+.report-textarea:focus { border-color: var(--brand); background: var(--surface); }
+.report-label {
+  font-size: 0.8rem; font-weight: 600; color: var(--text-2);
+  display: block; margin-bottom: 8px;
+}
+
+/* 休憩選択 */
+.break-select {
+  width: 100%; padding: 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font-size: 0.95rem; outline: none; cursor: pointer;
+  transition: border-color 0.15s;
+}
+.break-select:focus { border-color: var(--brand); }
+
+/* 完了バナー */
+.done-banner {
+  background: var(--brand-tint); border: 1px solid var(--brand);
+  border-radius: var(--radius-lg); padding: 24px;
+  text-align: center; margin-bottom: 16px;
+}
+.done-banner .done-icon { font-size: 2.2rem; }
+.done-banner .done-text {
+  font-size: 1.05rem; font-weight: 600; color: var(--brand); margin-top: 10px;
+}
+.done-banner .done-sub { font-size: 0.82rem; color: var(--text-2); margin-top: 4px; }
+
+/* ─── タスクパネル ──────────────────────────────────────── */
+.task-list { display: flex; flex-direction: column; gap: 10px; }
+.task-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 16px 16px 16px 18px;
+  border-left: 3px solid var(--border);
+  display: flex; align-items: flex-start; gap: 12px; cursor: pointer;
+  transition: border-color 0.15s;
+}
+.task-item:hover { border-color: var(--text-3); }
+.task-item.status-inprogress  { border-left-color: var(--info); }
+.task-item.status-review      { border-left-color: var(--warning); }
+.task-item.status-rejected    { border-left-color: #ef4444; }
+.task-item.status-notstarted  { border-left-color: var(--text-3); }
+.task-item.status-done        { border-left-color: var(--brand); opacity: 0.6; }
+.task-item-body { flex: 1; min-width: 0; }
+.task-item-title {
+  font-size: 0.95rem; font-weight: 600; color: var(--text);
+  margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.task-item-meta {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+}
+.task-status-badge {
+  font-size: 0.7rem; padding: 3px 9px; border-radius: 20px; font-weight: 600;
+}
+.badge-notstarted  { background: var(--surface-2); color: var(--text-2); }
+.badge-inprogress  { background: #dbeafe; color: #1d4ed8; }
+.badge-review      { background: #fef3c7; color: #d97706; }
+.badge-rejected    { background: #fee2e2; color: #dc2626; }
+.badge-done        { background: #d1fae5; color: #065f46; }
+.task-due {
+  font-size: 0.72rem; color: var(--text-3);
+}
+.task-due.overdue { color: #ef4444; font-weight: 600; }
+.task-review-icon { font-size: 0.75rem; color: var(--warning); }
+.task-item-arrow {
+  color: var(--text-3); font-size: 0.9rem; align-self: center;
+}
+
+/* タスク詳細ドロワー */
+.drawer-overlay {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.4);
+}
+.drawer-overlay.active { display: block; }
+.drawer {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 201;
+  background: var(--surface); border-radius: 20px 20px 0 0;
+  padding: 24px 20px calc(32px + env(safe-area-inset-bottom, 0));
+  max-height: 85dvh; overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  box-shadow: var(--shadow-elev);
+}
+.drawer.open { transform: translateY(0); }
+.drawer-handle {
+  width: 36px; height: 4px; border-radius: 2px;
+  background: var(--border); margin: 0 auto 22px;
+}
+.drawer-title {
+  font-size: 1.08rem; font-weight: 600; margin-bottom: 18px;
+}
+.drawer-section { margin-bottom: 16px; }
+.drawer-section-label {
+  font-size: 0.72rem; font-weight: 600; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 7px;
+}
+.drawer-section-val {
+  font-size: 0.92rem; color: var(--text); line-height: 1.6;
+}
+
+/* ステータス変更ボタン群 */
+.status-change-row {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px;
+}
+.status-btn {
+  flex: 1; min-width: 90px; padding: 12px 10px; border-radius: var(--radius-sm);
+  border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.status-btn:hover:not(:disabled) { opacity: 0.85; }
+.status-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-inprogress { background: var(--info); color: #fff; }
+.btn-review     { background: var(--warning); color: #fff; }
+.btn-done       { background: var(--brand); color: #fff; }
+
+/* コメント入力 */
+.comment-input {
+  width: 100%; padding: 11px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font-size: 0.9rem; resize: vertical; min-height: 72px;
+  font-family: inherit; outline: none; margin-bottom: 10px;
+  transition: border-color 0.15s;
+}
+.comment-input:focus { border-color: var(--brand); background: var(--surface); }
+.btn-comment-save {
+  width: 100%; padding: 12px; border-radius: var(--radius-sm); border: none;
+  background: var(--text); color: var(--bg); font-size: 0.88rem; font-weight: 600;
+  cursor: pointer;
+}
+.btn-comment-save:hover { opacity: 0.85; }
+
+/* コメント履歴 */
+.comment-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.comment-item {
+  background: var(--surface-2); border-radius: var(--radius-sm); padding: 11px 12px;
+  font-size: 0.85rem; line-height: 1.5;
+}
+.comment-item-meta { font-size: 0.72rem; color: var(--text-3); margin-bottom: 4px; }
+
+/* 差戻理由 */
+.reject-reason-box {
+  background: #fff7ed; border: 1px solid #fed7aa;
+  border-radius: var(--radius-sm); padding: 11px 12px;
+  font-size: 0.85rem; color: #c2410c; margin-bottom: 14px; display: none;
+}
+
+/* タスク空表示 */
+.empty-state {
+  text-align: center; padding: 56px 16px;
+  color: var(--text-3);
+}
+.empty-icon { font-size: 2.8rem; margin-bottom: 12px; opacity: 0.6; }
+.empty-text { font-size: 0.9rem; }
+
+/* ─── 相談パネル ────────────────────────────────────────── */
+.consult-form {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 22px 20px; margin-bottom: 18px;
+}
+.consult-form-title {
+  font-size: 0.74rem; font-weight: 600; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px;
+}
+.consult-input {
+  width: 100%; padding: 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font-size: 0.92rem; font-family: inherit; outline: none;
+  margin-bottom: 12px; transition: border-color 0.15s;
+}
+.consult-input:focus { border-color: var(--brand); background: var(--surface); }
+.consult-textarea {
+  width: 100%; min-height: 96px; padding: 12px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font-size: 0.92rem; resize: vertical;
+  font-family: inherit; outline: none; margin-bottom: 12px;
+  transition: border-color 0.15s;
+}
+.consult-textarea:focus { border-color: var(--brand); background: var(--surface); }
+.recipient-list {
+  display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;
+}
+.recipient-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface-2);
+  cursor: pointer; transition: all 0.15s; font-size: 0.88rem; color: var(--text);
+}
+.recipient-item.selected { border-color: var(--brand); background: var(--brand-tint); }
+.recipient-check { font-size: 1rem; color: var(--text-3); }
+.recipient-item.selected .recipient-check { color: var(--brand); }
+.btn-send {
+  width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none;
+  background: var(--brand); color: #fff; font-size: 0.95rem; font-weight: 600;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.btn-send:hover:not(:disabled) { opacity: 0.88; }
+.btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* 相談履歴 */
+.consult-list { display: flex; flex-direction: column; gap: 12px; }
+.consult-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 16px;
+}
+.consult-item-title {
+  font-size: 0.92rem; font-weight: 600; margin-bottom: 5px; color: var(--text);
+}
+.consult-item-message {
+  font-size: 0.85rem; color: var(--text-2); margin-bottom: 8px; line-height: 1.55;
+}
+.consult-item-meta {
+  font-size: 0.72rem; color: var(--text-3); display: flex; gap: 8px;
+}
+.consult-resolved { color: var(--brand); font-weight: 600; }
+
+/* ─── 通知パネル ────────────────────────────────────────── */
+.notif-list { display: flex; flex-direction: column; gap: 10px; }
+.notif-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex; gap: 12px; align-items: flex-start;
+  border-left: 3px solid transparent;
+}
+.notif-item.unread { border-left-color: var(--brand); background: var(--brand-tint); }
+.notif-icon { font-size: 1.25rem; flex-shrink: 0; }
+.notif-body { flex: 1; min-width: 0; }
+.notif-title { font-size: 0.88rem; font-weight: 600; margin-bottom: 3px; color: var(--text); }
+.notif-text { font-size: 0.8rem; color: var(--text-2); }
+.notif-time { font-size: 0.7rem; color: var(--text-3); margin-top: 4px; }
+
+.btn-read-all {
+  width: 100%; padding: 11px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: transparent; color: var(--text-2);
+  font-size: 0.85rem; cursor: pointer; margin-bottom: 16px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-read-all:hover { border-color: var(--brand); color: var(--brand); }
+
+/* ─── ユーティリティ ────────────────────────────────────── */
+.section-title {
+  font-size: 0.74rem; font-weight: 600; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+}
+.divider { height: 1px; background: var(--border); margin: 20px 0; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; }
+
+/* ─── アクセシビリティ ──────────────────────────────────────
+   WCAG 2.4.7 Focus Visible: キーボード操作時のみリングを表示。
+   prefers-reduced-motion: モーションを抑えたいユーザー向けに
+   アニメーション・トランジションを実質無効化する。
+   ────────────────────────────────────────────────────── */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * , *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
