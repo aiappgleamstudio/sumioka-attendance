@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ポータル | 住岡</title>
+  <!-- 共通スタイル・共通JSモジュール（common/フォルダ配下） -->
+  <link rel="stylesheet" href="common/styles.css">
+  <script src="common/api.js"></script>
+  <script src="common/storage.js"></script>
+  <script src="common/ui.js"></script>
+  <meta name="theme-color" content="#1a7f37">
+
+  <style>
+/* =============================================================
+   portal.html — 職員・管理者向け統合ポータル（個人ゾーン＋管理ゾーン）
+   デザインコンセプト: Apple / Linear / Notion / Stripe Dashboard
+   （staff.html と同一のデザイントークンを継承）
+
+   構成:
+     個人ゾーン（全ログインユーザー共通）: ホーム / タスク / 相談 / 案件
+     管理ゾーン（admin_role に応じて出し分け）: 9タブ
+       スタッフ管理・申請管理・カレンダー・案件タスク管理v2・
+       納期管理・残業指示・打刻漏れ警告・給与計算・アカウント管理
+
+   ナビゲーション方式:
+     Stripe Dashboard を参考に、デスクトップは左サイドバー、
+     モバイルはハンバーガーメニューからのスライドインドロワー。
+
+   認証:
+     既存の 'authenticate' アクションをそのまま使用する。
+     （admin_role が空でない = 管理権限が「不可」以外、の意味と一致するため
+      新規のGAS実装は不要）
+
+   このファイルは骨組みのみ実装している。各タブの中身（データ取得・
+   表示・編集）は次フェーズで1つずつ実装する（🚧準備中プレースホルダー）。
+============================================================= */
+
+/* ─── デザイントークン（staff.html と共通） ────────────── */
+:root {
+  color-scheme: light dark;
+  --bg:          #FAFAFA;
+  --surface:     #FFFFFF;
+  --surface-2:   #F5F5F5;
+  --border:      #E4E4E7;
+  --text:        #18181B;
+  --text-2:      #71717A;
+  --text-3:      #A1A1AA;
+  --brand:       #1A7F37;
+  --brand-tint:  #ECFAF0;
+  --danger:      #DC2626;
+  --warning:     #D97706;
+  --info:        #2563EB;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --shadow-elev: 0 12px 32px rgba(0,0,0,0.12);
+  --sidebar-w:   248px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:         #0A0A0B;
+    --surface:    #141416;
+    --surface-2:  #1C1C1F;
+    --border:     #27272A;
+    --text:       #F4F4F5;
+    --text-2:     #A1A1AA;
+    --text-3:     #71717A;
+    --brand:      #2FBF57;
+    --brand-tint: #0F2818;
+    --shadow-elev: 0 12px 32px rgba(0,0,0,0.45);
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html {
+  font-family: 'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',
+               'Yu Gothic UI','Meiryo UI',sans-serif;
+  font-size: 16px; line-height: 1.55;
+  -webkit-tap-highlight-color: transparent;
+}
+body { min-height: 100dvh; background: var(--bg); color: var(--text); }
+
+/* ─── ログイン画面（staff.html と共通デザイン） ────────── */
+#screen-login {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 100dvh; padding: 24px 20px;
+}
+.login-card {
+  width: 100%; max-width: 380px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 44px 32px 36px;
+}
+.login-logo {
+  width: 56px; height: 56px; border-radius: var(--radius-md);
+  background: var(--brand);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; color: #fff; margin: 0 auto 24px;
+}
+.login-title {
+  text-align: center; font-size: 1.3rem; font-weight: 600;
+  margin-bottom: 8px; letter-spacing: -0.01em;
+}
+.login-subtitle {
+  text-align: center; font-size: 0.85rem; color: var(--text-2); margin-bottom: 32px;
+}
+.field-label {
+  display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-2);
+  margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em;
+}
+.field-input {
+  width: 100%; padding: 13px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  font-size: 1.05rem; outline: none; transition: border-color 0.15s, background 0.15s;
+  margin-bottom: 16px;
+}
+.field-input:focus { border-color: var(--brand); background: var(--surface); }
+.btn-login {
+  width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none;
+  background: var(--brand); color: #fff; font-size: 0.98rem; font-weight: 600;
+  cursor: pointer; transition: opacity 0.15s; margin-top: 8px;
+}
+.btn-login:hover:not(:disabled) { opacity: 0.88; }
+.btn-login:disabled { opacity: 0.4; cursor: not-allowed; }
+.login-hint { text-align: center; font-size: 0.76rem; color: var(--text-3); margin-top: 18px; }
+
+/* ─── メイン画面レイアウト（サイドバー＋コンテンツ） ────── */
+#screen-main { display: none; min-height: 100dvh; }
+#screen-main.active { display: flex; }
+
+.sidebar {
+  width: var(--sidebar-w); flex-shrink: 0;
+  background: var(--surface); border-right: 1px solid var(--border);
+  height: 100dvh; position: sticky; top: 0;
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+}
+.sidebar-header {
+  padding: 20px 20px 16px; display: flex; align-items: center; gap: 10px;
+}
+.sidebar-logo {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  background: var(--brand); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+  flex-shrink: 0;
+}
+.sidebar-title { font-size: 0.92rem; font-weight: 600; }
+.sidebar-user { font-size: 0.74rem; color: var(--text-2); }
+
+.nav-group { padding: 4px 12px; margin-bottom: 4px; }
+.nav-group-label {
+  font-size: 0.68rem; font-weight: 600; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  padding: 12px 12px 6px;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: var(--radius-sm);
+  font-size: 0.88rem; font-weight: 500; color: var(--text-2);
+  cursor: pointer; transition: background 0.12s, color 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.nav-item:hover { background: var(--surface-2); color: var(--text); }
+.nav-item.active { background: var(--brand-tint); color: var(--brand); font-weight: 600; }
+.nav-item .nav-item-icon { font-size: 1.05rem; width: 20px; text-align: center; flex-shrink: 0; }
+.nav-item .nav-item-badge {
+  margin-left: auto; background: var(--danger); color: #fff;
+  font-size: 0.66rem; font-weight: 700; padding: 1px 6px; border-radius: 20px;
+}
+
+.sidebar-footer { margin-top: auto; padding: 14px 20px; border-top: 1px solid var(--border); }
+.btn-logout {
+  width: 100%; padding: 9px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: none; color: var(--text-2);
+  font-size: 0.82rem; cursor: pointer; transition: border-color 0.15s, color 0.15s;
+}
+.btn-logout:hover { border-color: var(--text-2); color: var(--text); }
+
+/* ─── モバイル用ヘッダー・ハンバーガー ─────────────────── */
+.mobile-header {
+  display: none; position: sticky; top: 0; z-index: 100;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  height: 56px; padding: 0 16px; align-items: center; gap: 12px;
+}
+.hamburger-btn {
+  background: none; border: none; font-size: 1.3rem; color: var(--text);
+  cursor: pointer; padding: 6px; line-height: 1;
+}
+.mobile-header-title { font-size: 0.92rem; font-weight: 600; }
+.sidebar-overlay {
+  display: none; position: fixed; inset: 0; z-index: 199; background: rgba(0,0,0,0.4);
+}
+.sidebar-overlay.active { display: block; }
+
+@media (max-width: 860px) {
+  .mobile-header { display: flex; }
+  .sidebar {
+    position: fixed; z-index: 200; top: 0; left: 0;
+    transform: translateX(-100%); transition: transform 0.25s ease;
+    box-shadow: var(--shadow-elev);
+  }
+  .sidebar.open { transform: translateX(0); }
+}
+
+/* ─── メインコンテンツ ─────────────────────────────────── */
+.main-content { flex: 1; min-width: 0; }
+.content-inner { max-width: 880px; margin: 0 auto; padding: 32px 28px 60px; }
+
+.page-title { font-size: 1.4rem; font-weight: 600; margin-bottom: 4px; letter-spacing: -0.01em; }
+.page-subtitle { font-size: 0.88rem; color: var(--text-2); margin-bottom: 28px; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* プレースホルダー（未実装タブ用） */
+.placeholder-box {
+  border: 1px dashed var(--border); border-radius: var(--radius-lg);
+  padding: 56px 24px; text-align: center; color: var(--text-3);
+}
+.placeholder-box .ph-icon { font-size: 2.2rem; margin-bottom: 12px; opacity: 0.5; }
+.placeholder-box .ph-text { font-size: 0.9rem; }
+
+/* カード共通（後続タブ実装で使う） */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 22px 20px; margin-bottom: 16px;
+}
+  </style>
+</head>
+<body>
+
+<!-- ============================================================
+     ログイン画面
+     ============================================================ -->
+<div id="screen-login">
+  <div class="login-card">
+    <div class="login-logo">P</div>
+    <div class="login-title">ポータル</div>
+    <div class="login-subtitle">職員・管理者用</div>
+
+    <label class="field-label" for="input-pin">PIN</label>
+    <input class="field-input" id="input-pin" type="tel" inputmode="numeric" maxlength="4" placeholder="4桁のPIN" autocomplete="off">
+
+    <label class="field-label" for="input-password">パスワード</label>
+    <input class="field-input" id="input-password" type="password" placeholder="パスワード" autocomplete="off">
+
+    <button class="btn-login" id="btn-login" onclick="handleLogin()">ログイン</button>
+    <div class="login-hint">打刻は staff.html をご利用ください</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     メイン画面
+     ============================================================ -->
+<div id="screen-main">
+
+  <!-- モバイル用ヘッダー -->
+  <header class="mobile-header">
+    <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="メニュー">☰</button>
+    <div class="mobile-header-title" id="mobile-title">ホーム</div>
+  </header>
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar(false)"></div>
+
+  <!-- サイドバー -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">住</div>
+      <div>
+        <div class="sidebar-title">ポータル</div>
+        <div class="sidebar-user" id="sidebar-user"></div>
+      </div>
+    </div>
+
+    <!-- 個人ゾーン（全ログインユーザー共通） -->
+    <div class="nav-group">
+      <div class="nav-group-label">個人</div>
+      <div class="nav-item active" data-tab="home" onclick="switchTab('home')">
+        <span class="nav-item-icon">🏠</span>ホーム
+      </div>
+      <div class="nav-item" data-tab="my-tasks" onclick="switchTab('my-tasks')">
+        <span class="nav-item-icon">📋</span>タスク
+      </div>
+      <div class="nav-item" data-tab="my-consult" onclick="switchTab('my-consult')">
+        <span class="nav-item-icon">💬</span>相談
+      </div>
+      <div class="nav-item" data-tab="my-projects" onclick="switchTab('my-projects')">
+        <span class="nav-item-icon">📁</span>案件
+      </div>
+    </div>
+
+    <!-- 管理ゾーン（admin_role に応じて JS が表示制御する） -->
+    <div class="nav-group" id="admin-nav-group">
+      <div class="nav-group-label">管理</div>
+      <div class="nav-item" data-tab="staff" data-role="all" onclick="switchTab('staff')">
+        <span class="nav-item-icon">👥</span>スタッフ管理
+      </div>
+      <div class="nav-item" data-tab="requests" data-role="all" onclick="switchTab('requests')">
+        <span class="nav-item-icon">📝</span>申請管理
+      </div>
+      <div class="nav-item" data-tab="calendar" data-role="all" onclick="switchTab('calendar')">
+        <span class="nav-item-icon">📅</span>カレンダー
+      </div>
+      <div class="nav-item" data-tab="tasks-admin" data-role="all" onclick="switchTab('tasks-admin')">
+        <span class="nav-item-icon">🗂️</span>案件・タスク管理
+      </div>
+      <div class="nav-item" data-tab="deadlines" data-role="all" onclick="switchTab('deadlines')">
+        <span class="nav-item-icon">⏳</span>納期管理
+      </div>
+      <div class="nav-item" data-tab="overtime" data-role="all" onclick="switchTab('overtime')">
+        <span class="nav-item-icon">🕐</span>残業指示・承認
+      </div>
+      <div class="nav-item" data-tab="missing-clocks" data-role="all" onclick="switchTab('missing-clocks')">
+        <span class="nav-item-icon">⚠️</span>打刻漏れ警告
+      </div>
+      <div class="nav-item" data-tab="payroll" data-role="payroll" onclick="switchTab('payroll')">
+        <span class="nav-item-icon">💰</span>給与計算
+      </div>
+      <div class="nav-item" data-tab="accounts" data-role="admin-only" onclick="switchTab('accounts')">
+        <span class="nav-item-icon">🔐</span>アカウント管理
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="handleLogout()">ログアウト</button>
+    </div>
+  </nav>
+
+  <!-- メインコンテンツ -->
+  <div class="main-content">
+    <div class="content-inner">
+
+      <div class="tab-panel active" id="tab-home">
+        <div class="page-title">ホーム</div>
+        <div class="page-subtitle">今日の状況をひと目で確認できます。</div>
+        <div class="placeholder-box">
+          <div class="ph-icon">🏠</div>
+          <div class="ph-text">ホーム画面は次のフェーズで実装します</div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-my-tasks">
+        <div class="page-title">タスク</div>
+        <div class="page-subtitle">自分に割り当てられたタスクの一覧です。</div>
+        <div class="placeholder-box"><div class="ph-icon">📋</div><div class="ph-text">準備中</div></div>
+      </div>
+
+      <div class="tab-panel" id="tab-my-consult">
+        <div class="page-title">相談</div>
+        <div class="page-subtitle">自分宛の相談を確認・返信できます。</div>
+        <div class="placeholder-box"><div class="ph-icon">💬</div><div class="ph-text">準備中</div></div>
+      </div>
+
+      <div class="tab-panel" id="tab-my-projects">
+        <div class="page-title">案件</div>
+        <div class="page-subtitle">進行中の案件一覧です。</div>
+        <div class="placeholder-box"><div class="ph-icon">📁</div><div class="ph-text">準備中</div></div>
+      </div>
+
+      <div class="tab-panel" id="tab-staff">
+        <div class="page-title">スタッフ管理</div>
+        <div class="page-subtitle">職員・利用者の登録情報を管理します。</div>
+        <div class="placeholder-box"><div class="ph-icon">👥</div><div class="ph-text">準備中</div></div>
+      </div>
+
+      <div class="tab-panel" id="tab-requests">
+        <div class="page-title">申請管理</div>
+        <div class="page-subtitle">休み・遅刻・早退などの申請を承認・却下します。</div>
+        <div class="placeholder-box"><div class="ph-icon">📝</div><div class="ph-text">準備中</div></div>
+      </div>
+
+      <div class="tab-panel" id="tab-calendar">
+        <div class="page-title">カレンダー</div>
+        <div class="page-subtitle">会社休日・行事を管理します。</div>
+        <div class="placeholder-box"><div class="ph-icon">📅</div><div class="ph-text">準備中</div></div>
+      </div>
+
+      <div class="tab-panel" id="tab-tasks-admin">
+        <div class="page-title">案件・タスク管理</div>
+        <div class="page-subtitle">全案件・全タスクの進捗を管理します。</div>
+        <div class="placeholder-box"><div class="ph-icon">🗂️</div><div class="ph-text">準備中</div></div>
+      </div>
+
+      <div class="tab-panel" id="tab-deadlines">
+        <div class="page-title">納期管理</div>
+        <div class="page-subtitle">案件・タスクの納期を管理します。</div>
+        <div class="placeholder-box"><div class="ph-icon">⏳</div><div class="ph-text">準備中</div></div>
+      </div>
+
+      <div class="tab-panel" id="tab-overtime">
+        <div class="page-title">残業指示・承認</div>
+        <div class="page-subtitle">残業指示の作成と、残業申請の承認を行います。</div>
+        <div class="placeholder-box"><div class="ph-icon">🕐</div><div class="ph-text">準備中</div></div>
+      </div>
+
+      <div class="tab-panel" id="tab-missing-clocks">
+        <div class="page-title">打刻漏れ警告</div>
+        <div class="page-subtitle">打刻漏れのある職員・利用者を確認します。</div>
+        <div class="placeholder-box"><div class="ph-icon">⚠️</div><div class="ph-text">準備中</div></div>
+      </div>
+
+      <div class="tab-panel" id="tab-payroll">
+        <div class="page-title">給与計算</div>
+        <div class="page-subtitle">指定月の給与を計算します。</div>
+        <div class="placeholder-box"><div class="ph-icon">💰</div><div class="ph-text">準備中</div></div>
+      </div>
+
+      <div class="tab-panel" id="tab-accounts">
+        <div class="page-title">アカウント管理</div>
+        <div class="page-subtitle">社内で利用するWebサービスのアカウント台帳です。</div>
+        <div class="placeholder-box"><div class="ph-icon">🔐</div><div class="ph-text">準備中</div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================
+// 設定
+// ============================================================
+
+/**
+ * GAS デプロイURL。
+ * staff.html と同じ値をここにも設定すること（3ファイル共通で
+ * 同じGASプロジェクトを指す）。
+ */
+setGasUrl('YOUR_GAS_DEPLOY_URL_HERE');
+
+// ============================================================
+// 状態管理
+// ============================================================
+
+const state = {
+  userId    : '',
+  userName  : '',
+  adminRole : '', // '管理者' | '給与計算担当' | '一般職員'
+  currentTab: 'home',
+};
+
+const SESSION_KEY = 'portal_session';
+
+// ============================================================
+// 認証
+// ============================================================
+
+/**
+ * ログイン処理。
+ * 既存の 'authenticate' アクションを使う（admin_role が空でない職員のみ許可）。
+ * 利用者（admin_role='' すなわち管理権限「不可」）はここで弾かれる。
+ */
+async function handleLogin() {
+  const pin      = document.getElementById('input-pin').value.trim();
+  const password = document.getElementById('input-password').value.trim();
+
+  if (!pin || !password) {
+    showToast('PIN とパスワードを入力してください。', 'warning');
+    return;
+  }
+
+  showLoading('認証中...');
+  const result = await callGAS('authenticate', { pin, password });
+  hideLoading();
+
+  if (!result.success) {
+    showError(result.error_message || '認証に失敗しました。', result.error_detail);
+    return;
+  }
+
+  const { employee } = result.data;
+  state.userId    = employee.id;
+  state.userName  = employee.name;
+  state.adminRole = employee.admin_role || '';
+
+  storeSave(SESSION_KEY, { userId: state.userId, userName: state.userName, adminRole: state.adminRole });
+
+  applySession();
+}
+
+function handleLogout() {
+  storeRemove(SESSION_KEY);
+  location.reload();
+}
+
+/**
+ * 保存済みセッションがあれば自動ログインする。
+ */
+function tryRestoreSession() {
+  const s = storeLoad(SESSION_KEY, null);
+  if (!s || !s.userId) return false;
+
+  state.userId    = s.userId;
+  state.userName  = s.userName;
+  state.adminRole = s.adminRole;
+  applySession();
+  return true;
+}
+
+/**
+ * セッション情報を画面に反映し、権限に応じてタブの表示・非表示を切り替える。
+ *
+ * 権限ルール（管理ゾーンのタブ）:
+ *   data-role="all"        : 管理者・給与計算担当・一般職員 いずれもログインしていれば表示
+ *   data-role="payroll"    : 管理者・給与計算担当のみ表示（一般職員には非表示）
+ *   data-role="admin-only" : 管理者のみ表示
+ */
+function applySession() {
+  document.getElementById('screen-login').style.display = 'none';
+  document.getElementById('screen-main').classList.add('active');
+  document.getElementById('sidebar-user').textContent = `${state.userName}（${state.adminRole}）`;
+
+  document.querySelectorAll('#admin-nav-group .nav-item[data-role]').forEach(item => {
+    const rule = item.dataset.role;
+    let visible = true;
+    if (rule === 'payroll')    visible = (state.adminRole === '管理者' || state.adminRole === '給与計算担当');
+    if (rule === 'admin-only') visible = (state.adminRole === '管理者');
+    item.style.display = visible ? '' : 'none';
+  });
+}
+
+// ============================================================
+// タブ切り替え
+// ============================================================
+
+function switchTab(name) {
+  state.currentTab = name;
+
+  document.querySelectorAll('.nav-item[data-tab]').forEach(item => {
+    item.classList.toggle('active', item.dataset.tab === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.toggle('active', panel.id === `tab-${name}`);
+  });
+
+  const activeItem = document.querySelector(`.nav-item[data-tab="${name}"]`);
+  if (activeItem) {
+    document.getElementById('mobile-title').textContent = activeItem.textContent.trim();
+  }
+
+  // モバイルではタブ選択後にサイドバーを閉じる
+  toggleSidebar(false);
+}
+
+function toggleSidebar(force) {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  const open = force !== undefined ? force : !sidebar.classList.contains('open');
+  sidebar.classList.toggle('open', open);
+  overlay.classList.toggle('active', open);
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  tryRestoreSession();
+
+  document.getElementById('input-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') handleLogin();
+  });
+});
+</script>
+</body>
+</html>
