@@ -1,0 +1,12 @@
+{
+  "name": "住岡 勤怠打刻",
+  "short_name": "住岡打刻",
+  "description": "住岡 勤怠管理システム 打刻画面",
+  "start_url": "./kintai.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a7f37",
+  "lang": "ja",
+  "icons": []
+}
