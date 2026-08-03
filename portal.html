@@ -9,7 +9,10 @@
   <script src="common/api.js"></script>
   <script src="common/storage.js"></script>
   <script src="common/ui.js"></script>
-  <meta name="theme-color" content="#1a7f37">
+  <!-- Phase2 v3: ファビコンを緑グラデーション角丸スクエア＋2×2グリッドアイコンに変更。
+       管理ハブ＝グリッドというように「何をする画面か」でアイコンを選定している。 -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%231A7F37'/><stop offset='1' stop-color='%230F5326'/></linearGradient></defs><rect x='6' y='6' width='88' height='88' rx='24' fill='url(%23g)'/><rect x='27' y='27' width='19' height='19' rx='5' fill='white'/><rect x='54' y='27' width='19' height='19' rx='5' fill='white'/><rect x='27' y='54' width='19' height='19' rx='5' fill='white'/><rect x='54' y='54' width='19' height='19' rx='5' fill='white'/></svg>">
+  <meta name="theme-color" content="#1A7F37">
 
   <style>
 /* =============================================================
@@ -37,6 +40,10 @@
 ============================================================= */
 
 /* ─── デザイントークン（staff.html と共通） ────────────── */
+/* Phase2 v3: 独自の --brand / --brand-tint トークンは廃止し、
+   common/styles.css と揃えた --color-primary 系に一本化した
+   （ページ別カラーテーマ切替の共通パターン）。
+   portal.html = 緑系統（住岡グリーン、旧 --brand の値をそのまま踏襲）。 */
 :root {
   color-scheme: light dark;
   --bg:          #FAFAFA;
@@ -46,8 +53,11 @@
   --text:        #18181B;
   --text-2:      #71717A;
   --text-3:      #A1A1AA;
-  --brand:       #1A7F37;
-  --brand-tint:  #ECFAF0;
+  --color-primary:        #1A7F37;
+  --color-primary-hover:  #146830;
+  --color-primary-active: #0F5326;
+  --color-primary-tint:   #E8F5EC;
+  --color-primary-strong: #0F5326;
   --danger:      #DC2626;
   --warning:     #D97706;
   --info:        #2563EB;
@@ -66,8 +76,9 @@
     --text:       #F4F4F5;
     --text-2:     #A1A1AA;
     --text-3:     #71717A;
-    --brand:      #2FBF57;
-    --brand-tint: #0F2818;
+    --color-primary:       #34B15C;
+    --color-primary-hover: #3FC96A;
+    --color-primary-tint:  #123319;
     --shadow-elev: 0 12px 32px rgba(0,0,0,0.45);
   }
 }
@@ -93,7 +104,7 @@ body { min-height: 100dvh; background: var(--bg); color: var(--text); }
 }
 .login-logo {
   width: 56px; height: 56px; border-radius: var(--radius-md);
-  background: var(--brand);
+  background: var(--color-primary);
   display: flex; align-items: center; justify-content: center;
   font-size: 26px; color: #fff; margin: 0 auto 24px;
 }
@@ -114,10 +125,10 @@ body { min-height: 100dvh; background: var(--bg); color: var(--text); }
   font-size: 1.05rem; outline: none; transition: border-color 0.15s, background 0.15s;
   margin-bottom: 16px;
 }
-.field-input:focus { border-color: var(--brand); background: var(--surface); }
+.field-input:focus { border-color: var(--color-primary); background: var(--surface); }
 .btn-login {
   width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none;
-  background: var(--brand); color: #fff; font-size: 0.98rem; font-weight: 600;
+  background: var(--color-primary); color: #fff; font-size: 0.98rem; font-weight: 600;
   cursor: pointer; transition: opacity 0.15s; margin-top: 8px;
 }
 .btn-login:hover:not(:disabled) { opacity: 0.88; }
@@ -140,7 +151,7 @@ body { min-height: 100dvh; background: var(--bg); color: var(--text); }
 }
 .sidebar-logo {
   width: 32px; height: 32px; border-radius: var(--radius-sm);
-  background: var(--brand); color: #fff;
+  background: var(--color-primary); color: #fff;
   display: flex; align-items: center; justify-content: center; font-size: 15px;
   flex-shrink: 0;
 }
@@ -161,7 +172,7 @@ body { min-height: 100dvh; background: var(--bg); color: var(--text); }
   -webkit-tap-highlight-color: transparent;
 }
 .nav-item:hover { background: var(--surface-2); color: var(--text); }
-.nav-item.active { background: var(--brand-tint); color: var(--brand); font-weight: 600; }
+.nav-item.active { background: var(--color-primary-tint); color: var(--color-primary); font-weight: 600; }
 .nav-item .nav-item-icon { font-size: 1.05rem; width: 20px; text-align: center; flex-shrink: 0; }
 .nav-item .nav-item-badge {
   margin-left: auto; background: var(--danger); color: #fff;

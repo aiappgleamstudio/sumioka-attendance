@@ -10,14 +10,47 @@
   <script src="common/storage.js"></script>
   <script src="common/ui.js"></script>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%230e6e4c'/><text y='.9em' font-size='75' x='50%' text-anchor='middle' fill='white'>打</text></svg>">
-  <meta name="theme-color" content="#0e6e4c">
+  <!-- Phase2 v3: ファビコンを水色グラデーション角丸スクエア＋時計アイコンに変更。
+       打刻＝時計というように「何をする画面か」でアイコンを選定している。
+       旧デザインの「職」の文字は、利用者もstaff.htmlを使うため廃止した。 -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%232DA9E0'/><stop offset='1' stop-color='%231C79A8'/></linearGradient></defs><rect x='6' y='6' width='88' height='88' rx='24' fill='url(%23g)'/><circle cx='50' cy='54' r='24' fill='none' stroke='white' stroke-width='7'/><path d='M50 40 L50 54 L61 61' fill='none' stroke='white' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/><line x1='42' y1='22' x2='58' y2='22' stroke='white' stroke-width='7' stroke-linecap='round'/><line x1='50' y1='22' x2='50' y2='30' stroke='white' stroke-width='7' stroke-linecap='round'/></svg>">
+  <meta name="theme-color" content="#2DA9E0">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="住岡打刻">
 
   <link rel="stylesheet" href="staff/staff.css">
+  <!-- Phase2 v3: staff.html 固有カラーテーマ（水色系統／Gleam Studioロゴ由来）。
+       common/styles.css の --color-primary 系（今後 .sumioka-* コンポーネントを
+       使う場合に備えて上書き）に加えて、実際の画面配色を決めている
+       staff/staff.css 独自の --brand / --brand-tint（打刻ボタン・アクティブタブ等の
+       色に直接使われている）もあわせて上書きする。
+       staff/staff.css が自身の :root で --brand を再定義しているため、
+       このブロックは staff/staff.css の <link> より後（head の末尾）に置く必要がある
+       （そうしないと staff.css 側の定義に上書きされてしまう）。 -->
+  <style>
+    :root {
+      --color-primary:        #2DA9E0;
+      --color-primary-hover:  #2391C4;
+      --color-primary-active: #1C79A8;
+      --color-primary-tint:   #E9F6FC;
+      --color-primary-strong: #1F84B8;
+
+      --brand:      #2DA9E0;
+      --brand-tint: #E9F6FC;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-primary:       #4DC3F5;
+        --color-primary-hover: #63CCF7;
+        --color-primary-tint:  #0F2A38;
+
+        --brand:      #4DC3F5;
+        --brand-tint: #0F2A38;
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -59,7 +92,7 @@
       🔔
       <span class="notif-badge" id="notif-badge"></span>
     </button>
-    <a class="header-admin-link" id="admin-link" href="admin.html">⚙️ 管理</a>
+    <a class="header-admin-link" id="admin-link" href="portal.html">⚙️ 管理</a>
     <button class="header-logout-btn" id="btn-logout">ログアウト</button>
   </header>
 
