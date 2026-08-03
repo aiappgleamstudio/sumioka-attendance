@@ -1,47 +1,61 @@
 /* =============================================================
    staff.html — ATM型 打刻 + タスク + 相談 + 日報
-   デザインコンセプト: Apple / Linear / Notion / Stripe Dashboard
+   デザインコンセプト: Sumioka Design System v4「Quiet Luxury」
+   （common/styles.css と同じトークン値を採用し、user.html・admin.html と
+    ヘッダー／カード／ボタン／入力欄／配色／余白を統一する）
    方針:
      余白を広く取り、装飾を削ぎ落とす。影より境界線（hairline border）。
-     角丸は12px前後に統一し、過度な丸み・過度な影を避ける。
+     角丸は12〜20px前後に統一し、影は弱く広くする（立体感は出すが主張しない）。
      色はトークン化し、ライト/ダークとも :root の変数だけで完結させる。
    設計思想（維持）:
      1画面1操作。ユーザーが次に何をすべきかが一目でわかる。
      ロール（利用者/職員/管理者）でメニューを切り替える。
 ============================================================= */
 
-/* ─── デザイントークン ────────────────────────────────── */
+/* ─── デザイントークン（common/styles.css と同値）───────── */
 :root {
   color-scheme: light dark;
-  --bg:          #FAFAFA;
+  --bg:          #F7F6F2;
   --surface:     #FFFFFF;
-  --surface-2:   #F5F5F5;
-  --border:      #E4E4E7;
-  --text:        #18181B;
-  --text-2:      #71717A;
-  --text-3:      #A1A1AA;
-  --brand:       #1A7F37;
-  --brand-tint:  #ECFAF0;
-  --danger:      #DC2626;
-  --warning:     #D97706;
+  --surface-2:   #F1EFE9;
+  --border:      #E7E3D8;
+  --border-hover:#D6D0BF;
+  --text:        #201F1C;
+  --text-2:      #55524A;
+  --text-3:      #83806F;
+  --brand:       #0E6E4C;
+  --brand-hover: #0A5A3D;
+  --brand-tint:  #E7F5EE;
+  --danger:      #C0392B;
+  --danger-tint: #FBEAE7;
+  --warning:     #B45309;
+  --warning-tint:#FDF1E0;
   --info:        #2563EB;
-  --radius-sm:   8px;
-  --radius-md:   12px;
-  --radius-lg:   16px;
-  --shadow-elev: 0 12px 32px rgba(0,0,0,0.12);
+  --info-tint:   #EAF1FE;
+  --radius-sm:   10px;
+  --radius-md:   14px;
+  --radius-lg:   20px;
+  --shadow-xs:   0 1px 2px rgba(32,31,28,.05);
+  --shadow-sm:   0 2px 10px rgba(32,31,28,.05);
+  --shadow-elev: 0 20px 48px rgba(32,31,28,.16);
+  --glass-bg:    rgba(255,255,255,.72);
+  --glass-blur:  saturate(160%) blur(16px);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg:         #0A0A0B;
-    --surface:    #141416;
-    --surface-2:  #1C1C1F;
-    --border:     #27272A;
-    --text:       #F4F4F5;
-    --text-2:     #A1A1AA;
-    --text-3:     #71717A;
-    --brand:      #2FBF57;
-    --brand-tint: #0F2818;
-    --shadow-elev: 0 12px 32px rgba(0,0,0,0.45);
+    --bg:         #14140F;
+    --surface:    #1E1D18;
+    --surface-2:  #262420;
+    --border:     #34322A;
+    --border-hover:#443F34;
+    --text:       #F3F1EA;
+    --text-2:     #C9C5B8;
+    --text-3:     #938E7E;
+    --brand:      #2FA574;
+    --brand-hover:#38B983;
+    --brand-tint: #103425;
+    --shadow-elev: 0 20px 48px rgba(0,0,0,.5);
+    --glass-bg:   rgba(24,23,19,.68);
   }
 }
 
@@ -51,7 +65,7 @@
 html {
   font-family: 'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',
                'Yu Gothic UI','Meiryo UI',sans-serif;
-  font-size: 16px; line-height: 1.55;
+  font-size: 16px; line-height: 1.6;
   -webkit-tap-highlight-color: transparent;
 }
 body {
@@ -78,15 +92,17 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 44px 32px 36px;
+  box-shadow: var(--shadow-sm);
 }
 .login-logo {
   width: 56px; height: 56px; border-radius: var(--radius-md);
   background: var(--brand);
   display: flex; align-items: center; justify-content: center;
   font-size: 26px; color: #fff; margin: 0 auto 24px;
+  box-shadow: 0 8px 20px rgba(14,110,76,.25);
 }
 .login-title {
-  text-align: center; font-size: 1.3rem; font-weight: 600;
+  text-align: center; font-size: 1.3rem; font-weight: 700;
   margin-bottom: 8px; color: var(--text); letter-spacing: -0.01em;
 }
 .login-subtitle {
@@ -103,13 +119,14 @@ body {
   font-size: 1.05rem; outline: none; transition: border-color 0.15s, background 0.15s;
   margin-bottom: 16px;
 }
-.field-input:focus { border-color: var(--brand); background: var(--surface); }
+.field-input:focus { border-color: var(--brand); background: var(--surface); box-shadow: 0 0 0 4px rgba(14,110,76,.14); }
 .btn-login {
   width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none;
-  background: var(--brand); color: #fff; font-size: 0.98rem; font-weight: 600;
-  cursor: pointer; transition: opacity 0.15s; margin-top: 8px;
+  background: var(--brand); color: #fff; font-size: 0.98rem; font-weight: 700;
+  cursor: pointer; transition: background 0.15s, transform 0.15s; margin-top: 8px;
 }
-.btn-login:hover:not(:disabled) { opacity: 0.88; }
+.btn-login:hover:not(:disabled) { background: var(--brand-hover); }
+.btn-login:active:not(:disabled) { transform: scale(.98); }
 .btn-login:disabled { opacity: 0.4; cursor: not-allowed; }
 .login-hint {
   text-align: center; font-size: 0.76rem; color: var(--text-3); margin-top: 18px;
@@ -119,17 +136,18 @@ body {
 #screen-main { display: none; min-height: 100dvh; }
 #screen-main.active { display: block; }
 
-/* ─── ヘッダー ─────────────────────────────────────────── */
+/* ─── ヘッダー（ガラス感）──────────────────────────────── */
 .app-header {
   position: sticky; top: 0; z-index: 100;
-  background: var(--surface);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
   border-bottom: 1px solid var(--border);
   padding: 0 20px;
   display: flex; align-items: center; gap: 12px;
   height: 60px;
 }
 .app-header-title {
-  flex: 1; font-size: 0.95rem; font-weight: 600; color: var(--text);
+  flex: 1; font-size: 0.95rem; font-weight: 700; color: var(--text);
 }
 .header-user {
   font-size: 0.78rem; color: var(--text-2);
@@ -139,9 +157,9 @@ body {
 .header-notif-btn {
   position: relative; background: none; border: none;
   color: var(--text-2); font-size: 1.25rem; cursor: pointer; padding: 6px;
-  line-height: 1; border-radius: var(--radius-sm); transition: background 0.15s;
+  line-height: 1; border-radius: var(--radius-sm); transition: background 0.15s, color 0.15s;
 }
-.header-notif-btn:hover { background: var(--surface-2); }
+.header-notif-btn:hover { background: var(--surface-2); color: var(--text); }
 .notif-badge {
   position: absolute; top: 2px; right: 2px;
   background: var(--danger); color: #fff;
@@ -173,7 +191,8 @@ body {
 /* ─── ボトムナビゲーション ─────────────────────────────── */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
-  background: var(--surface);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
   border-top: 1px solid var(--border);
   display: flex;
   height: 64px;
@@ -184,7 +203,7 @@ body {
   align-items: center; justify-content: center; gap: 4px;
   background: none; border: none; cursor: pointer;
   color: var(--text-3); padding: 6px 4px;
-  font-size: 0.66rem; font-weight: 500;
+  font-size: 0.66rem; font-weight: 600;
   transition: color 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
@@ -207,8 +226,8 @@ body {
   text-align: center; padding: 8px 0 28px;
 }
 .clock-time {
-  font-size: 3.4rem; font-weight: 600; color: var(--text);
-  letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums;
+  font-size: 3.4rem; font-weight: 700; color: var(--text);
+  letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums;
 }
 .clock-date {
   font-size: 0.86rem; color: var(--text-2); margin-top: 10px;
@@ -224,7 +243,7 @@ body {
   text-align: center; font-size: 0.72rem; color: var(--text-2);
 }
 .status-chip .chip-val {
-  display: block; font-size: 1.05rem; font-weight: 600;
+  display: block; font-size: 1.05rem; font-weight: 700;
   color: var(--text); margin-top: 4px;
 }
 .status-chip.done .chip-val { color: var(--brand); }
@@ -233,10 +252,11 @@ body {
 /* カード */
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-  padding: 22px 20px; margin-bottom: 16px;
+  padding: 24px 22px; margin-bottom: 16px;
+  box-shadow: var(--shadow-xs);
 }
 .card-title {
-  font-size: 0.74rem; font-weight: 600; color: var(--text-2);
+  font-size: 0.74rem; font-weight: 700; color: var(--text-2);
   text-transform: uppercase; letter-spacing: 0.06em;
   margin-bottom: 16px;
 }
@@ -247,9 +267,9 @@ body {
 }
 .lunch-btn {
   flex: 1; padding: 16px 10px; border-radius: var(--radius-md);
-  border: 1px solid var(--border); background: var(--surface-2);
+  border: 1.5px solid var(--border); background: var(--surface-2);
   font-size: 1rem; cursor: pointer; text-align: center;
-  font-weight: 600; color: var(--text); transition: all 0.15s;
+  font-weight: 700; color: var(--text); transition: border-color .15s, background .15s, color .15s;
 }
 .lunch-btn:hover { border-color: var(--brand); }
 .lunch-btn.selected {
@@ -273,19 +293,19 @@ body {
 /* 大ボタン（打刻用） */
 .clock-btn {
   width: 100%; padding: 18px; border-radius: var(--radius-md); border: none;
-  font-size: 1.1rem; font-weight: 600; cursor: pointer;
-  transition: all 0.15s; margin-top: 10px; display: flex;
+  font-size: 1.1rem; font-weight: 700; cursor: pointer;
+  transition: filter .15s, transform .15s; margin-top: 10px; display: flex;
   align-items: center; justify-content: center; gap: 10px;
 }
 .clock-btn-checkin {
-  background: var(--brand); color: #fff;
+  background: var(--brand); color: #fff; box-shadow: 0 10px 24px rgba(14,110,76,.22);
 }
 .clock-btn-checkout {
-  background: var(--info); color: #fff;
+  background: var(--info); color: #fff; box-shadow: 0 10px 24px rgba(37,99,235,.2);
 }
-.clock-btn:hover:not(:disabled) { opacity: 0.9; }
+.clock-btn:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
 .clock-btn:disabled {
-  opacity: 0.35; cursor: not-allowed;
+  opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none;
 }
 .clock-btn-icon { font-size: 1.3rem; }
 
@@ -319,7 +339,7 @@ body {
 }
 .done-banner .done-icon { font-size: 2.2rem; }
 .done-banner .done-text {
-  font-size: 1.05rem; font-weight: 600; color: var(--brand); margin-top: 10px;
+  font-size: 1.05rem; font-weight: 700; color: var(--brand); margin-top: 10px;
 }
 .done-banner .done-sub { font-size: 0.82rem; color: var(--text-2); margin-top: 4px; }
 
@@ -330,12 +350,12 @@ body {
   padding: 16px 16px 16px 18px;
   border-left: 3px solid var(--border);
   display: flex; align-items: flex-start; gap: 12px; cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, box-shadow .15s;
 }
-.task-item:hover { border-color: var(--text-3); }
+.task-item:hover { border-color: var(--border-hover); box-shadow: var(--shadow-xs); }
 .task-item.status-inprogress  { border-left-color: var(--info); }
 .task-item.status-review      { border-left-color: var(--warning); }
-.task-item.status-rejected    { border-left-color: #ef4444; }
+.task-item.status-rejected    { border-left-color: var(--danger); }
 .task-item.status-notstarted  { border-left-color: var(--text-3); }
 .task-item.status-done        { border-left-color: var(--brand); opacity: 0.6; }
 .task-item-body { flex: 1; min-width: 0; }
@@ -347,17 +367,17 @@ body {
   display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
 }
 .task-status-badge {
-  font-size: 0.7rem; padding: 3px 9px; border-radius: 20px; font-weight: 600;
+  font-size: 0.7rem; padding: 4px 10px; border-radius: 20px; font-weight: 700;
 }
 .badge-notstarted  { background: var(--surface-2); color: var(--text-2); }
-.badge-inprogress  { background: #dbeafe; color: #1d4ed8; }
-.badge-review      { background: #fef3c7; color: #d97706; }
-.badge-rejected    { background: #fee2e2; color: #dc2626; }
-.badge-done        { background: #d1fae5; color: #065f46; }
+.badge-inprogress  { background: var(--info-tint); color: var(--info); }
+.badge-review      { background: var(--warning-tint); color: var(--warning); }
+.badge-rejected    { background: var(--danger-tint); color: var(--danger); }
+.badge-done        { background: var(--brand-tint); color: var(--brand); }
 .task-due {
   font-size: 0.72rem; color: var(--text-3);
 }
-.task-due.overdue { color: #ef4444; font-weight: 600; }
+.task-due.overdue { color: var(--danger); font-weight: 700; }
 .task-review-icon { font-size: 0.75rem; color: var(--warning); }
 .task-item-arrow {
   color: var(--text-3); font-size: 0.9rem; align-self: center;
@@ -366,12 +386,13 @@ body {
 /* タスク詳細ドロワー */
 .drawer-overlay {
   display: none; position: fixed; inset: 0; z-index: 200;
-  background: rgba(0,0,0,0.4);
+  background: rgba(20,20,15,0.45);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
 }
 .drawer-overlay.active { display: block; }
 .drawer {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 201;
-  background: var(--surface); border-radius: 20px 20px 0 0;
+  background: var(--surface); border-radius: 22px 22px 0 0;
   padding: 24px 20px calc(32px + env(safe-area-inset-bottom, 0));
   max-height: 85dvh; overflow-y: auto;
   transform: translateY(100%);
@@ -381,18 +402,18 @@ body {
 .drawer.open { transform: translateY(0); }
 .drawer-handle {
   width: 36px; height: 4px; border-radius: 2px;
-  background: var(--border); margin: 0 auto 22px;
+  background: var(--border-hover); margin: 0 auto 22px;
 }
 .drawer-title {
-  font-size: 1.08rem; font-weight: 600; margin-bottom: 18px;
+  font-size: 1.08rem; font-weight: 700; margin-bottom: 18px;
 }
 .drawer-section { margin-bottom: 16px; }
 .drawer-section-label {
-  font-size: 0.72rem; font-weight: 600; color: var(--text-2);
+  font-size: 0.72rem; font-weight: 700; color: var(--text-2);
   text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 7px;
 }
 .drawer-section-val {
-  font-size: 0.92rem; color: var(--text); line-height: 1.6;
+  font-size: 0.92rem; color: var(--text); line-height: 1.65;
 }
 
 /* ステータス変更ボタン群 */
@@ -401,10 +422,10 @@ body {
 }
 .status-btn {
   flex: 1; min-width: 90px; padding: 12px 10px; border-radius: var(--radius-sm);
-  border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer;
-  transition: opacity 0.15s;
+  border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+  transition: filter 0.15s;
 }
-.status-btn:hover:not(:disabled) { opacity: 0.85; }
+.status-btn:hover:not(:disabled) { filter: brightness(1.08); }
 .status-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .btn-inprogress { background: var(--info); color: #fff; }
 .btn-review     { background: var(--warning); color: #fff; }
@@ -421,8 +442,8 @@ body {
 .comment-input:focus { border-color: var(--brand); background: var(--surface); }
 .btn-comment-save {
   width: 100%; padding: 12px; border-radius: var(--radius-sm); border: none;
-  background: var(--text); color: var(--bg); font-size: 0.88rem; font-weight: 600;
-  cursor: pointer;
+  background: var(--text); color: var(--bg); font-size: 0.88rem; font-weight: 700;
+  cursor: pointer; transition: opacity .15s;
 }
 .btn-comment-save:hover { opacity: 0.85; }
 
@@ -436,9 +457,9 @@ body {
 
 /* 差戻理由 */
 .reject-reason-box {
-  background: #fff7ed; border: 1px solid #fed7aa;
+  background: var(--warning-tint); border: 1px solid #F3D6A6;
   border-radius: var(--radius-sm); padding: 11px 12px;
-  font-size: 0.85rem; color: #c2410c; margin-bottom: 14px; display: none;
+  font-size: 0.85rem; color: var(--warning); margin-bottom: 14px; display: none;
 }
 
 /* タスク空表示 */
@@ -452,10 +473,10 @@ body {
 /* ─── 相談パネル ────────────────────────────────────────── */
 .consult-form {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg);
-  padding: 22px 20px; margin-bottom: 18px;
+  padding: 22px 20px; margin-bottom: 18px; box-shadow: var(--shadow-xs);
 }
 .consult-form-title {
-  font-size: 0.74rem; font-weight: 600; color: var(--text-2);
+  font-size: 0.74rem; font-weight: 700; color: var(--text-2);
   text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px;
 }
 .consult-input {
@@ -487,10 +508,10 @@ body {
 .recipient-item.selected .recipient-check { color: var(--brand); }
 .btn-send {
   width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none;
-  background: var(--brand); color: #fff; font-size: 0.95rem; font-weight: 600;
-  cursor: pointer; transition: opacity 0.15s;
+  background: var(--brand); color: #fff; font-size: 0.95rem; font-weight: 700;
+  cursor: pointer; transition: background 0.15s;
 }
-.btn-send:hover:not(:disabled) { opacity: 0.88; }
+.btn-send:hover:not(:disabled) { background: var(--brand-hover); }
 .btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* 相談履歴 */
@@ -500,7 +521,7 @@ body {
   padding: 16px;
 }
 .consult-item-title {
-  font-size: 0.92rem; font-weight: 600; margin-bottom: 5px; color: var(--text);
+  font-size: 0.92rem; font-weight: 700; margin-bottom: 5px; color: var(--text);
 }
 .consult-item-message {
   font-size: 0.85rem; color: var(--text-2); margin-bottom: 8px; line-height: 1.55;
@@ -508,7 +529,7 @@ body {
 .consult-item-meta {
   font-size: 0.72rem; color: var(--text-3); display: flex; gap: 8px;
 }
-.consult-resolved { color: var(--brand); font-weight: 600; }
+.consult-resolved { color: var(--brand); font-weight: 700; }
 
 /* ─── 通知パネル ────────────────────────────────────────── */
 .notif-list { display: flex; flex-direction: column; gap: 10px; }
@@ -521,7 +542,7 @@ body {
 .notif-item.unread { border-left-color: var(--brand); background: var(--brand-tint); }
 .notif-icon { font-size: 1.25rem; flex-shrink: 0; }
 .notif-body { flex: 1; min-width: 0; }
-.notif-title { font-size: 0.88rem; font-weight: 600; margin-bottom: 3px; color: var(--text); }
+.notif-title { font-size: 0.88rem; font-weight: 700; margin-bottom: 3px; color: var(--text); }
 .notif-text { font-size: 0.8rem; color: var(--text-2); }
 .notif-time { font-size: 0.7rem; color: var(--text-3); margin-top: 4px; }
 
@@ -535,7 +556,7 @@ body {
 
 /* ─── ユーティリティ ────────────────────────────────────── */
 .section-title {
-  font-size: 0.74rem; font-weight: 600; color: var(--text-2);
+  font-size: 0.74rem; font-weight: 700; color: var(--text-2);
   text-transform: uppercase; letter-spacing: 0.06em;
   margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
 }
