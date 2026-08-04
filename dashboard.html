@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ダッシュボード | 住岡</title>
+  <!-- 共通スタイル・共通JSモジュール（common/フォルダ配下。パスは変更しないこと） -->
+  <link rel="stylesheet" href="common/styles.css">
+  <script src="common/api.js"></script>
+  <script src="common/storage.js"></script>
+  <script src="common/ui.js"></script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='6' y='6' width='88' height='88' rx='22' fill='%232563EB'/><rect x='24' y='54' width='14' height='26' rx='3' fill='white'/><rect x='43' y='38' width='14' height='42' rx='3' fill='white'/><rect x='62' y='24' width='14' height='56' rx='3' fill='white'/></svg>">
+  <meta name="theme-color" content="#2563EB">
+
+  <style>
+    /* =============================================================
+       dashboard.html — Notionポータル埋め込み用・閲覧専用ダッシュボード
+       common/styles.css のトークン（--color-*・--radius-*・--space-*・
+       --shadow-*・--font-*）をそのまま使い、独自トークンは定義しない。
+       1画面・見るだけのATM型UI。タブ切替や編集操作は持たせない。
+    ============================================================= */
+    body {
+      font-family: 'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',
+                   'Yu Gothic UI','Meiryo UI',sans-serif;
+    }
+
+    /* ── ログイン画面（staff.html のログインUIを流用） ── */
+    #screen-login {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 100vh; padding: 24px 20px;
+    }
+    .login-card {
+      width: 100%; max-width: 380px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-sm);
+      padding: 44px 32px 36px;
+    }
+    .login-logo {
+      width: 56px; height: 56px; border-radius: var(--radius-md);
+      background: var(--color-primary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; color: #fff; margin: 0 auto 24px;
+    }
+    .login-title {
+      text-align: center; font-size: 1.3rem; font-weight: var(--font-semibold);
+      margin-bottom: 8px; color: var(--color-text);
+    }
+    .login-subtitle {
+      text-align: center; font-size: .85rem; color: var(--color-text-muted); margin-bottom: 32px;
+    }
+    .field-label {
+      display: block; font-size: .78rem; font-weight: var(--font-semibold);
+      color: var(--color-text-muted); margin-bottom: 8px;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .field-input {
+      width: 100%; padding: 13px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--color-border); background: var(--color-surface-alt);
+      color: var(--color-text); font-size: 1.05rem; outline: none;
+      transition: border-color var(--transition-fast), background var(--transition-fast);
+      margin-bottom: 16px;
+    }
+    .field-input:focus { border-color: var(--color-primary); background: var(--color-surface); }
+    .btn-login {
+      width: 100%; padding: 14px; border-radius: var(--radius-sm); border: none;
+      background: var(--color-primary); color: #fff; font-size: .98rem; font-weight: var(--font-semibold);
+      cursor: pointer; transition: background var(--transition-fast); margin-top: 8px;
+    }
+    .btn-login:hover:not(:disabled) { background: var(--color-primary-hover); }
+    .btn-login:disabled { opacity: .5; cursor: not-allowed; }
+    .login-hint {
+      text-align: center; font-size: .76rem; color: var(--color-text-muted); margin-top: 18px;
+    }
+
+    /* ── メイン画面 ── */
+    #screen-main { display: none; min-height: 100vh; background: var(--color-bg); }
+    #screen-main.active { display: block; }
+
+    .dash-wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
+
+    .dash-header {
+      display: flex; align-items: baseline; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px; margin-bottom: 20px;
+    }
+    .dash-title { font-size: 1.15rem; font-weight: var(--font-semibold); color: var(--color-text); }
+    .dash-updated { font-size: .78rem; color: var(--color-text-muted); }
+
+    .dash-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--space-4);
+    }
+    .dash-card {
+      background: var(--color-surface); border: 1px solid var(--color-border);
+      border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: 20px;
+    }
+    .dash-card--wide { grid-column: 1 / -1; }
+    .dash-card-title {
+      font-size: .85rem; font-weight: var(--font-semibold); color: var(--color-text-secondary);
+      margin-bottom: 14px;
+    }
+
+    .stat-row { display: flex; align-items: baseline; gap: 6px; }
+    .stat-num { font-size: 1.8rem; font-weight: var(--font-bold); color: var(--color-text); }
+    .stat-unit { font-size: .78rem; color: var(--color-text-muted); }
+    .stat-sub { font-size: .8rem; color: var(--color-text-muted); margin-top: 10px; }
+
+    .badge-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .badge {
+      font-size: .76rem; padding: 4px 10px; border-radius: var(--radius-pill);
+      background: var(--color-surface-alt); border: 1px solid var(--color-border);
+      color: var(--color-text-secondary);
+    }
+    .badge-warn { color: var(--color-danger); border-color: var(--color-danger); }
+
+    .name-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .name-chip {
+      font-size: .76rem; padding: 3px 9px; border-radius: var(--radius-pill);
+      background: var(--color-surface-alt); color: var(--color-text-secondary);
+    }
+
+    .staff-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: .82rem; }
+    .staff-table th, .staff-table td {
+      text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--color-border); color: var(--color-text);
+    }
+    .staff-table th { color: var(--color-text-muted); font-weight: var(--font-medium); }
+
+    .empty-note { font-size: .82rem; color: var(--color-text-muted); }
+
+    #dash-fallback {
+      display: none; text-align: center; padding: 80px 20px; color: var(--color-text-muted);
+    }
+    #dash-fallback-icon { font-size: 2rem; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- ===== ログイン画面（staff.html のログインUIを流用。kintai_authenticate で認証） ===== -->
+<div id="screen-login">
+  <div class="login-card">
+    <div class="login-logo">📊</div>
+    <div class="login-title">住岡 ダッシュボード</div>
+    <div class="login-subtitle">PIN とパスワードでログイン</div>
+
+    <label class="field-label" for="input-pin">PIN（4桁）</label>
+    <input class="field-input" type="tel" id="input-pin"
+      inputmode="numeric" maxlength="4" placeholder="1234"
+      autocomplete="off">
+
+    <label class="field-label" for="input-password">パスワード</label>
+    <input class="field-input" type="password" id="input-password"
+      placeholder="パスワードを入力" autocomplete="current-password">
+
+    <button class="btn-login" id="btn-login">ログイン</button>
+    <div class="login-hint">PIN・パスワードは管理者にお問い合わせください</div>
+  </div>
+</div>
+
+<!-- ===== メイン画面（見るだけ・編集操作なし） ===== -->
+<div id="screen-main">
+  <div class="dash-wrap">
+
+    <div class="dash-header">
+      <div class="dash-title">住岡 勤怠・タスク状況</div>
+      <div class="dash-updated" id="dash-updated">最終更新: -</div>
+    </div>
+
+    <div id="dash-content">
+      <div class="dash-grid">
+
+        <div class="dash-card">
+          <div class="dash-card-title">🕒 本日の出退勤</div>
+          <div class="stat-row">
+            <span class="stat-num" id="stat-present">-</span>
+            <span class="stat-unit">/ <span id="stat-total">-</span>人 出勤中</span>
+          </div>
+          <div class="stat-sub">打刻漏れ: <span id="stat-missing">-</span>人</div>
+          <div class="name-list" id="absent-list"></div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card-title">📋 タスク状況</div>
+          <div class="badge-row" id="task-status-badges"></div>
+          <div class="stat-sub">期限超過: <span id="stat-overdue">-</span>件</div>
+        </div>
+
+        <div class="dash-card">
+          <div class="dash-card-title">📝 未処理の申請</div>
+          <div class="stat-row">
+            <span class="stat-num" id="stat-pending-requests">-</span>
+            <span class="stat-unit">件（休暇・残業）</span>
+          </div>
+        </div>
+
+        <div class="dash-card dash-card--wide">
+          <div class="dash-card-title">👥 担当者別タスク状況</div>
+          <div id="staff-task-table-wrap">
+            <div class="empty-note">読み込み中...</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="dash-fallback">
+      <div id="dash-fallback-icon">📡</div>
+      <div id="dash-fallback-msg">現在データを取得できません。時間をおいて再度お試しください。</div>
+    </div>
+
+  </div>
+</div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>
