@@ -1906,6 +1906,8 @@ strong{
 
     align-items:center;
 
+    padding:var(--space-4);
+
     background:rgba(15,23,42,.45);
 
     backdrop-filter:blur(5px);
@@ -1916,9 +1918,20 @@ strong{
 
 .sumioka-modal-content{
 
+    position:relative;
+
     width:min(680px,92vw);
 
-    background:white;
+    max-height:88vh;
+
+    overflow-y:auto;
+
+    /* Phase3: 元は background:white 固定でダークモードに追従しなかったため、
+       CSS変数経由に修正した（.sumioka-modal は本フェーズで初めて実利用するため
+       既存ページへの影響はない）。 */
+    background:var(--color-surface);
+
+    color:var(--color-text);
 
     border-radius:24px;
 
@@ -1927,6 +1940,49 @@ strong{
     box-shadow:var(--shadow-lg);
 
     animation:sumioka-modal-in .18s ease;
+
+}
+
+/* Phase3: モーダル右上に置く✕閉じるボタン。 */
+.sumioka-modal-close{
+
+    position:absolute;
+
+    top:var(--space-4);
+
+    right:var(--space-4);
+
+    width:32px;
+
+    height:32px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    border:none;
+
+    border-radius:50%;
+
+    background:var(--color-surface-alt);
+
+    color:var(--color-text-secondary);
+
+    font-size:var(--font-lg);
+
+    line-height:1;
+
+    cursor:pointer;
+
+    transition:background var(--transition-fast);
+
+}
+
+.sumioka-modal-close:hover{
+
+    background:var(--color-border);
 
 }
 
@@ -2367,6 +2423,383 @@ strong{
     font-size:var(--font-2xl);
 
     font-weight:var(--font-bold);
+
+}
+
+
+
+/* ==========================================================================
+   Guide Back Button（使い方ページ上部の「← 戻る」ボタン）
+   Phase3: 親ページ（staff.html / portal.html）へのリンクボタン。
+========================================================================== */
+
+.sumioka-guide-back-btn{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    gap:var(--space-2);
+
+    padding:8px 16px;
+
+    margin-bottom:var(--space-5);
+
+    border:1px solid var(--color-border);
+
+    border-radius:var(--radius-pill);
+
+    background:var(--color-surface);
+
+    color:var(--color-text-secondary);
+
+    font-size:var(--font-sm);
+
+    font-weight:var(--font-medium);
+
+    text-decoration:none;
+
+    cursor:pointer;
+
+    transition:all var(--transition-fast);
+
+}
+
+.sumioka-guide-back-btn:hover{
+
+    border-color:var(--color-primary);
+
+    color:var(--color-primary);
+
+}
+
+
+
+/* ==========================================================================
+   Guide Hero（使い方ページ冒頭の導入エリア）
+   Phase3: アイコン・タイトル・一言説明で構成する。
+   背景は var(--color-primary-tint) を使い、ページテーマ色に自動追従する。
+========================================================================== */
+
+.sumioka-guide-hero{
+
+    display:flex;
+
+    flex-direction:column;
+
+    align-items:center;
+
+    text-align:center;
+
+    gap:var(--space-3);
+
+    padding:var(--space-8) var(--space-6);
+
+    margin-bottom:var(--space-6);
+
+    border-radius:var(--radius-xl);
+
+    background:var(--color-primary-tint);
+
+}
+
+.sumioka-guide-hero-icon{
+
+    width:64px;
+
+    height:64px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    border-radius:var(--radius-lg);
+
+    background:var(--color-primary);
+
+    color:#FFFFFF;
+
+    font-size:var(--font-2xl);
+
+}
+
+.sumioka-guide-hero-title{
+
+    font-size:var(--font-xl);
+
+    font-weight:var(--font-bold);
+
+    color:var(--color-text);
+
+}
+
+.sumioka-guide-hero-desc{
+
+    color:var(--color-text-secondary);
+
+    max-width:480px;
+
+    line-height:1.7;
+
+}
+
+
+
+/* ==========================================================================
+   Guide Section（機能ごとの説明ブロック）
+   Phase3: .sumioka-card に近い見た目のカード。アイコン＋見出し＋本文で構成する。
+========================================================================== */
+
+.sumioka-guide-section{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:var(--space-3);
+
+    padding:var(--space-5);
+
+    margin-bottom:var(--space-4);
+
+    background:var(--color-surface);
+
+    border:1px solid var(--color-border);
+
+    border-radius:var(--radius-lg);
+
+}
+
+.sumioka-guide-section-head{
+
+    display:flex;
+
+    align-items:center;
+
+    gap:var(--space-3);
+
+}
+
+.sumioka-guide-section-icon{
+
+    flex:0 0 auto;
+
+    width:40px;
+
+    height:40px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    border-radius:var(--radius-md);
+
+    background:var(--color-primary-tint);
+
+    color:var(--color-primary);
+
+    font-size:var(--font-lg);
+
+}
+
+.sumioka-guide-section-title{
+
+    font-size:var(--font-lg);
+
+    font-weight:var(--font-semibold);
+
+    color:var(--color-text);
+
+}
+
+.sumioka-guide-section-body{
+
+    color:var(--color-text-secondary);
+
+    line-height:1.8;
+
+}
+
+.sumioka-guide-section-body p{
+
+    margin-bottom:var(--space-2);
+
+}
+
+.sumioka-guide-section-body p:last-child{
+
+    margin-bottom:0;
+
+}
+
+
+
+/* ==========================================================================
+   Step List（番号付き手順リスト）
+   Phase3: 「① 出勤ボタンをタップ」のような手順表示に使う。
+========================================================================== */
+
+.sumioka-step-list{
+
+    list-style:none;
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:var(--space-3);
+
+}
+
+.sumioka-step-list li{
+
+    display:flex;
+
+    align-items:flex-start;
+
+    gap:var(--space-3);
+
+    color:var(--color-text-secondary);
+
+    line-height:1.7;
+
+}
+
+.sumioka-step-list li::before{
+
+    counter-increment:sumioka-step;
+
+    content:counter(sumioka-step);
+
+    flex:0 0 auto;
+
+    width:24px;
+
+    height:24px;
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    border-radius:50%;
+
+    background:var(--color-primary);
+
+    color:#FFFFFF;
+
+    font-size:var(--font-xs);
+
+    font-weight:var(--font-bold);
+
+}
+
+.sumioka-step-list{
+
+    counter-reset:sumioka-step;
+
+}
+
+
+
+/* ==========================================================================
+   Accordion（折りたたみ式のFAQ・詳細説明）
+   Phase3: クリックで開閉する。JSは classList.toggle('is-open') のみで実装し、
+   外部ライブラリは使わない。
+========================================================================== */
+
+.sumioka-accordion{
+
+    display:flex;
+
+    flex-direction:column;
+
+    gap:var(--space-3);
+
+}
+
+.sumioka-accordion-item{
+
+    border:1px solid var(--color-border);
+
+    border-radius:var(--radius-md);
+
+    background:var(--color-surface);
+
+    overflow:hidden;
+
+}
+
+.sumioka-accordion-trigger{
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:space-between;
+
+    gap:var(--space-3);
+
+    width:100%;
+
+    padding:var(--space-4);
+
+    border:none;
+
+    background:transparent;
+
+    color:var(--color-text);
+
+    font-size:var(--font-base);
+
+    font-weight:var(--font-semibold);
+
+    text-align:left;
+
+    cursor:pointer;
+
+}
+
+.sumioka-accordion-trigger::after{
+
+    content:'+';
+
+    flex:0 0 auto;
+
+    font-size:var(--font-lg);
+
+    color:var(--color-primary);
+
+    transition:transform var(--transition-fast);
+
+}
+
+.sumioka-accordion-item.is-open .sumioka-accordion-trigger::after{
+
+    transform:rotate(45deg);
+
+}
+
+.sumioka-accordion-panel{
+
+    display:none;
+
+    padding:0 var(--space-4) var(--space-4);
+
+    color:var(--color-text-secondary);
+
+    line-height:1.8;
+
+}
+
+.sumioka-accordion-item.is-open .sumioka-accordion-panel{
+
+    display:block;
 
 }
 
