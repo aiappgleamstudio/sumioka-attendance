@@ -81,7 +81,6 @@ function testAll() {
     testLoadAttendanceRange,
     testLoadDailyAttendance,
     testGenerateMonthlyReport,
-    testGetDashboardSummary,
   ];
 
   let passed = 0;
@@ -406,100 +405,6 @@ function testGenerateMonthlyReport() {
   Logger.log('削除 OK');
 
   _printTestEnd('testGenerateMonthlyReport');
-}
-
-/**
- * ダッシュボード集計（get_dashboard_summary / DashboardService.gs）をテストする。
- *
- * getDashboardSummary は CacheService（5分）で結果をキャッシュするため、
- * 短時間に繰り返し実行すると前回実行時点のキャッシュが返ることがある。
- * そのため集計値の中身ではなく、レスポンスの構造（キーの存在・型）を検証する。
- * 一方、認証・権限チェックはキャッシュより先に必ず実行されるため、
- * 異常系（operator_id なし／存在しない／権限不足）は毎回同じ結果になる。
- */
-function testGetDashboardSummary() {
-  _printTestBanner('testGetDashboardSummary');
-
-  const ss            = SpreadsheetApp.getActiveSpreadsheet();
-  const employeeSheet = getOrCreateSheet(ss, SHEET.EMPLOYEES);
-
-  // ── 1. operator_id なし → 例外 ────────────────────────────
-  let threw = false;
-  try {
-    getDashboardSummary({});
-  } catch (err) {
-    threw = true;
-  }
-  ASSERT(threw, 'getDashboardSummary: operator_id なしは例外を投げること');
-
-  // ── 2. 存在しない operator_id → 例外 ──────────────────────
-  threw = false;
-  try {
-    getDashboardSummary({ operator_id: 'test_not_exist_id' });
-  } catch (err) {
-    threw = true;
-  }
-  ASSERT(threw, 'getDashboardSummary: 存在しない operator_id は例外を投げること');
-
-  // ── 3. 利用者（Lv1）は権限不足で例外 ──────────────────────
-  // 個人が特定できるタスク・出退勤情報を扱うため、職員以上のみ許可する仕様を確認する。
-  const userResult = saveEmployee(employeeSheet, {
-    name          : 'テスト 利用者D',
-    pin           : '9991',
-    password      : 'test_pass_user',
-    employee_data : { employment_type: '利用者' },
-  });
-
-  threw = false;
-  try {
-    getDashboardSummary({ operator_id: userResult.id });
-  } catch (err) {
-    threw = true;
-  }
-  ASSERT(threw, 'getDashboardSummary: 利用者（Lv1）は権限不足で例外を投げること');
-
-  deleteEmployee(employeeSheet, userResult.id);
-  Logger.log('異常系3件 OK');
-
-  // ── 4. 職員（Lv2）は取得でき、レスポンス構造が正しいこと ────
-  const staffResult = saveEmployee(employeeSheet, {
-    name          : 'テスト 職員D',
-    pin           : '9992',
-    password      : 'test_pass_staff',
-    employee_data : { employment_type: '職員' },
-  });
-
-  const summary = getDashboardSummary({ operator_id: staffResult.id });
-
-  ASSERT(typeof summary.generated_at === 'string', 'getDashboardSummary: generated_at が文字列であること');
-  ASSERT(/^\d{4}-\d{2}-\d{2}$/.test(summary.date), 'getDashboardSummary: date が YYYY-MM-DD 形式であること');
-
-  ASSERT(typeof summary.attendance === 'object',                     'getDashboardSummary: attendance がオブジェクトであること');
-  ASSERT(typeof summary.attendance.total_staff_count === 'number',   'getDashboardSummary: total_staff_count が数値であること');
-  ASSERT(typeof summary.attendance.present_count === 'number',       'getDashboardSummary: present_count が数値であること');
-  ASSERT(typeof summary.attendance.missing_clock_count === 'number', 'getDashboardSummary: missing_clock_count が数値であること');
-  ASSERT(Array.isArray(summary.attendance.present_staff),            'getDashboardSummary: present_staff が配列であること');
-  ASSERT(Array.isArray(summary.attendance.absent_staff),             'getDashboardSummary: absent_staff が配列であること');
-
-  ASSERT(typeof summary.tasks === 'object',               'getDashboardSummary: tasks がオブジェクトであること');
-  ASSERT(typeof summary.tasks.status_count === 'object',  'getDashboardSummary: status_count がオブジェクトであること');
-  ASSERT(typeof summary.tasks.overdue_count === 'number', 'getDashboardSummary: overdue_count が数値であること');
-  ASSERT(Array.isArray(summary.tasks.by_staff),           'getDashboardSummary: by_staff が配列であること');
-
-  ASSERT(typeof summary.requests === 'object',               'getDashboardSummary: requests がオブジェクトであること');
-  ASSERT(typeof summary.requests.pending_count === 'number', 'getDashboardSummary: pending_count が数値であること');
-
-  Logger.log(
-    '集計取得 OK: total_staff=%d, present=%d, missing_clock=%d, task_overdue=%d, pending_requests=%d',
-    summary.attendance.total_staff_count, summary.attendance.present_count,
-    summary.attendance.missing_clock_count, summary.tasks.overdue_count, summary.requests.pending_count
-  );
-
-  // ── 5. 後片付け ────────────────────────────────────────────
-  deleteEmployee(employeeSheet, staffResult.id);
-  Logger.log('削除 OK');
-
-  _printTestEnd('testGetDashboardSummary');
 }
 
 // ============================================================

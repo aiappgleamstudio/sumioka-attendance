@@ -3,9 +3,9 @@
  *
  * 役割:
  *   - POSTリクエストの受付（doPost）
- *   - app / action によるルーティング
- *   - 人員マスタ CRUD の実装
- *   - 出退勤記録 CRUD は AttendanceService.gs へ委譲（2026-07-28 移管）
+ *   - app / action によるルーティング（実装は各 Service.gs に委譲）
+ *   - シート定数・共通ユーティリティ（成功/エラーレスポンス生成、UUID生成、
+ *     シート取得・初期化、日付フォーマット、JSONパース等）
  *
  * 設計方針:
  *   - GASプロジェクトは1つ。エントリポイントは doPost のみ
@@ -13,6 +13,8 @@
  *   - 日付はすべて YYYY-MM-DD 文字列で統一（Date オブジェクト不使用）
  *   - upsert は employee_id + date の複合キーで検索してから書き込む
  *   - 削除は物理削除（複数削除時は後ろの行から順に実行）
+ *   - 本ファイルはルーティング専任とし、機能ごとの実装は各 Service.gs に置く
+ *     （GAS は同一プロジェクト内でグローバル参照が効くため import 不要）
  *
  * 日付の扱いについて:
  *   GAS は appendRow / setValues で 'YYYY-MM-DD' 文字列を渡しても
@@ -51,8 +53,38 @@
  * 変更履歴:
  *   v1.4.0: 氏名列を「姓」「名」2列に分割。PIN/PW を文字列強制保存に修正。
  *           時刻列（所定始業・終業）に setNumberFormat('@') を追加し 1899-12-30 問題を解消。
+ *   v2.0.0: 【2026-07-30 全面改訂】GASバックエンドの重複解消・機能一本化・ファイル分割。
+ *           - 人員マスタCRUD・認証の実装を EmployeeService.gs / AuthService.gs に一本化し、
+ *             Code.gs 内の重複コピー（rowToEmployee/saveEmployee/loadEmployees/
+ *             deleteEmployee/_setEmployeeTextFormat/authenticateEmployee/
+ *             authenticateKintaiEmployee）を削除した。
+ *           - safeJsonParse は Code.gs に一本化（AdminOpsService.gs 側の重複を削除）。
+ *           - 巨大化していた Adminservice.gs（2934行）を AdminOpsService.gs /
+ *             RequestService.gs / CalendarService.gs / DeadlineService.gs /
+ *             OvertimeService.gs / AttendanceAlertService.gs の6ファイルに分割し、
+ *             Adminservice.gs 自体は削除した。
+ *           - 旧タスク管理（get_tasks/upsert_task/delete_task/admin_all_tasks、
+ *             タスク管理シート）を全廃し、TaskService.gs の新タスク管理v2
+ *             （tasks / task_assignments / task_histories シート）に一本化した。
+ *           - 給与計算を Payroll.gs の精密計算版（社会保険・所得税・インセンティブ込み）
+ *             に一本化した。アクション名は維持し実装先のみ差し替えた。
+ *           - TaskService.gs / ProjectService.gs（v2） / DailyReportService.gs /
+ *             AccountService.gs（新規）を doPost のルーティングに配線した。
+ *           - 案件管理系（顧客・案件・相談・通知・フェーズテンプレート）で
+ *             参照されるが未定義だった SHEET 定数（CUSTOMERS/PROJECTS/
+ *             CONSULTATIONS/NOTIFICATIONS/PHASE_TEMPLATES）と、新規
+ *             AccountService.gs 用の SHEET.ACCOUNTS を追加した。
+ *           - admin_delete_request / cancel_request が VALID_ACTIONS 未登録で
+ *             呼び出せなかったバグを修正した。
+ *           - admin_attendance_list の呼び出し引数の不一致（ss が誤って
+ *             attendanceSheet に渡り、実データが渡らず必ず例外になっていた）を修正した
+ *             （AdminOpsService.gs 側で修正）。
+ *           - 旧 ProjectServices.gs（v1・PROJECT_TASKS/WORK_MEMOS等）を削除した。
+ *             ProjectService.gs（v2）と同名関数（getCustomers/getProjects/
+ *             upsertProject 等）が重複定義されており、ファイル読み込み順によって
+ *             v1実装がv2実装を上書きしてしまう不具合があったため。
  *
- * @version 1.4.0
+ * @version 2.0.0
  * @author  田中沙亜
  */
 
@@ -65,9 +97,9 @@ const VALID_APP = 'attendance';
 
 /** 対応する action 一覧 */
 const VALID_ACTIONS = [
-  // ── 既存アクション ──
-  'authenticate',       // Admin用：admin_role が空でない職員のみ通す（v3.0.0〜）
-  'kintai_authenticate', // Kintai用：is_adminチェックなし・職員であれば誰でも通す
+  // ── 認証・人員マスタ ──
+  'authenticate',       // Admin/Portal用：admin_role が空でない職員のみ通す
+  'kintai_authenticate', // Kintai/Staff用：is_adminチェックなし・職員であれば誰でも通す
   'save',
   'load',
   'load_range',
@@ -100,22 +132,18 @@ const VALID_ACTIONS = [
   'admin_requests',
   'admin_update_request',
   // Admin が申請内容（種別・対象日・時刻・理由・ステータス）を直接編集するアクション。
-  // 不正入力（202605-05-11 等）を GAS 側でも再バリデーションして弾く。
   'admin_edit_request',
+  // Admin が申請を物理削除する（誤登録・不要データの削除用）。
+  'admin_delete_request',
+  // スタッフが自分の pending 申請を取り下げる（cancelled 状態に変更）。
+  'cancel_request',
   // Admin が「欠席・在宅・外出」を申請管理シートに直接登録するアクション。
-  // 当日の体調変化に応じて上書き登録できるよう upsert 設計とする。
   'save_attendance_status',
 
   // ── カレンダー ──
   'get_calendar',
   'get_company_calendar',
   'save_company_calendar',
-
-  // ── タスク管理 ──
-  'get_tasks',
-  'upsert_task',
-  'delete_task',
-  'admin_all_tasks',
 
   // ── 納期管理 ──
   'get_deadlines',
@@ -133,27 +161,76 @@ const VALID_ACTIONS = [
   'payroll_save_incentive',
 
   // ── テストデータ管理（本番運用前のみ使用）──
-  // 本番環境では使用しないこと。フロントのUIから実行する。
   'reset_test_data',
   'bulk_insert_dummy',
 
   // ── 残業指示 ──
-  'create_overtime_instruction',       // Admin が残業指示を直接作成
-  'admin_overtime_instructions',       // Admin が残業指示一覧を取得
-  'update_overtime_instruction_status',// スタッフが承認/却下
-  'delete_overtime_instruction',       // Admin が残業指示を削除
-  'submit_overtime_request',           // Kintai: 残業申請を送信
-  'admin_approve_overtime_request',    // Admin: 残業申請を承認
-  'admin_reject_overtime_request',     // Admin: 残業申請を却下
-  'get_overtime_instructions',         // スタッフが自分の残業指示を取得
+  'create_overtime_instruction',
+  'admin_overtime_instructions',
+  'update_overtime_instruction_status',
+  'delete_overtime_instruction',
+  'submit_overtime_request',
+  'admin_approve_overtime_request',
+  'admin_reject_overtime_request',
+  'get_overtime_instructions',
 
   // ── 打刻漏れ警告 ──
-  'check_missing_clocks',              // 指定日付の打刻漏れを検出
-  'check_missing_clocks_monthly',      // 指定月全体の打刻漏れを検出（Admin月次確認用）
-  'get_my_missing_clocks',             // スタッフが自分の打刻漏れを取得
+  'check_missing_clocks',
+  'check_missing_clocks_monthly',
+  'get_my_missing_clocks',
 
-  // ── ダッシュボード（Notion埋め込み用・閲覧専用） ──
-  'get_dashboard_summary',             // 出退勤・タスク・申請の状況を集計して返す
+  // ── タスク管理v2（TaskService.gs）──
+  'get_my_tasks',
+  'get_tasks_by_project',
+  'get_all_tasks',
+  'get_task_detail',
+  'upsert_task_v2',
+  'update_task_status',
+  'review_approve',
+  'review_reject',
+  'delete_task_v2',
+  'get_task_history',
+  'assign_task_user',
+  'unassign_task_user',
+
+  // ── 案件・顧客・相談・通知・フェーズテンプレートv2（ProjectService.gs）──
+  'get_customers',
+  'upsert_customer',
+  'delete_customer',
+  'get_projects',
+  'upsert_project',
+  'update_project_status',
+  'delete_project',
+  'get_project_members',
+  'add_project_member',
+  'remove_project_member',
+  'get_task_comments',
+  'add_task_comment',
+  'get_review_waiting_tasks',
+  'get_consultations_v2',
+  'get_consultation_list',
+  'send_consultation',
+  'resolve_consultation',
+  'change_consultation_status',
+  'reply_consultation',
+  'mark_consultation_read',
+  'get_notifications',
+  'mark_notification_read',
+  'mark_all_notifications_read',
+  'get_phase_templates',
+  'upsert_phase_template',
+  'delete_phase_template',
+  'project_dashboard',
+  'get_project_masters',
+
+  // ── 日報（DailyReportService.gs）──
+  'save_daily_report',
+  'get_daily_report',
+
+  // ── アカウント管理（AccountService.gs、管理者のみ）──
+  'get_accounts',
+  'save_account',
+  'delete_account',
 ];
 
 /** シート名（日本語）*/
@@ -163,12 +240,25 @@ const SHEET = {
   BACKUP          : '_バックアップ',
   REQUESTS        : '申請管理',        // 休み・遅刻・早退・補填の申請記録
   COMPANY_CAL     : '会社カレンダー',  // 会社休日・行事の登録
-  TASKS           : 'タスク管理',      // 個人タスク
+  TASKS           : 'タスク管理',      // 【廃止】旧タスク管理v1。新v2は Shared.gs の SHEET_V2.TASKS('tasks') を使う
   DEADLINES       : '納期管理',        // 案件・納期管理
   PAYROLL_SETTINGS: '給与設定',        // 社保率・残業率・弁当代など
   INCENTIVES      : 'インセンティブ',  // 月次インセンティブ
   AUDIT_LOG       : '操作ログ',        // 管理者操作の監査ログ
   OVERTIME_INST   : '残業指示',        // 残業指示管理
+
+  // ── v2.0.0 追加: 制作進行管理（ProjectService.gs）が参照するシート名 ──
+  // 【2026-07-30】これらは ProjectService.gs / 旧ProjectServices.gs から
+  // 参照されていたが Code.gs 側に定義がなく、getOrCreateSheet(ss, undefined) と
+  // なって動作しない状態だった。ProjectService.gs を配線するにあたり追加した。
+  CUSTOMERS       : '顧客マスタ',        // 顧客マスタ
+  PROJECTS        : '案件管理',          // 案件
+  CONSULTATIONS   : '相談',              // 相談v2
+  NOTIFICATIONS   : '通知',              // 通知
+  PHASE_TEMPLATES : 'フェーズテンプレート', // フェーズテンプレート
+
+  // ── v2.0.0 追加: アカウント管理（AccountService.gs、新規）──
+  ACCOUNTS        : 'アカウント管理',
 };
 
 /** バックアップの最大保持件数（超えたら最古の1行を削除） */
@@ -358,25 +448,13 @@ function handleAttendance(action, data) {
   try {
     switch (action) {
 
-      // ── 認証 ─────────────────────────────────────
-
-      // Admin用認証：is_admin === true の職員のみ通す（Admin.html から呼ばれる）
+      // ── 認証（AuthService.gs）─────────────────────
       case 'authenticate':
-        return createSuccessResponse(
-          authenticateEmployee(employeeSheet, data.pin, data.password)
-        );
-
-      // Kintai用認証：職員であれば is_admin を問わず通す（kintai.html から呼ばれる）
-      // Admin用とは別アクションにすることで、フロントからの source フラグ偽装を防ぐ
       case 'kintai_authenticate':
-        return createSuccessResponse(
-          authenticateKintaiEmployee(employeeSheet, data.pin, data.password)
-        );
+        return handleAuthAction(action, data, employeeSheet);
 
       // ── 出退勤記録 CRUD ──────────────────────────
       // 実装は AttendanceService.gs の handleAttendanceAction() に完全委譲する。
-      // 【2026-07-28】以前はここに実装が直接書かれており、AttendanceService.gs
-      // 側の同名関数と二重定義になっていた（後勝ちの不定動作リスクがあったため解消済み）。
       case 'save':
       case 'load':
       case 'load_range':
@@ -384,21 +462,11 @@ function handleAttendance(action, data) {
       case 'delete':
         return handleAttendanceAction(action, data, attendanceSheet);
 
-      // ── 人員マスタ CRUD ───────────────────────────
+      // ── 人員マスタ CRUD（EmployeeService.gs）───────
       case 'save_employee':
-        return createSuccessResponse(
-          saveEmployee(employeeSheet, data)
-        );
-
       case 'load_employees':
-        return createSuccessResponse(
-          loadEmployees(employeeSheet)
-        );
-
       case 'delete_employee':
-        return createSuccessResponse(
-          deleteEmployee(employeeSheet, data.id)
-        );
+        return handleEmployeeAction(action, data, employeeSheet);
 
       // ── 集計（Services.gs）────────────────────────
       case 'monthly_report':
@@ -407,18 +475,17 @@ function handleAttendance(action, data) {
         );
 
       // ── ビューシート生成（Services.gs）────────────
-      // 管理者HTMLから手動実行。指定月の日次打刻シートを職員・利用者別に生成する。
       case 'export_view':
         return createSuccessResponse(
           exportViewSheets(attendanceSheet, employeeSheet, data.year_month)
         );
 
-      // ── Admin系・申請・カレンダー・タスク・納期・給与（AdminServices.gs）──
+      // ── Admin系・申請・カレンダー・納期・残業・打刻漏れ・給与（AdminOpsService.gs 以下）──
       case 'admin_dashboard':
       case 'admin_attendance_list':
       case 'admin_edit_attendance':
       case 'admin_add_attendance':
-      case 'admin_clear_attendance_field': // v3.0.0: 出勤/退勤時刻の単独クリア
+      case 'admin_clear_attendance_field':
       case 'admin_staff_list':
       case 'admin_add_staff':
       case 'admin_update_staff':
@@ -428,16 +495,12 @@ function handleAttendance(action, data) {
       case 'admin_requests':
       case 'admin_update_request':
       case 'admin_edit_request':
-      // Admin が「欠席・在宅・外出」を申請管理シートに登録するアクション。
-      // handleAdminAction 内の saveAttendanceStatus に委譲する。
+      case 'admin_delete_request': // 【修正】VALID_ACTIONS未登録で呼び出せなかったバグを修正
+      case 'cancel_request':       // 【修正】同上
       case 'save_attendance_status':
       case 'get_calendar':
       case 'get_company_calendar':
       case 'save_company_calendar':
-      case 'get_tasks':
-      case 'upsert_task':
-      case 'delete_task':
-      case 'admin_all_tasks':
       case 'get_deadlines':
       case 'upsert_deadline':
       case 'delete_deadline':
@@ -447,7 +510,6 @@ function handleAttendance(action, data) {
       case 'payroll_load_settings':
       case 'payroll_save_settings':
       case 'payroll_save_incentive':
-      // ── 残業指示 ──────────────────────────────────
       case 'create_overtime_instruction':
       case 'admin_overtime_instructions':
       case 'update_overtime_instruction_status':
@@ -456,18 +518,67 @@ function handleAttendance(action, data) {
       case 'admin_approve_overtime_request':
       case 'admin_reject_overtime_request':
       case 'get_overtime_instructions':
-      // ── 打刻漏れ警告 ──────────────────────────────
       case 'check_missing_clocks':
       case 'check_missing_clocks_monthly':
       case 'get_my_missing_clocks':
         return handleAdminAction(action, data, attendanceSheet, employeeSheet);
 
-      // ── ダッシュボード（DashboardService.gs）──────────────
-      // Notionポータル埋め込み用の閲覧専用ダッシュボード。
-      // 出退勤・タスク管理は別サービスファイルの担当範囲のため、
-      // handleAdminAction には含めず専用のハンドラへ委譲する。
-      case 'get_dashboard_summary':
-        return handleDashboardAction(action, data);
+      // ── タスク管理v2（TaskService.gs）─────────────
+      case 'get_my_tasks':
+      case 'get_tasks_by_project':
+      case 'get_all_tasks':
+      case 'get_task_detail':
+      case 'upsert_task_v2':
+      case 'update_task_status':
+      case 'review_approve':
+      case 'review_reject':
+      case 'delete_task_v2':
+      case 'get_task_history':
+      case 'assign_task_user':
+      case 'unassign_task_user':
+        return handleTaskAction(action, data);
+
+      // ── 案件・顧客・相談・通知・フェーズテンプレートv2（ProjectService.gs）──
+      case 'get_customers':
+      case 'upsert_customer':
+      case 'delete_customer':
+      case 'get_projects':
+      case 'upsert_project':
+      case 'update_project_status':
+      case 'delete_project':
+      case 'get_project_members':
+      case 'add_project_member':
+      case 'remove_project_member':
+      case 'get_task_comments':
+      case 'add_task_comment':
+      case 'get_review_waiting_tasks':
+      case 'get_consultations_v2':
+      case 'get_consultation_list':
+      case 'send_consultation':
+      case 'resolve_consultation':
+      case 'change_consultation_status':
+      case 'reply_consultation':
+      case 'mark_consultation_read':
+      case 'get_notifications':
+      case 'mark_notification_read':
+      case 'mark_all_notifications_read':
+      case 'get_phase_templates':
+      case 'upsert_phase_template':
+      case 'delete_phase_template':
+      case 'project_dashboard':
+      case 'get_project_masters':
+        return handleProjectActionV2(action, data);
+
+      // ── 日報（DailyReportService.gs）──────────────
+      case 'save_daily_report':
+      case 'get_daily_report':
+        return handleDailyReportAction(action, data);
+
+      // ── アカウント管理（AccountService.gs、管理者のみ）──
+      case 'get_accounts':
+      case 'save_account':
+      case 'delete_account':
+        return handleAccountAction(action, data);
 
       // ── テストデータ管理（本番運用前のみ使用）──────────────
       case 'reset_test_data':
@@ -504,324 +615,18 @@ function handleAttendance(action, data) {
 // ============================================================
 
 // ============================================================
-// 人員マスタ CRUD（フラット列対応）
+// 人員マスタ CRUD
 // ============================================================
-
-/**
- * 職員を登録・更新する（upsert）。
- * data.id があれば上書き、なければ新規登録。
- *
- * 人員マスタ の列構成（v1.4.0 フラット化・姓名分割後）:
- *   A: ID, B: 姓, C: 名, D: PIN, E: パスワード, F: 雇用形態,
- *   G: 所定労働時間, H: 所定始業, I: 所定終業, J: 所定休憩(分),
- *   K: 給与形態, L: 時給, M: 月給, N: 弁当デフォルト,
- *   O: 勤務曜日, P: 管理権限, Q: 登録日時, R: 更新日時
- *
- * 呼び出し側が渡す data の構造:
- *   {
- *     id?            : string,   // 更新時のみ
- *     last_name      : string,   // 姓（必須）
- *     first_name     : string,   // 名（必須）
- *     pin            : string,   // 必須・4桁数字（文字列として保存）
- *     password       : string,   // 必須
- *     employee_data? : {
- *       employment_type?  : string,
- *       scheduled_hours?  : number,
- *       scheduled_start?  : string,   // HH:MM
- *       scheduled_end?    : string,   // HH:MM
- *       scheduled_break?  : number,   // 分
- *       wage_type?        : string,   // '時給' | '月給'
- *       hourly_wage?      : number,   // 時給（円）
- *       monthly_wage?     : number,   // 月給（円）
- *       default_lunch?    : boolean,
- *       work_days?        : string[] | string,
- *     }
- *   }
- *
- * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
- * @param {Object} data
- * @returns {{ id: string, saved: boolean }}
- */
-function saveEmployee(sheet, data) {
-  // 後方互換: name（旧フォーマット）が渡された場合は姓・名に分割する。
-  // スペース（半角・全角）で区切り、左側を姓、右側を名とする。
-  // 新フォーマットでは last_name / first_name を直接渡す。
-  let lastName, firstName;
-  if (data.last_name || data.first_name) {
-    lastName  = data.last_name  || '';
-    firstName = data.first_name || '';
-  } else if (data.name) {
-    const parts = String(data.name).split(/[\s\u3000]+/);
-    lastName  = parts[0] || '';
-    firstName = parts.slice(1).join(' ') || '';
-  } else {
-    throw new Error('氏名（last_name + first_name または name）は必須です。');
-  }
-
-  const now = new Date().toISOString();
-  const ed  = data.employee_data || {};
-
-  // 勤務曜日は配列・文字列どちらで渡されてもカンマ区切り文字列に統一する。
-  // スプレッドシートは配列を保存できないため。
-  const workDays = Array.isArray(ed.work_days)
-    ? ed.work_days.join(',')
-    : (ed.work_days || '');
-
-  // PIN とパスワードは必ず文字列として保存する。
-  // GAS の setValues で数値型を渡すと、スプレッドシートが数値として解釈し
-  // 先頭の '0' が消えてしまう（例: '0123' → 123）。String() で強制変換する。
-  const pinStr      = String(data.pin      ?? '');
-  const passwordStr = String(data.password ?? '');
-
-  // EMPLOYEE_COL の定義順と必ず一致させること。
-  // シート実態: 23列（所定労働時間・所定休憩時間なし、論理削除あり）
-  const buildRow = (id, createdAt) => [
-    id,                                          // A(1) : ID
-    lastName,                                    // B(2) : 姓
-    firstName,                                   // C(3) : 名
-    pinStr,                                      // D(4) : PIN（文字列強制）
-    passwordStr,                                 // E(5) : パスワード（文字列強制）
-    ed.employment_type    || '',                 // F(6) : 雇用形態
-    ed.scheduled_start    || '',                 // G(7) : 所定始業時刻
-    ed.scheduled_end      || '',                 // H(8) : 所定終業時刻
-    ed.wage_type          || '',                 // I(9) : 給与形態
-    ed.hourly_wage        ?? '',                 // J(10): 時給
-    ed.monthly_wage       ?? '',                 // K(11): 月給
-    ed.default_lunch === true ? '有' : '無',     // L(12): 弁当デフォルト
-    workDays,                                    // M(13): 勤務曜日
-    ed.admin_role         || '',                 // N(14): 管理権限
-    ed.location           || '',                 // O(15): 拠点
-    ed.job_type           || '',                 // P(16): 職種
-    ed.ins_health     === true ? '加入' : '未加入',  // Q(17): 健康保険
-    ed.ins_care       === true ? '加入' : '未加入',  // R(18): 介護保険
-    ed.ins_pension    === true ? '加入' : '未加入',  // S(19): 厚生年金
-    ed.ins_employment === true ? '加入' : '未加入',  // T(20): 雇用保険
-    createdAt,                                   // U(21): 登録日時
-    now,                                         // V(22): 更新日時
-    '',                                          // W(23): 論理削除（通常は空）
-  ];
-
-  const rows = getAllRows(sheet);
-
-  if (data.id) {
-    // 更新: 既存行を上書きする。登録日時（Q列）は変えない。
-    const rowIndex = rows.findIndex(r => r[EMPLOYEE_COL.ID - 1] === data.id);
-    if (rowIndex === -1) {
-      throw new Error('指定された id の職員が見つかりません: ' + data.id);
-    }
-
-    const sheetRowNum = rowIndex + 2; // +2 = ヘッダー行 + 0始まり補正
-    const createdAt   = rows[rowIndex][EMPLOYEE_COL.CREATED_AT - 1]; // 登録日時は保持
-
-    // PIN・パスワード・時刻列をテキスト形式に固定してから書き込む。
-    // setNumberFormat('@') で文字列セルに指定しないと、GAS が数値変換してしまう。
-    _setEmployeeTextFormat(sheet, sheetRowNum);
-
-    sheet.getRange(sheetRowNum, 1, 1, EMPLOYEE_NUM_COLS).setValues([
-      buildRow(data.id, createdAt)
-    ]);
-
-    Logger.log('[saveEmployee] Updated: id=%s, lastName=%s, firstName=%s', data.id, lastName, firstName);
-    return { id: data.id, saved: true };
-
-  } else {
-    // 新規登録: 末尾行に追加する。登録日時と更新日時は同じ値を使う。
-    const newId     = generateId();
-    const newRowNum = sheet.getLastRow() + 1;
-
-    // PIN・パスワード・時刻列をテキスト形式に固定してから書き込む。
-    _setEmployeeTextFormat(sheet, newRowNum);
-
-    sheet.getRange(newRowNum, 1, 1, EMPLOYEE_NUM_COLS).setValues([
-      buildRow(newId, now)
-    ]);
-
-    Logger.log('[saveEmployee] Created: id=%s, lastName=%s, firstName=%s', newId, lastName, firstName);
-    return { id: newId, saved: true };
-  }
-}
-
-/**
- * 人員マスタの指定行に対し、文字列として扱うべき列の書式を設定する。
- *
- * 設定対象:
- *   - D列（PIN）      : 先頭0が消えるのを防ぐ
- *   - E列（パスワード）: 同上
- *   - H列（所定始業）  : 1899-12-30 への自動変換を防ぐ
- *   - I列（所定終業）  : 同上
- *
- * setValues より前に呼ぶこと。順序が逆になると効果がない。
- *
- * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
- * @param {number} rowNum - 1始まりの行番号
- */
-function _setEmployeeTextFormat(sheet, rowNum) {
-  // PIN列・パスワード列をテキスト形式に設定
-  sheet.getRange(rowNum, EMPLOYEE_COL.PIN     ).setNumberFormat('@');
-  sheet.getRange(rowNum, EMPLOYEE_COL.PASSWORD).setNumberFormat('@');
-  // 時刻列をテキスト形式に設定（GASが HH:MM を日付シリアル値に変換するのを防ぐ）
-  sheet.getRange(rowNum, EMPLOYEE_COL.SCHEDULED_START).setNumberFormat('@');
-  sheet.getRange(rowNum, EMPLOYEE_COL.SCHEDULED_END  ).setNumberFormat('@');
-}
-
-/**
- * 全職員を取得する。
- *
- * 返り値の employee オブジェクト構造:
- *   {
- *     id              : string,
- *     name            : string,
- *     pin             : string,
- *     password        : string,
- *     employment_type : string,
- *     scheduled_hours : number | '',
- *     scheduled_start : string,
- *     scheduled_end   : string,
- *     scheduled_break : number | '',
- *     wage_type       : string,        // '時給' | '月給'
- *     hourly_wage     : number | '',   // 時給（円）
- *     monthly_wage    : number | '',   // 月給（円）
- *     default_lunch   : boolean,
- *     work_days       : string[],      // カンマ区切りを配列に変換して返す
- *     created_at      : string,
- *     updated_at      : string,
- *   }
- *
- * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
- * @returns {{ employees: Object[] }}
- */
-function loadEmployees(sheet) {
-  const rows = getAllRows(sheet);
-
-  if (rows.length === 0) return { employees: [] };
-
-  const employees = rows.map(row => rowToEmployee(row));
-
-  Logger.log('[loadEmployees] count=%d', employees.length);
-  return { employees };
-}
-
-/**
- * 職員を削除する（物理削除）。
- * 関連する勤怠記録は削除しない（参照整合性はアプリ側で管理）。
- *
- * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
- * @param {string} id
- * @returns {{ deleted: boolean, id: string }}
- */
-function deleteEmployee(sheet, id) {
-  if (!id) throw new Error('id は必須です。');
-
-  const rows     = getAllRows(sheet);
-  const rowIndex = rows.findIndex(r => r[EMPLOYEE_COL.ID - 1] === id);
-
-  if (rowIndex === -1) {
-    throw new Error('指定された id の職員が見つかりません: ' + id);
-  }
-
-  sheet.deleteRow(rowIndex + 2);
-  Logger.log('[deleteEmployee] Deleted: id=%s', id);
-
-  return { deleted: true, id };
-}
-
+//
+// 【2026-07-30 移管済み】
+// 人員マスタの save_employee/load_employees/delete_employee の実装は
+// EmployeeService.gs の以下の関数に完全移管した。
+//   saveEmployee / loadEmployees / deleteEmployee / _setEmployeeTextFormat /
+//   rowToEmployee
+// 認証（authenticate/kintai_authenticate）は AuthService.gs の
+// authenticateEmployee / authenticateKintaiEmployee に完全移管した。
+// Code.gs に同名関数を再定義しないこと（後勝ちの二重定義バグの原因になる）。
 // ============================================================
-// 人員マスタ 変換ユーティリティ
-// ============================================================
-
-/**
- * 人員マスタの1行データを職員オブジェクトに変換する。
- *
- * EMPLOYEE_COL の定義と必ず一致させること。
- * インデックスは 0 始まりなので EMPLOYEE_COL の値から 1 引く。
- *
- * v1.4.0: 姓・名を個別フィールドで返し、後方互換のため name（結合）も返す。
- *
- * @param {Array} row
- * @returns {Object}
- */
-function rowToEmployee(row) {
-  // 勤務曜日はカンマ区切り文字列を配列に変換して返す。
-  // 空文字の場合は空配列にして呼び出し側での分岐を減らす。
-  const workDaysRaw = row[EMPLOYEE_COL.WORK_DAYS - 1] || '';
-  const workDays    = workDaysRaw
-    ? String(workDaysRaw).split(',').map(d => d.trim()).filter(Boolean)
-    : [];
-
-  const lastName  = String(row[EMPLOYEE_COL.LAST_NAME  - 1] || '');
-  const firstName = String(row[EMPLOYEE_COL.FIRST_NAME - 1] || '');
-
-  // 所定始業・終業の時刻を安全な HH:MM 文字列に変換する。
-  // GAS が Date型として返した場合（1899-12-30問題）も含め正規化する。
-  const scheduledStart = _safeTimeStr(row[EMPLOYEE_COL.SCHEDULED_START - 1]);
-  const scheduledEnd   = _safeTimeStr(row[EMPLOYEE_COL.SCHEDULED_END   - 1]);
-
-  return {
-    id              : row[EMPLOYEE_COL.ID              - 1],
-    last_name       : lastName,
-    first_name      : firstName,
-    // 後方互換: フロントで name を参照している箇所のために結合値を提供する
-    name            : lastName && firstName ? lastName + ' ' + firstName : lastName || firstName,
-    pin             : String(row[EMPLOYEE_COL.PIN      - 1] || ''),
-    password        : String(row[EMPLOYEE_COL.PASSWORD - 1] || ''),
-    employment_type : row[EMPLOYEE_COL.EMPLOYMENT_TYPE - 1] || '',
-    // scheduled_hours: シートに列がないため start/end から算出する。
-    // start・end が両方揃っている場合のみ計算し、それ以外は null を返す。
-    // フロントは null を受け取ったら '―' と表示する。
-    scheduled_hours : (() => {
-      const s = _safeTimeStr(row[EMPLOYEE_COL.SCHEDULED_START - 1]);
-      const e = _safeTimeStr(row[EMPLOYEE_COL.SCHEDULED_END   - 1]);
-      if (!s || !e) return null;
-      const [sh, sm] = s.split(':').map(Number);
-      const [eh, em] = e.split(':').map(Number);
-      const mins = (eh * 60 + em) - (sh * 60 + sm);
-      return mins > 0 ? Math.round(mins / 60 * 10) / 10 : null;
-    })(),
-    scheduled_start : scheduledStart,
-    scheduled_end   : scheduledEnd,
-    // scheduled_break: シートに列がないため null を返す。
-    // 将来的に列を追加した場合はここを修正する。
-    scheduled_break : null,
-    wage_type       : row[EMPLOYEE_COL.WAGE_TYPE       - 1] || '',
-    // hourly_wage / monthly_wage は 0 が有効値のため '' と 0 を区別する
-    hourly_wage     : row[EMPLOYEE_COL.HOURLY_WAGE     - 1] === '' ? ''
-                        : Number(row[EMPLOYEE_COL.HOURLY_WAGE     - 1]),
-    monthly_wage    : row[EMPLOYEE_COL.MONTHLY_WAGE    - 1] === '' ? ''
-                        : Number(row[EMPLOYEE_COL.MONTHLY_WAGE    - 1]),
-    default_lunch   : row[EMPLOYEE_COL.DEFAULT_LUNCH   - 1] === '有',
-    work_days       : workDays,
-    // admin_role: 管理権限ロールを文字列で返す。
-    // シート実態の値: '管理者' | '給与計算担当' | '一般職員' | ''
-    // 旧フォーマット後方互換: '可' → '管理者', '不可' → ''
-    admin_role      : (() => {
-      const raw = String(row[EMPLOYEE_COL.ADMIN_ROLE - 1] || '');
-      if (raw === '可')   return '管理者'; // 旧フォーマット後方互換
-      if (raw === '不可') return '';       // 旧フォーマット後方互換
-      if (raw === '社長') return '管理者'; // 旧コード後方互換
-      return ['管理者', '給与計算担当', '一般職員'].includes(raw) ? raw : '';
-    })(),
-    // 後方互換: is_admin フラグ。admin_role が空でなければ true。
-    is_admin        : (() => {
-      const raw = String(row[EMPLOYEE_COL.ADMIN_ROLE - 1] || '');
-      return raw === '可' || raw === '社長' || ['管理者', '給与計算担当', '一般職員'].includes(raw);
-    })(),
-    created_at      : row[EMPLOYEE_COL.CREATED_AT      - 1],
-    updated_at      : row[EMPLOYEE_COL.UPDATED_AT      - 1],
-
-    // ── v2.0.0 追加: 拠点・職種・社会保険フラグ ──────────────
-    // 旧データ（S〜X列が存在しない行）では row[18]〜row[23] が undefined になる。
-    // || '' / === '加入' で安全にフォールバックする。
-    location        : String(row[EMPLOYEE_COL.LOCATION       - 1] || ''),
-    job_type        : String(row[EMPLOYEE_COL.JOB_TYPE       - 1] || ''),
-    // 社保フラグは '加入' の場合のみ true。空・'未加入'・undefined はすべて false。
-    ins_health      : row[EMPLOYEE_COL.INS_HEALTH     - 1] === '加入',
-    ins_care        : row[EMPLOYEE_COL.INS_CARE       - 1] === '加入',
-    ins_pension     : row[EMPLOYEE_COL.INS_PENSION    - 1] === '加入',
-    ins_employment  : row[EMPLOYEE_COL.INS_EMPLOYMENT - 1] === '加入',
-    // 論理削除フラグ: W列が 'true' の行は削除済みとして扱う
-    deleted         : String(row[EMPLOYEE_COL.DELETED - 1] || '') === 'true',
-  };
-}
 
 /**
  * GAS から返ってきた時刻値を安全な 'HH:MM' 文字列に変換する。
@@ -838,6 +643,9 @@ function rowToEmployee(row) {
  *   - 文字列の "HH:MM..." → 先頭5文字を返す
  *   - ISO 8601 文字列 → Date を経由してローカル時刻を取り出す
  *
+ * 注意: EmployeeService.gs の rowToEmployee / AttendanceService.gs の
+ * rowToAttendanceRecord からも参照される共通関数のため、本ファイルに残す。
+ *
  * @param {Date|string|*} raw
  * @returns {string} 'HH:MM' または ''
  */
@@ -845,17 +653,13 @@ function _safeTimeStr(raw) {
   if (!raw) return '';
 
   if (raw instanceof Date) {
-    // 年が 1899 以前は GAS の誤変換（1899-12-30 問題）→ 空文字
     if (raw.getFullYear() < 1900) return '';
     return String(raw.getHours()).padStart(2, '0') + ':' + String(raw.getMinutes()).padStart(2, '0');
   }
 
   if (typeof raw === 'string') {
-    // 1899- で始まる文字列は誤変換データ → 空文字
     if (raw.startsWith('1899')) return '';
-    // HH:MM 形式 → そのまま返す（先頭5文字）
     if (/^\d{1,2}:\d{2}/.test(raw)) return raw.slice(0, 5);
-    // ISO 8601 文字列（T含む）→ Date 経由でローカル時刻を取り出す
     if (raw.includes('T')) {
       const d = new Date(raw);
       if (!isNaN(d.getTime())) {
@@ -937,6 +741,11 @@ function getOrCreateSheet(ss, sheetName) {
  * 人員マスタは Migration.gs でフラット化済みのため、
  * 新規作成時も日本語フラットヘッダーで初期化する。
  *
+ * 案件管理系（顧客・案件・相談・通知・フェーズテンプレート）・アカウント管理・
+ * タスク管理v2等の新規シートは、各 init*Sheet() 関数（Shared.gs /
+ * ProjectService.gs / AccountService.gs 等）が getOrCreateSheet 呼び出し直後に
+ * 個別に呼ばれてヘッダーを設定するため、ここには追加しない。
+ *
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet
  * @param {string} sheetName
  */
@@ -996,9 +805,6 @@ function getAllRows(sheet) {
   }
 
   // シートの実際の列数を超えた getRange は GAS が例外を投げる。
-  // マイグレーション途中（旧列数のシートを新 EMPLOYEE_NUM_COLS で読もうとする場合）など
-  // 列数が定義値より少ない状態でも安全に動作させるため、実列数を上限とする。
-  // 不足列は rowToEmployee / rowToAttendanceRecord 内でフォールバック（|| '' / === '加入'）する。
   const actualCols = sheet.getLastColumn();
   if (actualCols === 0) return []; // 空シート（ヘッダーもない）
   numCols = Math.min(numCols, actualCols);
@@ -1006,7 +812,6 @@ function getAllRows(sheet) {
   const values = sheet.getRange(2, 1, lastRow - 1, numCols).getValues();
 
   // 出退勤記録シートは date 列（インデックス DATE-1）を文字列に正規化する。
-  // GAS がセル値を Date オブジェクトとして返すことがあるため。
   if (sheet.getName() === SHEET.ATTENDANCE) {
     return values.map(row => {
       row[ATTENDANCE_COL.DATE - 1] = formatDateToString(row[ATTENDANCE_COL.DATE - 1]);
@@ -1015,9 +820,6 @@ function getAllRows(sheet) {
   }
 
   // 会社カレンダーシートも日付列（A列=インデックス0）を文字列に正規化する。
-  // GAS がセル値を Date オブジェクトとして返すと String() が
-  // "Sat Jan 01 2025 00:00:00 GMT+0900 (JST)" のような形式になり、
-  // startsWith('2025-01') による月フィルタが必ず false になるバグを防ぐ。
   if (sheet.getName() === SHEET.COMPANY_CAL) {
     return values.map(row => {
       row[0] = formatDateToString(row[0]);
@@ -1046,13 +848,15 @@ function formatDateToString(value) {
     const d = String(value.getDate()).padStart(2, '0');
     return `${y}/${m}/${d}`;
   }
-  // 文字列で渡された場合も YYYY/MM/DD に統一する（YYYY-MM-DD が混在しないよう）
   return String(value).replace(/-/g, '/');
 }
 
 /**
  * JSON 文字列を安全にパースする。
  * パース失敗時はデフォルト値を返す。
+ *
+ * 【2026-07-30】AdminOpsService.gs（旧 Adminservice.gs）にも同名関数の
+ * 重複定義があったため削除し、本ファイルに一本化した。
  *
  * @param {string} jsonStr
  * @param {*} defaultValue
@@ -1069,9 +873,6 @@ function safeJsonParse(jsonStr, defaultValue) {
 /**
  * 日付文字列が YYYY-MM-DD または YYYY/MM/DD 形式かを検証する。
  *
- * フロントからは YYYY-MM-DD で渡ってくる。
- * スプシ保存後は YYYY/MM/DD になるため、両形式を受け付ける。
- *
  * @param {string} dateStr
  */
 function validateDateFormat(dateStr) {
@@ -1083,16 +884,11 @@ function validateDateFormat(dateStr) {
 /**
  * フロントから受け取った YYYY-MM-DD をスプシ表示用の YYYY/MM/DD に変換する。
  *
- * スプシには YYYY/MM/DD で保存することで、そのまま見やすい表示になる。
- * 内部比較もゼロ埋めされた YYYY/MM/DD で行うため文字列大小比較が正しく動く。
- *
  * @param {string} dateStr - YYYY-MM-DD または YYYY/MM/DD
  * @returns {string} YYYY/MM/DD
  */
 function convertDateForDisplay(dateStr) {
-  // すでに YYYY/MM/DD 形式なら変換不要
   if (/^\d{4}\/\d{2}\/\d{2}$/.test(dateStr)) return dateStr;
-  // YYYY-MM-DD → YYYY/MM/DD に変換する
   return dateStr.replace(/-/g, '/');
 }
 
@@ -1124,7 +920,6 @@ function saveBackup(app, id, data) {
 
     Logger.log('[saveBackup] Saved: app=%s, id=%s', app, id);
 
-    // 上限超過時は最古の1行（ヘッダーの次の行）を削除
     const lastRow = sheet.getLastRow();
     if (lastRow > BACKUP_MAX_ROWS + 1) {
       sheet.deleteRow(2);
@@ -1147,15 +942,8 @@ function saveBackup(app, id, data) {
  *   このファイルを GAS にデプロイした後、GAS エディタ上で
  *   この関数を1回だけ手動実行する。それ以降は実行不要。
  *
- * 【何をするか】
- *   1. 既存の「出退勤記録」シートの全データ行を削除する
- *   2. 新しいヘッダー行（11列）を書き込む
- *   3. _バックアップ シートに「マイグレーション実施」の記録を残す
- *
  * 【注意】
  *   - 実行すると既存の出退勤データはすべて削除される（復元不可）
- *   - マイグレーション前に Google スプレッドシートの「変更履歴」で
- *     バックアップを取っておくことを推奨する
  *   - 人員マスタ・バックアップ・勤務区分マスタは変更しない
  *
  * @returns {void}
@@ -1166,7 +954,6 @@ function migrateAttendanceSheet() {
 
   Logger.log('[migrateAttendanceSheet] 開始: シート "%s"', SHEET.ATTENDANCE);
 
-  // ── Step 1: データ行をすべて削除する ──────────────────────
   const lastRow = sheet.getLastRow();
   if (lastRow >= 2) {
     sheet.deleteRows(2, lastRow - 1);
@@ -1175,11 +962,9 @@ function migrateAttendanceSheet() {
     Logger.log('[migrateAttendanceSheet] データ行なし。削除スキップ。');
   }
 
-  // ── Step 2: 新しいヘッダーを書き込む ──────────────────────
   addSheetHeader(sheet, SHEET.ATTENDANCE);
   Logger.log('[migrateAttendanceSheet] ヘッダー更新完了（11列）');
 
-  // ── Step 3: バックアップシートにマイグレーション記録を残す ─
   saveBackup(
     'migration',
     'attendance_sheet_reset',
@@ -1188,119 +973,4 @@ function migrateAttendanceSheet() {
 
   SpreadsheetApp.flush();
   Logger.log('[migrateAttendanceSheet] 完了。出退勤記録シートが新形式にリセットされました。');
-}
-
-// ============================================================
-// 認証
-// ============================================================
-
-/**
- * PIN + パスワードで職員を認証する。
- *
- * 認証ルール:
- *   - employment_type === '職員' のみログイン可
- *   - employment_type === '利用者' は認証拒否（管理者ダッシュボードへのアクセス不可）
- *   - PIN + パスワードが一致しても利用者であれば弾く
- *
- * セキュリティ上の注意:
- *   - PIN/パスワードの不一致と利用者拒否を同じエラーメッセージにする。
- *     理由: エラーを分けると「このPINは存在する」という情報が漏れるため。
- *   - パスワードは平文で保存・照合する（社内システムのため許容）。
- *
- * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - 人員マスタシート
- * @param {string} pin      - 入力された PIN（4桁）
- * @param {string} password - 入力されたパスワード
- * @returns {{ employee: Object }}
- */
-function authenticateEmployee(sheet, pin, password) {
-  if (!pin)      throw new Error('PIN は必須です。');
-  if (!password) throw new Error('パスワードは必須です。');
-
-  const rows = getAllRows(sheet);
-
-  // PIN + パスワードが一致する行を探す。
-  // 文字列型に統一して比較することで型の違いによるミスマッチを防ぐ。
-  const matched = rows.find(row =>
-    String(row[EMPLOYEE_COL.PIN      - 1]) === String(pin) &&
-    String(row[EMPLOYEE_COL.PASSWORD - 1]) === String(password)
-  );
-
-  if (!matched) {
-    throw new Error('PIN またはパスワードが正しくありません。');
-  }
-
-  const employee = rowToEmployee(matched);
-
-  // 利用者はログイン不可。
-  // v3.0.0: admin_role が空（一般スタッフ）もログイン不可。
-  // PIN/パスワード不一致と同じメッセージにして情報漏洩を防ぐ。
-  // ※ '一般職員' は Admin にログインできる（給与は非表示）。
-  const canLogin = employee.employment_type === '職員' && employee.admin_role !== '';
-  if (!canLogin) {
-    Logger.log(
-      '[authenticateEmployee] ログイン拒否: id=%s, name=%s, employment_type=%s, admin_role=%s',
-      employee.id, employee.name, employee.employment_type, employee.admin_role
-    );
-    throw new Error('PIN またはパスワードが正しくありません。');
-  }
-
-  // パスワードはレスポンスから除外してフロントに渡さない。
-  delete employee.password;
-
-  Logger.log('[authenticateEmployee] 認証成功: id=%s, name=%s', employee.id, employee.name);
-
-  return { employee };
-}
-
-/**
- * Kintai 用認証。PIN + パスワードで職員を認証する。
- *
- * Admin用 authenticateEmployee との違い:
- *   - is_admin チェックを行わない。管理権限のない一般職員もログイン可。
- *   - employment_type === '職員' であることだけを確認する。
- *   - 利用者（employment_type === '利用者'）はログイン不可。
- *
- * 設計判断:
- *   authenticateEmployee とは別関数にすることで、
- *   フロントから "source: 'kintai'" のようなフラグを渡して
- *   チェックを回避する攻撃ベクターを排除している。
- *
- * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet - 人員マスタシート
- * @param {string} pin      - 入力された PIN（4桁）
- * @param {string} password - 入力されたパスワード
- * @returns {{ employee: Object }}
- */
-function authenticateKintaiEmployee(sheet, pin, password) {
-  if (!pin)      throw new Error('PIN は必須です。');
-  if (!password) throw new Error('パスワードは必須です。');
-
-  const rows = getAllRows(sheet);
-
-  // 【修正】全行を対象に PIN + パスワードの一致を確認する。
-  // 文字列型に統一して比較することで、数値型PINなど型違いによるミスマッチを防ぐ。
-  const matched = rows.find(row =>
-    String(row[EMPLOYEE_COL.PIN      - 1]) === String(pin) &&
-    String(row[EMPLOYEE_COL.PASSWORD - 1]) === String(password)
-  );
-
-  if (!matched) {
-    throw new Error('PIN またはパスワードが正しくありません。');
-  }
-
-  const employee = rowToEmployee(matched);
-
-  // 【修正】employment_type チェックを撤廃。
-  // 旧: '職員' のみ許可していたため、雇用形態が空・未設定のユーザーがログインできなかった。
-  // 新: PIN + パスワードが一致すれば全員ログイン可。利用者除外はAdmin側のみで行う。
-  // ※ is_admin チェックはKintaiでは不要。管理機能はAdmin.htmlが担当する。
-
-  // パスワードはレスポンスから除外してフロントに渡さない。
-  delete employee.password;
-
-  Logger.log(
-    '[authenticateKintaiEmployee] 認証成功: id=%s, name=%s, is_admin=%s',
-    employee.id, employee.name, employee.is_admin
-  );
-
-  return { employee };
 }
