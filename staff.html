@@ -92,6 +92,8 @@
       🔔
       <span class="notif-badge" id="notif-badge"></span>
     </button>
+    <!-- Phase3: 使い方ガイド（モーダルダイアログ）を開くボタン。権限に関わらず常に表示する。 -->
+    <button class="header-guide-link" id="btn-guide" onclick="openGuideModal()" title="使い方">❓ 使い方</button>
     <a class="header-admin-link" id="admin-link" href="portal.html">⚙️ 管理</a>
     <button class="header-logout-btn" id="btn-logout">ログアウト</button>
   </header>
@@ -309,6 +311,96 @@
   </div>
 </div>
 
+<!-- Phase3: 使い方ガイド（モーダルダイアログ）。
+     ヘッダーの「❓ 使い方」ボタンから開閉する。ユーザーが元々希望していた
+     「別ページ（staff-guide.html）」ではなく「staff.html内に配置」する形に変更した。 -->
+<div class="sumioka-modal sumioka-hidden" id="guide-modal" role="dialog" aria-modal="true" aria-labelledby="guide-modal-title" onclick="if(event.target===this) closeGuideModal()">
+  <div class="sumioka-modal-content">
+    <button class="sumioka-modal-close" onclick="closeGuideModal()" aria-label="閉じる">✕</button>
+
+    <!-- 導入エリア -->
+    <div class="sumioka-guide-hero">
+      <div class="sumioka-guide-hero-icon">🕐</div>
+      <div class="sumioka-guide-hero-title" id="guide-modal-title">住岡 打刻の使い方</div>
+      <div class="sumioka-guide-hero-desc">
+        困ったときは、このガイドをいつでも見返してください。
+      </div>
+    </div>
+
+    <!-- ① 打刻（ホーム） -->
+    <div class="sumioka-guide-section">
+      <div class="sumioka-guide-section-head">
+        <div class="sumioka-guide-section-icon">🕐</div>
+        <div class="sumioka-guide-section-title">打刻（ホーム）</div>
+      </div>
+      <div class="sumioka-guide-section-body">
+        <ol class="sumioka-step-list">
+          <li>出勤するときは「出勤」ボタンをタップするだけで記録されます。</li>
+          <li>退勤するときは同じ画面の「退勤」ボタンをタップしてください。</li>
+          <li>打刻を間違えた・押し忘れた場合は、自分で修正することはできません。管理者に連絡してください。</li>
+        </ol>
+      </div>
+    </div>
+
+    <!-- ② タスク -->
+    <div class="sumioka-guide-section">
+      <div class="sumioka-guide-section-head">
+        <div class="sumioka-guide-section-icon">📋</div>
+        <div class="sumioka-guide-section-title">タスク</div>
+      </div>
+      <div class="sumioka-guide-section-body">
+        <p>自分に割り当てられたタスクが一覧で表示されます。</p>
+        <p>タスクをタップすると、詳しい内容を確認できます。</p>
+        <p>終わったタスクは「完了」ボタンをタップしてください。</p>
+      </div>
+    </div>
+
+    <!-- ③ 相談 -->
+    <div class="sumioka-guide-section">
+      <div class="sumioka-guide-section-head">
+        <div class="sumioka-guide-section-icon">💬</div>
+        <div class="sumioka-guide-section-title">相談</div>
+      </div>
+      <div class="sumioka-guide-section-body">
+        <p>困ったこと・確認したいことを、担当者にメッセージで伝えられます。</p>
+        <p>返信があると通知でお知らせします。</p>
+      </div>
+    </div>
+
+    <!-- ④ 案件 -->
+    <div class="sumioka-guide-section">
+      <div class="sumioka-guide-section-head">
+        <div class="sumioka-guide-section-icon">📁</div>
+        <div class="sumioka-guide-section-title">案件</div>
+      </div>
+      <div class="sumioka-guide-section-body">
+        <p>自分が関わっている案件の一覧と、今の進み具合を確認できます。</p>
+      </div>
+    </div>
+
+    <!-- よくある質問 -->
+    <div class="sumioka-section-title" style="margin-top:var(--space-6)">よくある質問</div>
+    <div class="sumioka-accordion" id="guide-faq-accordion">
+      <div class="sumioka-accordion-item">
+        <button class="sumioka-accordion-trigger" type="button">
+          打刻を忘れてしまいました。どうすればいいですか？
+        </button>
+        <div class="sumioka-accordion-panel">
+          ご自身では修正できません。管理者に直接お伝えください。
+        </div>
+      </div>
+      <div class="sumioka-accordion-item">
+        <button class="sumioka-accordion-trigger" type="button">
+          パスワードを忘れてしまいました。
+        </button>
+        <div class="sumioka-accordion-panel">
+          管理者にパスワードの再発行を依頼してください。
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
 
 <!-- staff/ 配下: 責務ごとに分割したJS。依存順に読み込む
      （utils → staff → attendance/task/drawer/consult/notification）。
@@ -321,5 +413,6 @@
 <script src="staff/drawer.js"></script>
 <script src="staff/consult.js"></script>
 <script src="staff/notification.js"></script>
+<script src="staff/guide.js"></script>
 </body>
 </html>
