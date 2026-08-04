@@ -151,6 +151,9 @@ const VALID_ACTIONS = [
   'check_missing_clocks',              // 指定日付の打刻漏れを検出
   'check_missing_clocks_monthly',      // 指定月全体の打刻漏れを検出（Admin月次確認用）
   'get_my_missing_clocks',             // スタッフが自分の打刻漏れを取得
+
+  // ── ダッシュボード（Notion埋め込み用・閲覧専用） ──
+  'get_dashboard_summary',             // 出退勤・タスク・申請の状況を集計して返す
 ];
 
 /** シート名（日本語）*/
@@ -458,6 +461,13 @@ function handleAttendance(action, data) {
       case 'check_missing_clocks_monthly':
       case 'get_my_missing_clocks':
         return handleAdminAction(action, data, attendanceSheet, employeeSheet);
+
+      // ── ダッシュボード（DashboardService.gs）──────────────
+      // Notionポータル埋め込み用の閲覧専用ダッシュボード。
+      // 出退勤・タスク管理は別サービスファイルの担当範囲のため、
+      // handleAdminAction には含めず専用のハンドラへ委譲する。
+      case 'get_dashboard_summary':
+        return handleDashboardAction(action, data);
 
       // ── テストデータ管理（本番運用前のみ使用）──────────────
       case 'reset_test_data':
